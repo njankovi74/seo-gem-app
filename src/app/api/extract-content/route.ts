@@ -17,6 +17,27 @@ interface ExtractedContent {
   cleanText: string;
 }
 
+// Ensure Node.js runtime on Vercel and avoid any accidental static optimization
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+// Helpful for any preflight or accidental GETs; also makes 405 responses JSON
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Allow': 'POST, OPTIONS',
+    },
+  });
+}
+
+export async function GET() {
+  return NextResponse.json({ error: 'Use POST on this endpoint' }, {
+    status: 405,
+    headers: { 'Allow': 'POST, OPTIONS' }
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { url } = await request.json();

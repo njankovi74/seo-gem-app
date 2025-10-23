@@ -161,3 +161,21 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
     }, { status: 500 });
   }
 }
+
+// Ensure Node.js runtime (uses Node libs and external SDKs) and prevent static optimization
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: { 'Allow': 'POST, OPTIONS' },
+  });
+}
+
+export async function GET() {
+  return NextResponse.json({ error: 'Use POST on this endpoint' }, {
+    status: 405,
+    headers: { 'Allow': 'POST, OPTIONS' }
+  });
+}

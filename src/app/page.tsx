@@ -75,13 +75,16 @@ export default function Home() {
         body: JSON.stringify({ url }),
       });
 
-      const data = await response.json();
+      // Prefer JSON when present, but gracefully handle empty/non-JSON error bodies (e.g. 405)
+      const isJSON = response.headers.get('content-type')?.includes('application/json');
+      const payload = isJSON ? await response.json() : await response.text();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Greška pri preuzimanju sadržaja');
+        const message = isJSON ? (payload as any)?.error : (typeof payload === 'string' && payload ? payload : 'Greška pri preuzimanju sadržaja');
+        throw new Error(message);
       }
 
-      setExtractedContent(data);
+      setExtractedContent(payload as any);
       setStep('content');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Neočekivana greška');
@@ -106,13 +109,15 @@ export default function Home() {
         }),
       });
 
-      const data = await response.json();
+      const isJSON = response.headers.get('content-type')?.includes('application/json');
+      const payload = isJSON ? await response.json() : await response.text();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Greška pri analizi');
+        const message = isJSON ? (payload as any)?.error : (typeof payload === 'string' && payload ? payload : 'Greška pri analizi');
+        throw new Error(message);
       }
 
-      setAnalysisResult(data.data);
+      setAnalysisResult((payload as any).data);
       setStep('analysis');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Neočekivana greška');
