@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { Readability } from '@mozilla/readability';
-import { JSDOM } from 'jsdom';
 
 interface ExtractedContent {
   title: string;
@@ -122,6 +120,8 @@ async function extractByUrl(url: string) {
   }
   if (!content || content.length < 100) {
     try {
+      const { JSDOM } = await import('jsdom');
+      const { Readability } = await import('@mozilla/readability');
       const dom = new JSDOM(html, { url });
       const reader = new Readability(dom.window.document);
       const parsed = reader.parse();
