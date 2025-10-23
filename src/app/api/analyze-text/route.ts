@@ -117,6 +117,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
       { provider, model, strictModel }
     );
 
+    // LLM diagnostics: was LLM actually used or did we fall back?
+    const configuredProvider = (provider || process.env.SEO_LLM_PROVIDER || '').toLowerCase();
+    const configuredModel =
+      configuredProvider === 'openai'
+        ? (model || process.env.OPENAI_MODEL || '')
+        : configuredProvider === 'gemini'
+          ? (model || process.env.GEMINI_MODEL || '')
+          : '';
+    const usedLLM = (
+      seoOutputs.title !== deterministicSEO.title ||
+      seoOutputs.metaDescription !== deterministicSEO.metaDescription ||
+      seoOutputs.keywordsLine !== deterministicSEO.keywordsLine
+    );
+
     // Author-focused metrics and recommendations
     const prioritizedTerms = prioritized.map(p => p.term);
     const authorMetrics = computeAuthorMetrics({
@@ -147,6 +161,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
           items: prioritized,
           csv: prioritizedAsCSV(prioritized),
           commaList: prioritizedAsCommaList(prioritized)
+        },
+        // Non-breaking diagnostics for UI/logging
+        llm: {
+          configuredProvider,
+          configuredModel,
+          strictModel: !!(strictModel ?? ((process.env.SEO_LLM_STRICT_MODEL || '').toLowerCase() === 'true')),
+          used: usedLLM,
+          hasKeys: {
+            openai: !!process.env.OPENAI_API_KEY,
+            gemini: !!process.env.GEMINI_API_KEY,
+          }
         }
       }
     });
