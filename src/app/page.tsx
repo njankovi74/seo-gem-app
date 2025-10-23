@@ -69,10 +69,10 @@ export default function Home() {
     setError('');
 
     try {
-      const response = await fetch('/api/extract-content', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
+      // Use GET with query to avoid any platform issues with POST/JSON preflight
+      const qs = new URLSearchParams({ url }).toString();
+      const response = await fetch(`/api/extract-content?${qs}`, {
+        method: 'GET',
       });
 
       // Prefer JSON when present, but gracefully handle empty/non-JSON error bodies (e.g. 405)
