@@ -307,8 +307,12 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
         }
       }
 
+      // Fallback policy: avoid crossing major generations unless explicitly requested.
+      // For 2.x primaries (e.g., 2.5-pro), don't auto-fallback to 1.5 models to prevent 404s on some projects.
       const fallbackModels = strictModel ? [] : (
-        primaryModel.includes('2.5') ? ['gemini-1.5-pro', 'gemini-1.5-flash'] : ['gemini-1.5-flash']
+        primaryModel.startsWith('gemini-1.5-pro') ? ['gemini-1.5-flash'] :
+        primaryModel.startsWith('gemini-1.5-flash') ? ['gemini-1.5-pro'] :
+        [] // for 2.x or unknown models, no implicit fallbacks
       ).filter(m => m !== primaryModel);
 
       let out: string | null = null;

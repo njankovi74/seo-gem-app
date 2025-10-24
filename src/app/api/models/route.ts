@@ -59,7 +59,7 @@ export async function GET(req: Request) {
       const json = await resp.json();
       const models: string[] = Array.isArray(json?.models) ? json.models.map((m: any) => m.name || m?.id || '').filter(Boolean) : [];
       const projectModel = process.env.GEMINI_MODEL || null;
-      const wanted = ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+      const wanted = ['gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
       const has: Record<string, boolean> = {};
       for (const w of wanted) {
         has[w] = models.some(id => id.includes(w));
