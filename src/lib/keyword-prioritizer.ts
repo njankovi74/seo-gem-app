@@ -102,7 +102,7 @@ export function prioritizeKeywords(
 
     // 4) Topical coverage: da li je u/oko klastera
     const topical = inClusters(term) ? 1 : 0;
-  const candidates = new Set<string>();
+  const comboCandidates = new Set<string>();
   // Primarna fraza (seed) za long‑tail varijante
   const primarySeed = (tfidf.keyPhrases.find(p => (p || '').split(/\s+/).length >= 2) || tfidf.semanticCore[0]?.word || '').toLowerCase();
 
@@ -122,8 +122,8 @@ export function prioritizeKeywords(
       if (w === primarySeed) continue;
       const combo1 = `${primarySeed} ${w}`;
       const combo2 = `${w} ${primarySeed}`;
-      if (combo1.split(' ').length <= 4) candidates.add(combo1);
-      if (combo2.split(' ').length <= 4) candidates.add(combo2);
+      if (combo1.split(' ').length <= 4) comboCandidates.add(combo1);
+      if (combo2.split(' ').length <= 4) comboCandidates.add(combo2);
     }
   }
     const score01 = rel * 0.4 + intentScore * 0.25 + longTail * 0.2 + topical * 0.15;
@@ -166,5 +166,5 @@ export function prioritizedAsCommaList(items: PrioritizedKeyword[], max = 20): s
     seen.add(it.term);
     list.push(it.term);
   }
-  return list.join(',');
+  return list.join(', ');
 }

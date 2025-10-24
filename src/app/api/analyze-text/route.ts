@@ -104,18 +104,30 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
       searchIntentType: searchIntent.type
     }, text);
 
-    // LLM enhancement (provider-configurable)
-    const seoOutputs = await buildSEOWithLLM(
-      deterministicSEO,
-      {
-        documentTitle: title,
-        keyTerms: prioritized.map(p => p.term),
-        mainTopics,
-        searchIntentType: searchIntent.type,
-        textSample: text.slice(0, 1000)
-      },
-      { provider, model, strictModel }
-    );
+    // LLM enhancement (provider-configurable). If LLM hard-fails, gracefully fall back
+    // to deterministic output but include diagnostics so UI can inform the user.
+    const noBase = (process.env.SEO_NO_BASE_SEO || '').toLowerCase() === 'true';
+    let seoOutputs: ReturnType<typeof buildDeterministicSEO> | undefined;
+    let llmError: string | undefined;
+    try {
+      seoOutputs = await buildSEOWithLLM(
+        deterministicSEO,
+        {
+          documentTitle: title,
+          keyTerms: prioritized.map(p => p.term),
+          mainTopics,
+          searchIntentType: searchIntent.type,
+          textSample: text.slice(0, 1000)
+        },
+        { provider, model, strictModel }
+      );
+    } catch (e: any) {
+      // Preserve a user-friendly flow: keep deterministic SEO and expose reason in diagnostics
+      llmError = e?.message || 'LLM failure';
+      if (!noBase) {
+        seoOutputs = deterministicSEO;
+      }
+    }
 
     // LLM diagnostics: was LLM actually used or did we fall back?
     const configuredProvider = (provider || process.env.SEO_LLM_PROVIDER || '').toLowerCase();
@@ -125,7 +137,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
         : configuredProvider === 'gemini'
           ? (model || process.env.GEMINI_MODEL || '')
           : '';
-    const usedLLM = (
+    const usedLLM = !!seoOutputs && (
       seoOutputs.title !== deterministicSEO.title ||
       seoOutputs.metaDescription !== deterministicSEO.metaDescription ||
       seoOutputs.keywordsLine !== deterministicSEO.keywordsLine
@@ -154,7 +166,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
         lsaAnalysis,
         searchIntent,
         summary,
-        seoOutputs,
+  ...(seoOutputs ? { seoOutputs } : {}),
         authorMetrics,
         authorRecommendations,
         prioritizedKeywords: {
@@ -171,7 +183,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
           hasKeys: {
             openai: !!process.env.OPENAI_API_KEY,
             gemini: !!process.env.GEMINI_API_KEY,
-          }
+          },
+          error: llmError
         }
       }
     });
