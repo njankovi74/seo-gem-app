@@ -179,7 +179,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
   } catch (error) {
     console.error('Analysis error:', error);
     const isDev = process.env.NODE_ENV !== 'production';
-    const message = isDev && error instanceof Error ? `${error.message}` : 'Greška pri analizi teksta. Molimo pokušajte ponovo.';
+    const debug = (process.env.SEO_DEBUG || '').toLowerCase() === 'true';
+    const message = (isDev || debug) && error instanceof Error ? `${error.message}` : 'Greška pri analizi teksta. Molimo pokušajte ponovo.';
     return NextResponse.json({
       success: false,
       error: message

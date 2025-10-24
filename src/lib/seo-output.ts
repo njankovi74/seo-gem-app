@@ -286,17 +286,23 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
       if (!mod || !mod.GoogleGenerativeAI) throw new Error('gemini sdk not installed');
       const primaryModel = options?.model || process.env.GEMINI_MODEL || 'gemini-1.5-flash';
       const client = new mod.GoogleGenerativeAI(apiKey);
+      const genConfig = { temperature: 0.4, maxOutputTokens: 350 };
 
       async function tryGemini(modelName: string): Promise<string | null> {
         try {
-          const model = client.getGenerativeModel({ model: modelName });
-          const result = await model.generateContent({ contents: [{ role: 'user', parts: [{ text: prompt }] }] });
-          const out = result?.response?.text?.() || '';
+          const model = client.getGenerativeModel({ model: modelName, generationConfig: genConfig });
+          // Use simple string prompt for broadest compatibility across SDK versions
+          const result = await model.generateContent(prompt as any);
+          const out = (result as any)?.response?.text?.() || (result as any)?.response?.text || '';
           return out || '';
         } catch (e: any) {
           const msg = e?.message || '';
-          const isModelAccess = /model/i.test(msg) || /not found/i.test(msg) || /permission/i.test(msg) || /404/.test(msg) || /403/.test(msg);
-          if (isModelAccess) return null; // pokušaj fallback
+          const status = e?.status || e?.code || '';
+          const isAccess = /model/i.test(msg) || /not found/i.test(msg) || /permission/i.test(msg) || /unsupported/i.test(msg) || /404/.test(msg) || /403/.test(msg);
+          const isQuotaOrSafety = /quota|exceeded|blocked|safety|rate/i.test(msg) || status === 429 || status === 400;
+          // On any recoverable error, signal caller to try fallback models
+          if (isAccess || isQuotaOrSafety) return null;
+          // Non-recoverable → rethrow so caller can decide (and propagate when REQUIRED=true)
           throw e;
         }
       }
@@ -305,11 +311,13 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
         primaryModel.includes('2.5') ? ['gemini-1.5-pro', 'gemini-1.5-flash'] : ['gemini-1.5-flash']
       ).filter(m => m !== primaryModel);
 
-      let out = await tryGemini(primaryModel);
+      let out: string | null = null;
+      // Be lenient: even if first call throws, keep trying fallbacks when strictModel=false
+      try { out = await tryGemini(primaryModel); } catch (e) { if (strictModel) throw e; }
       if (!strictModel) {
         for (const m of fallbackModels) {
           if (out) break;
-          out = await tryGemini(m);
+          try { out = await tryGemini(m); } catch { /* continue */ }
         }
       }
       if (!out && requireLLM) throw new Error('Empty LLM response');
