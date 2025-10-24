@@ -13,8 +13,8 @@ async function run(provider: Provider, model?: string) {
     if (prov === 'openai') {
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) throw new Error('OPENAI_API_KEY missing');
-      const dynImport: any = new Function('m', 'return import(m)');
-      const mod: any = await dynImport('openai');
+      // Use a literal dynamic import so Vercel's dependency tracer includes the package
+      const mod: any = await import('openai');
       const client = new mod.default({ apiKey });
       const res = await client.responses.create({
         model: mdl || 'gpt-4o-mini',
@@ -29,8 +29,8 @@ async function run(provider: Provider, model?: string) {
     if (prov === 'gemini') {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) throw new Error('GEMINI_API_KEY missing');
-      const dynImport: any = new Function('m', 'return import(m)');
-      const mod: any = await dynImport('@google/generative-ai');
+      // Use a literal dynamic import so Vercel's dependency tracer includes the package
+      const mod: any = await import('@google/generative-ai');
       const client = new mod.GoogleGenerativeAI(apiKey);
       const m = client.getGenerativeModel({ model: mdl || 'gemini-1.5-flash', generationConfig: { temperature: 0.2, maxOutputTokens: 64 } });
       const result = await m.generateContent('Vrati samo JSON: {"status":"ok"}');

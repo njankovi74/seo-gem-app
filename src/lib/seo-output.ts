@@ -208,8 +208,8 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
     if (provider === 'openai' || (!provider && process.env.OPENAI_API_KEY)) {
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) throw new Error('OPENAI_API_KEY missing');
-      const dynImport: any = new Function('m', 'return import(m)');
-      const mod: any = await dynImport('openai').catch(() => null);
+  // Literal dynamic import so serverless bundlers can trace the dependency
+  const mod: any = await import('openai').catch(() => null);
       if (!mod || !mod.default) throw new Error('openai sdk not installed');
       const baseURL = process.env.OPENAI_BASE_URL;
       const client = new mod.default({ apiKey, baseURL });
@@ -281,8 +281,8 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
     if (provider === 'gemini' || (!provider && process.env.GEMINI_API_KEY)) {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) throw new Error('GEMINI_API_KEY missing');
-      const dynImport: any = new Function('m', 'return import(m)');
-      const mod: any = await dynImport('@google/generative-ai').catch(() => null);
+  // Literal dynamic import so serverless bundlers can trace the dependency
+  const mod: any = await import('@google/generative-ai').catch(() => null);
       if (!mod || !mod.GoogleGenerativeAI) throw new Error('gemini sdk not installed');
       const primaryModel = options?.model || process.env.GEMINI_MODEL || 'gemini-1.5-flash';
       const client = new mod.GoogleGenerativeAI(apiKey);
