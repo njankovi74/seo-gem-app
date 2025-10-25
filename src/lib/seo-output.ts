@@ -116,6 +116,79 @@ Ulaz (sažetak):
 
 Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
 
+  // Normalize any unknown SDK result/value into a plain string for safe parsing
+  function ensureText(val: any): string {
+    try {
+      if (val == null) return '';
+      if (typeof val === 'string') return val;
+      
+      // PRIORITY 1: Gemini SDK result shape - result.response.text() is a METHOD
+      // This is the primary way Gemini SDK returns content in current versions
+      if (val.response && typeof val.response.text === 'function') {
+        try {
+          const t = val.response.text();
+          if (t && typeof t === 'string') return t;
+        } catch (e) {
+          // If text() throws, continue to fallbacks
+        }
+      }
+      
+      // PRIORITY 2: Direct text method or property on the value itself
+      if (typeof val.text === 'function') {
+        const t = val.text();
+        return typeof t === 'string' ? t : String(t ?? '');
+      }
+      if (typeof val.text === 'string') return val.text;
+      
+      // PRIORITY 3: response.text as a string property (older or alternative SDK shapes)
+      if (val.response) {
+        const r = val.response;
+        if (typeof r?.text === 'string' && r.text) return r.text;
+        // Decode JSON returned as inlineData when responseMimeType is application/json
+        const parts = r?.candidates?.[0]?.content?.parts;
+        if (Array.isArray(parts)) {
+          const out: string[] = [];
+          for (const p of parts) {
+            if (typeof p?.text === 'string' && p.text) out.push(p.text);
+            const b64 = p?.inlineData?.data;
+            const mt = p?.inlineData?.mimeType || p?.mimeType;
+            if (b64 && typeof b64 === 'string') {
+              try {
+                const decoded = Buffer.from(b64, 'base64').toString('utf8');
+                // If it's JSON and mime indicates JSON, prefer it
+                if ((mt || '').includes('json')) return decoded;
+                out.push(decoded);
+              } catch { /* ignore */ }
+            }
+          }
+          if (out.length) return out.join('\n');
+        }
+      }
+      // Gemini candidates content parts
+      const parts2 = val?.candidates?.[0]?.content?.parts;
+      if (Array.isArray(parts2)) {
+        const maybe: string[] = [];
+        for (const p of parts2) {
+          if (typeof p?.text === 'string') maybe.push(p.text);
+          const b64 = p?.inlineData?.data;
+          const mt = p?.inlineData?.mimeType || p?.mimeType;
+          if (b64 && typeof b64 === 'string') {
+            try {
+              const decoded = Buffer.from(b64, 'base64').toString('utf8');
+              if ((mt || '').includes('json')) return decoded;
+              maybe.push(decoded);
+            } catch { /* ignore */ }
+          }
+        }
+        if (maybe.length) return maybe.join('\n');
+      }
+      // Last resort: stringify objects, or coerce primitives/functions
+      return typeof val === 'object' ? JSON.stringify(val) : String(val);
+    } catch {
+      return '';
+    }
+  }
+
   function sanitizeKeywords(arr: string[], primary: string, secondaries: string[]): string[] {
     const stop = new Set(['je','za','u','na','i','od','do','se','da','koji','kako','što','sto','ili','ali','pa','su','sa','o','autor','društvo','hronika','video','foto','komentar','najnovije']);
     const out: string[] = [];
@@ -165,7 +238,8 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
     return out.slice(0, 14);
   }
 
-  function parseOutput(out: string): SEOOutputs {
+  function parseOutput(outRaw: any): SEOOutputs {
+    const out = ensureText(outRaw);
     let title = fallback.title;
     let meta = fallback.metaDescription;
     let kwLine = fallback.keywordsLine;
@@ -188,7 +262,8 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
       // slug trenutno ne prikazujemo u UI, ali ga možemo kasnije dodati
     } catch {
       // Fallback: heuristike iz prethodne verzije (ako model nije poslao JSON)
-      const lines = out.split(/\r?\n/).map((l: string) => l.trim()).filter(Boolean);
+      const text = ensureText(out);
+      const lines = text.split(/\r?\n/).map((l: string) => l.trim()).filter(Boolean);
       const idx1 = lines.findIndex((l: string) => l.toLowerCase().includes('1. seo naslov') || /^1\./.test(l));
       const idx2 = lines.findIndex((l: string) => l.toLowerCase().includes('2. meta opis') || /^2\./.test(l));
       const idx3 = lines.findIndex((l: string) => l.toLowerCase().includes('3. formatirana') || /^3\./.test(l));
@@ -198,7 +273,7 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
     }
     title = truncate(title, 60);
     meta = truncate(meta, 160);
-  kwLine = kwLine ? kwLine.slice(0, 300) : '';
+    kwLine = kwLine ? kwLine.slice(0, 300) : '';
     const markdown = ['1. SEO Naslov (Title Tag)','', '```', title, '```', '', '2. Meta Opis (Meta Description)', '', '```', meta, '```', '', '3. Formatirana Lista Ključnih Reči', '', '```', kwLine, '```'].join('\n');
     return { title, metaDescription: meta, keywordsLine: kwLine, markdown };
   }
@@ -284,19 +359,23 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
   // Literal dynamic import so serverless bundlers can trace the dependency
   const mod: any = await import('@google/generative-ai').catch(() => null);
       if (!mod || !mod.GoogleGenerativeAI) throw new Error('gemini sdk not installed');
-      const primaryModel = options?.model || process.env.GEMINI_MODEL || 'gemini-1.5-flash';
-      const client = new mod.GoogleGenerativeAI(apiKey);
-      const genConfig = { temperature: 0.4, maxOutputTokens: 350 };
+  const primaryModel = options?.model || process.env.GEMINI_MODEL || 'gemini-2.5-pro';
+  const client = new mod.GoogleGenerativeAI(apiKey);
+  // Force JSON output to reduce parsing ambiguity on Gemini 2.x
+  // Increased maxOutputTokens to 2000 to fully accommodate Serbian text + JSON structure + keywords array
+  const genConfig = { temperature: 0.4, maxOutputTokens: 2000, responseMimeType: 'application/json' } as any;
 
+      let lastErrMsg: string | undefined;
       async function tryGemini(modelName: string): Promise<string | null> {
         try {
           const model = client.getGenerativeModel({ model: modelName, generationConfig: genConfig });
-          // Use simple string prompt for broadest compatibility across SDK versions
+          // Prefer JSON response; pass plain text prompt
           const result = await model.generateContent(prompt as any);
-          const out = (result as any)?.response?.text?.() || (result as any)?.response?.text || '';
+          const out = ensureText(result);
           return out || '';
         } catch (e: any) {
           const msg = e?.message || '';
+          lastErrMsg = msg || lastErrMsg;
           const status = e?.status || e?.code || '';
           const isAccess = /model/i.test(msg) || /not found/i.test(msg) || /permission/i.test(msg) || /unsupported/i.test(msg) || /404/.test(msg) || /403/.test(msg);
           const isQuotaOrSafety = /quota|exceeded|blocked|safety|rate/i.test(msg) || status === 429 || status === 400;
@@ -310,9 +389,10 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
       // Fallback policy: avoid crossing major generations unless explicitly requested.
       // For 2.x primaries (e.g., 2.5-pro), don't auto-fallback to 1.5 models to prevent 404s on some projects.
       const fallbackModels = strictModel ? [] : (
+        primaryModel.startsWith('gemini-2.5-') ? [] :
         primaryModel.startsWith('gemini-1.5-pro') ? ['gemini-1.5-flash'] :
         primaryModel.startsWith('gemini-1.5-flash') ? ['gemini-1.5-pro'] :
-        [] // for 2.x or unknown models, no implicit fallbacks
+        []
       ).filter(m => m !== primaryModel);
 
       let out: string | null = null;
@@ -324,7 +404,7 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
           try { out = await tryGemini(m); } catch { /* continue */ }
         }
       }
-      if (!out && requireLLM) throw new Error('Empty LLM response');
+  if (!out && requireLLM) throw new Error('Empty LLM response' + (lastErrMsg ? `: ${lastErrMsg}` : ''));
       return out ? parseOutput(out) : fallback;
     }
 
