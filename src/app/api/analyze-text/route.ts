@@ -110,6 +110,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
     let seoOutputs: ReturnType<typeof buildDeterministicSEO> | undefined;
     let llmError: string | undefined;
     
+    console.log('🚀 [analyze-text] Text stats:', { 
+      titleLength: title?.length || 0, 
+      textLength: text.length, 
+      textSample: text.substring(0, 200) + '...',
+      wordCount: text.split(/\s+/).length 
+    });
     console.log('🚀 [analyze-text] Calling buildSEOWithLLM:', { provider, model, strictModel, hasText: !!text });
     
     try {

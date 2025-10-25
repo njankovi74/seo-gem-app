@@ -98,10 +98,14 @@ export async function buildSEOWithLLM(
   "slug": string            // kratko, kebab-case, 4–8 reči, samo [a-z0-9-]
 }
 
-Pravila:
+Pravila za SEO naslov i opis:
 - Jezik: srpski (latinica). Ton: stručan i koristan, bez senzacionalizma.
+- **KLJUČNO: ZADRŽI GLAVNU RADNJU/DOGAĐAJ iz originalnog naslova dokumenta!**
+  * Ako naslov sadrži GLAGOL (akciju/događaj): preminuo, uhapšen, poginuo, otvorio, zatvorio, najavio, pobedio, izgubio, potpisao, podneo, zatražio, odbacio, odobrio, pokrenuo, završio, doneo odluku, dao izjavu... → **OBAVEZNO taj glagol ili ekvivalent zadrži u SEO naslovu!**
+  * NE menjaj aktuelni događaj u retrospektivu ili generički opis (ne pretvaraj "preminuo" u "biografija", "uhapšen" u "karijera", "najavio" u "planovi")
+  * Cilj: Korisnik koji čita originalni naslov i SEO naslov mora videti **ISTU KLJUČNU INFORMACIJU** (samo bolje formulisanu za SEO)
+- **Meta opis:** Ako je vest/događaj, sažmi suštinu (ko, šta, gde, kada, zašto/kako) - bez izmišljanja detalja, striktno na osnovu teksta
 - Zabranjene fraze: ${bannedTokens.join(', ')}.
-- Meta opis: bez eksplicitnog CTA; fokus na suštinskim informacijama i vrednosti teksta.
 - Ključne reči: prednost long‑tail frazama (2–4 reči); uključi varijante primarne fraze sa modifikatorima (lokacija, problem/rešenje, namera), izbegni generike ("autor", "društvo"), bez datuma/vremena.
 - Ukupna dužina finalnog stringa sa ključnim rečima (spojenih zarezima i razmacima: ", ") treba biti ≤ 300 karaktera; skrati listu po potrebi.
 - Poštuj ograničenja dužine. Ako mora skraćivanje, zadrži smisao i ključne reči.

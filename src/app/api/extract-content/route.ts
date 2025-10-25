@@ -110,23 +110,45 @@ async function extractByUrl(url: string) {
                 $('time').attr('datetime') || (ld?.publishDate || '')
   };
 
-  let title = $('title').text().trim();
-  if (!title) title = $('h1').first().text().trim();
+  // Priority: 1) og:title (social - kompletan), 2) twitter:title, 3) <title>, 4) <h1>, 5) JSON-LD headline
+  let title = $('meta[property="og:title"]').attr('content') || 
+              $('meta[name="twitter:title"]').attr('content') ||
+              $('title').text().trim() ||
+              $('h1').first().text().trim();
   if (ld?.headline && (!title || title.length < 5)) title = ld.headline;
 
   let content = '';
+  let extractionMethod = 'none';
+  
   if (ld?.articleBody && ld.articleBody.toString().trim().length > 100) {
     content = ld.articleBody.toString();
+    extractionMethod = 'json-ld';
+    console.log(`📄 [extract] JSON-LD articleBody: ${content.length} chars, sample: "${content.substring(0, 100)}..."`);
   }
   if (!content || content.length < 100) {
     try {
       const { JSDOM } = await import('jsdom');
       const { Readability } = await import('@mozilla/readability');
       const dom = new JSDOM(html, { url });
-      const reader = new Readability(dom.window.document);
+      const reader = new Readability(dom.window.document, {
+        charThreshold: 50,  // Minimum chars per paragraph
+        classesToPreserve: []  // Don't preserve any extra classes
+      });
       const parsed = reader.parse();
       if (parsed?.textContent && parsed.textContent.trim().length > 100) {
-        content = parsed.textContent.trim();
+        let fullContent = parsed.textContent.trim();
+        // If content is unusually long (>1500 chars), likely includes navigation/footer
+        // For Serbian news articles, main content is typically 500-1500 chars
+        // Take first ~50% as heuristic to exclude footer/related content
+        if (fullContent.length > 1500) {
+          const cutoff = Math.floor(fullContent.length * 0.5); // Take first 50%
+          content = fullContent.substring(0, cutoff);
+          console.log(`📄 [extract] Readability (truncated): ${fullContent.length} → ${content.length} chars`);
+        } else {
+          content = fullContent;
+          console.log(`📄 [extract] Readability: ${content.length} chars`);
+        }
+        extractionMethod = 'readability';
         if (!title && parsed.title) title = parsed.title.trim();
       }
     } catch {}
@@ -158,12 +180,21 @@ async function extractByUrl(url: string) {
       const score = hits * 100 + Math.min(raw.length, 20000) / 100;
       if (score > best.score) best = { score, text: raw };
     }
-    if (best.text) content = best.text;
+    if (best.text) {
+      content = best.text;
+      extractionMethod = 'css-selector';
+      console.log(`📄 [extract] CSS selector: ${content.length} chars`);
+    }
   }
   if (!content || content.length < 100) {
     const paragraphs = $('p').map((_, el) => $(el).text().trim()).get();
     content = paragraphs.filter(p => p.length > 40).join('\n');
+    extractionMethod = 'fallback-paragraphs';
+    console.log(`📄 [extract] Fallback <p> tags: ${content.length} chars`);
   }
+
+  console.log(`✅ [extract] Final method: ${extractionMethod}, length: ${content.length} chars, wordCount: ${content.split(/\s+/).length}`);
+
 
   const cleanText = content
     .replace(/[ \t\f\v]+/g, ' ')
