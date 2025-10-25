@@ -101,11 +101,12 @@ export async function buildSEOWithLLM(
 Pravila za SEO naslov i opis:
 - Jezik: srpski (latinica). Ton: stručan i koristan, bez senzacionalizma.
 - **KLJUČNO: ZADRŽI ORIGINALNU FORMU I AKCIJU iz naslova dokumenta!**
-  * **Pitanja:** Ako naslov počinje sa "Kako", "Šta", "Ko", "Zašto", "Kada", "Gde", "Da li" → **ZADRŽI pitanje u SEO naslovu i završi sa znakom pitanja "?"!** (Ne pretvaraj "Kako X?" u "Vodič za X" ili "X: objašnjenje")
+  * **Pitanja:** Ako naslov počinje sa "Kako", "Šta", "Ko", "Zašto", "Kada", "Gde", "Da li" → **OBAVEZNO zadrži pitanje u SEO naslovu i završi sa znakom pitanja "?"!** (Ne pretvaraj "Kako X?" u "Vodič za X" ili "X: objašnjenje")
+    - PRAVILO: **SVE REČENICE SA "kako", "šta", "ko" MORAJU ZAVRŠITI SA "?"** - to je kritično za SEO!
   * **Glagoli/akcije:** Ako naslov sadrži glagol (preminuo, uhapšen, najavio, otvorio, zatražio, podneo, pobedio, potpisao...) → **OBAVEZNO zadrži taj glagol ili direktan sinonim!**
   * **Cilj:** Korisnik koji čita originalni naslov i SEO naslov mora prepoznati **ISTU SUŠTINSKU PORUKU** (samo SEO-optimizovanu, ne transformisanu u drugi žanr/ton)
   * **Zabranjene transformacije:**
-    - "Kako X?" → ❌ "Vodič za X", ❌ "X: uputstvo", ❌ "Sve o X"  →  ✅ "Kako X: [detalj]"
+    - "Kako X?" → ❌ "Vodič za X", ❌ "X: uputstvo", ❌ "Sve o X"  →  ✅ "Kako X: [detalji]?"
     - "Preminuo Y" → ❌ "Biografija Y", ❌ "Život Y"  →  ✅ "Preminuo Y, [kontekst]"
     - "Najavio Z" → ❌ "Planovi Z", ❌ "Budućnost Z"  →  ✅ "Najavio Z: [detalj]"
 - **Meta opis:** Ako je vest/događaj, sažmi suštinu (ko, šta, gde, kada, zašto/kako) - bez izmišljanja detalja, striktno na osnovu teksta
