@@ -369,10 +369,11 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
   // Literal dynamic import so serverless bundlers can trace the dependency
   const mod: any = await import('@google/generative-ai').catch(() => null);
       if (!mod || !mod.GoogleGenerativeAI) throw new Error('gemini sdk not installed');
-  // COST OPTIMIZATION: Use Flash instead of Pro (66x cheaper!)
-  // gemini-2.5-pro: $5.00/M output tokens
-  // gemini-1.5-flash: $0.075/M output tokens  
-  const primaryModel = options?.model || process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+  // COST OPTIMIZATION: Use Flash-Lite (smallest & cheapest - perfect for SEO!)
+  // gemini-2.5-pro: $10.00/M output tokens
+  // gemini-2.5-flash: $2.50/M output tokens  
+  // gemini-2.5-flash-lite: $0.40/M output tokens (6x cheaper than Flash, 25x cheaper than Pro!)
+  const primaryModel = options?.model || process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
   const client = new mod.GoogleGenerativeAI(apiKey);
   // Force JSON output to reduce parsing ambiguity on Gemini 2.x
   // Increased maxOutputTokens to 4000 - Serbian Cyrillic/Latin + complex keyword arrays need more tokens
