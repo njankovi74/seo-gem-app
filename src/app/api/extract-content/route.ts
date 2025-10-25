@@ -130,20 +130,43 @@ async function extractByUrl(url: string) {
       const { JSDOM } = await import('jsdom');
       const { Readability } = await import('@mozilla/readability');
       const dom = new JSDOM(html, { url });
-      const reader = new Readability(dom.window.document, {
-        charThreshold: 50,  // Minimum chars per paragraph
-        classesToPreserve: []  // Don't preserve any extra classes
+      
+      // BEFORE Readability: Try to remove common noise elements more aggressively
+      const doc = dom.window.document;
+      const noisySelectors = [
+        '.related-articles', '.related-posts', '.article-footer', 
+        '.share-buttons', '.social-share', '.tags', '.categories',
+        '.popular-posts', '.trending', '.recommended', '.more-stories',
+        '.newsletter-signup', '.subscription-box', '.ad-container',
+        'aside', '[class*="sidebar"]', '[id*="sidebar"]'
+      ];
+      noisySelectors.forEach(sel => {
+        doc.querySelectorAll(sel).forEach(el => el.remove());
+      });
+      
+      const reader = new Readability(doc, {
+        charThreshold: 50,
+        classesToPreserve: []
       });
       const parsed = reader.parse();
       if (parsed?.textContent && parsed.textContent.trim().length > 100) {
         let fullContent = parsed.textContent.trim();
-        // If content is unusually long (>1500 chars), likely includes navigation/footer
-        // For Serbian news articles, main content is typically 500-1500 chars
-        // Take first ~50% as heuristic to exclude footer/related content
-        if (fullContent.length > 1500) {
-          const cutoff = Math.floor(fullContent.length * 0.5); // Take first 50%
-          content = fullContent.substring(0, cutoff);
-          console.log(`📄 [extract] Readability (truncated): ${fullContent.length} → ${content.length} chars`);
+        
+        // Additional heuristic: Serbian news articles are typically 500-2500 chars
+        // If much longer, likely includes footer/navigation content
+        // Take first portion that ends at sentence boundary
+        if (fullContent.length > 2500) {
+          // Find last sentence ending (. ! ?) before char 2300
+          const cutoffSearch = fullContent.substring(0, 2300);
+          const lastSentenceMatch = cutoffSearch.match(/[.!?]\s+(?=[A-ZČĆŽŠĐ]|$)/g);
+          if (lastSentenceMatch && lastSentenceMatch.length > 0) {
+            const cutoffIndex = cutoffSearch.lastIndexOf(lastSentenceMatch[lastSentenceMatch.length - 1]) + 1;
+            content = fullContent.substring(0, cutoffIndex).trim();
+            console.log(`📄 [extract] Readability (sentence-truncated): ${fullContent.length} → ${content.length} chars`);
+          } else {
+            content = fullContent.substring(0, 2300);
+            console.log(`📄 [extract] Readability (hard-truncated): ${fullContent.length} → ${content.length} chars`);
+          }
         } else {
           content = fullContent;
           console.log(`📄 [extract] Readability: ${content.length} chars`);

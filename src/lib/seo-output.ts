@@ -100,11 +100,17 @@ export async function buildSEOWithLLM(
 
 Pravila za SEO naslov i opis:
 - Jezik: srpski (latinica). Ton: stručan i koristan, bez senzacionalizma.
-- **KLJUČNO: ZADRŽI GLAVNU RADNJU/DOGAĐAJ iz originalnog naslova dokumenta!**
-  * Ako naslov sadrži GLAGOL (akciju/događaj): preminuo, uhapšen, poginuo, otvorio, zatvorio, najavio, pobedio, izgubio, potpisao, podneo, zatražio, odbacio, odobrio, pokrenuo, završio, doneo odluku, dao izjavu... → **OBAVEZNO taj glagol ili ekvivalent zadrži u SEO naslovu!**
-  * NE menjaj aktuelni događaj u retrospektivu ili generički opis (ne pretvaraj "preminuo" u "biografija", "uhapšen" u "karijera", "najavio" u "planovi")
-  * Cilj: Korisnik koji čita originalni naslov i SEO naslov mora videti **ISTU KLJUČNU INFORMACIJU** (samo bolje formulisanu za SEO)
+- **KLJUČNO: ZADRŽI ORIGINALNU FORMU I AKCIJU iz naslova dokumenta!**
+  * **Pitanja:** Ako naslov počinje sa "Kako", "Šta", "Ko", "Zašto", "Kada", "Gde", "Da li" → **ZADRŽI pitanje u SEO naslovu i završi sa znakom pitanja "?"!** (Ne pretvaraj "Kako X?" u "Vodič za X" ili "X: objašnjenje")
+  * **Glagoli/akcije:** Ako naslov sadrži glagol (preminuo, uhapšen, najavio, otvorio, zatražio, podneo, pobedio, potpisao...) → **OBAVEZNO zadrži taj glagol ili direktan sinonim!**
+  * **Cilj:** Korisnik koji čita originalni naslov i SEO naslov mora prepoznati **ISTU SUŠTINSKU PORUKU** (samo SEO-optimizovanu, ne transformisanu u drugi žanr/ton)
+  * **Zabranjene transformacije:**
+    - "Kako X?" → ❌ "Vodič za X", ❌ "X: uputstvo", ❌ "Sve o X"  →  ✅ "Kako X: [detalj]"
+    - "Preminuo Y" → ❌ "Biografija Y", ❌ "Život Y"  →  ✅ "Preminuo Y, [kontekst]"
+    - "Najavio Z" → ❌ "Planovi Z", ❌ "Budućnost Z"  →  ✅ "Najavio Z: [detalj]"
 - **Meta opis:** Ako je vest/događaj, sažmi suštinu (ko, šta, gde, kada, zašto/kako) - bez izmišljanja detalja, striktno na osnovu teksta
+  * **ZABRANJEN CTA ton:** NE koristi imperativ/poziv na akciju → ❌ "Saznajte", ❌ "Otkrijte", ❌ "Pogledajte", ❌ "Pročitajte"
+  * **Koristi informativan teaser stil:** Direktno naveđi suštinu sadržaja → ✅ "U skladu sa Zakonom...", ✅ "Nekadašnji predsednik...", ✅ "Procedura uključuje..."
 - Zabranjene fraze: ${bannedTokens.join(', ')}.
 - Ključne reči: prednost long‑tail frazama (2–4 reči); uključi varijante primarne fraze sa modifikatorima (lokacija, problem/rešenje, namera), izbegni generike ("autor", "društvo"), bez datuma/vremena.
 - Ukupna dužina finalnog stringa sa ključnim rečima (spojenih zarezima i razmacima: ", ") treba biti ≤ 300 karaktera; skrati listu po potrebi.
@@ -363,7 +369,10 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
   // Literal dynamic import so serverless bundlers can trace the dependency
   const mod: any = await import('@google/generative-ai').catch(() => null);
       if (!mod || !mod.GoogleGenerativeAI) throw new Error('gemini sdk not installed');
-  const primaryModel = options?.model || process.env.GEMINI_MODEL || 'gemini-2.5-pro';
+  // COST OPTIMIZATION: Use Flash instead of Pro (66x cheaper!)
+  // gemini-2.5-pro: $5.00/M output tokens
+  // gemini-1.5-flash: $0.075/M output tokens  
+  const primaryModel = options?.model || process.env.GEMINI_MODEL || 'gemini-1.5-flash';
   const client = new mod.GoogleGenerativeAI(apiKey);
   // Force JSON output to reduce parsing ambiguity on Gemini 2.x
   // Increased maxOutputTokens to 4000 - Serbian Cyrillic/Latin + complex keyword arrays need more tokens

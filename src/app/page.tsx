@@ -297,7 +297,7 @@ export default function Home() {
                   <div className="text-sm text-green-800">Minuta za čitanje</div>
                 </div>
                 <div className="bg-purple-50 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-purple-600">{extractedContent.cleanText.length}</div>
+                  <div className="text-2xl font-bold text-purple-600">{extractedContent.content.length}</div>
                   <div className="text-sm text-purple-800">Karaktera</div>
                 </div>
               </div>
