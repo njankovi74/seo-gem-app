@@ -362,8 +362,8 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
   const primaryModel = options?.model || process.env.GEMINI_MODEL || 'gemini-2.5-pro';
   const client = new mod.GoogleGenerativeAI(apiKey);
   // Force JSON output to reduce parsing ambiguity on Gemini 2.x
-  // Increased maxOutputTokens to 2000 to fully accommodate Serbian text + JSON structure + keywords array
-  const genConfig = { temperature: 0.4, maxOutputTokens: 2000, responseMimeType: 'application/json' } as any;
+  // Increased maxOutputTokens to 4000 - Serbian Cyrillic/Latin + complex keyword arrays need more tokens
+  const genConfig = { temperature: 0.4, maxOutputTokens: 4000, responseMimeType: 'application/json' } as any;
 
       let lastErrMsg: string | undefined;
       async function tryGemini(modelName: string): Promise<string | null> {
