@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     const client = new mod.GoogleGenerativeAI(apiKey);
-    const model = process.env.GEMINI_MODEL || 'gemini-2.5-pro';
+    const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
     
     const prompt = `Ti si SEO asistent za srpski jezik (latinica). Na osnovu ulaza generiši striktno JSON sa sledećim poljima:
 {

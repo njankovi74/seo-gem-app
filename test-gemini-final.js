@@ -24,7 +24,7 @@ Vrati SAMO JSON.`;
   console.log('\n📤 Slanje prompta...\n');
 
   const model = client.getGenerativeModel({
-    model: process.env.GEMINI_MODEL || 'gemini-2.5-pro',
+    model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
     generationConfig: {
       temperature: 0.4,
       maxOutputTokens: 2000,  // Povećano sa 1000 na 2000

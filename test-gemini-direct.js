@@ -11,7 +11,7 @@ async function testGeminiDirect() {
     // Test 1: Bez JSON mime type
     console.log('Test 1: Normalan tekst odgovor');
     const model1 = client.getGenerativeModel({ 
-      model: 'gemini-2.5-pro',
+      model: 'gemini-1.5-flash',
       generationConfig: { temperature: 0.4, maxOutputTokens: 100 }
     });
     
@@ -41,7 +41,7 @@ async function testGeminiDirect() {
     console.log('\n' + '='.repeat(60));
     console.log('Test 2: JSON response (responseMimeType)');
     const model2 = client.getGenerativeModel({ 
-      model: 'gemini-2.5-pro',
+      model: 'gemini-1.5-flash',
       generationConfig: { 
         temperature: 0.4, 
         maxOutputTokens: 100,

@@ -58,7 +58,7 @@ export async function GET() {
   const checks: any[] = []
   // Probe Gemini if key exists
   if (process.env.GEMINI_API_KEY) {
-    checks.push(await testLLM('gemini', process.env.GEMINI_MODEL || 'gemini-2.5-pro'))
+    checks.push(await testLLM('gemini', process.env.GEMINI_MODEL || 'gemini-1.5-flash'))
   } else {
     checks.push({ ok: false, provider: 'gemini', model: process.env.GEMINI_MODEL || '', error: 'GEMINI_API_KEY missing' })
   }
