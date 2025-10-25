@@ -150,7 +150,11 @@ async function extractByUrl(url: string) {
       });
       const parsed = reader.parse();
       if (parsed?.textContent && parsed.textContent.trim().length > 100) {
-        let fullContent = parsed.textContent.trim();
+        // AGGRESSIVE whitespace cleaning BEFORE truncation
+        let fullContent = parsed.textContent
+          .replace(/\s+/g, ' ')  // Collapse all whitespace to single space
+          .replace(/\n\s*\n/g, '\n')  // Remove excessive newlines
+          .trim();
         
         // Additional heuristic: Serbian news articles are typically 500-2500 chars
         // If much longer, likely includes footer/navigation content
