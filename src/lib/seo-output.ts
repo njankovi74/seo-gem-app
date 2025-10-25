@@ -368,15 +368,27 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
       let lastErrMsg: string | undefined;
       async function tryGemini(modelName: string): Promise<string | null> {
         try {
+          console.log(`🔵 [Gemini] Trying model: ${modelName}`);
           const model = client.getGenerativeModel({ model: modelName, generationConfig: genConfig });
           // Prefer JSON response; pass plain text prompt
           const result = await model.generateContent(prompt as any);
           const out = ensureText(result);
+          
+          console.log(`✅ [Gemini] Response:`, {
+            model: modelName,
+            textLength: out?.length || 0,
+            finishReason: result?.response?.candidates?.[0]?.finishReason,
+            sample: out?.substring(0, 80)
+          });
+          
           return out || '';
         } catch (e: any) {
           const msg = e?.message || '';
           lastErrMsg = msg || lastErrMsg;
           const status = e?.status || e?.code || '';
+          
+          console.error(`❌ [Gemini] Error:`, { model: modelName, msg, status });
+          
           const isAccess = /model/i.test(msg) || /not found/i.test(msg) || /permission/i.test(msg) || /unsupported/i.test(msg) || /404/.test(msg) || /403/.test(msg);
           const isQuotaOrSafety = /quota|exceeded|blocked|safety|rate/i.test(msg) || status === 429 || status === 400;
           // On any recoverable error, signal caller to try fallback models

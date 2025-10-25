@@ -109,6 +109,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
     const noBase = (process.env.SEO_NO_BASE_SEO || '').toLowerCase() === 'true';
     let seoOutputs: ReturnType<typeof buildDeterministicSEO> | undefined;
     let llmError: string | undefined;
+    
+    console.log('🚀 [analyze-text] Calling buildSEOWithLLM:', { provider, model, strictModel, hasText: !!text });
+    
     try {
       seoOutputs = await buildSEOWithLLM(
         deterministicSEO,
@@ -121,9 +124,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
         },
         { provider, model, strictModel }
       );
+      
+      console.log('✅ [analyze-text] buildSEOWithLLM success:', {
+        hasOutputs: !!seoOutputs,
+        titleMatch: seoOutputs?.title === deterministicSEO.title,
+        title: seoOutputs?.title
+      });
+      
     } catch (e: any) {
       // Preserve a user-friendly flow: keep deterministic SEO and expose reason in diagnostics
       llmError = e?.message || 'LLM failure';
+      console.error('❌ [analyze-text] buildSEOWithLLM error:', llmError);
       if (!noBase) {
         seoOutputs = deterministicSEO;
       }
