@@ -75,10 +75,9 @@ export async function buildSEOWithLLM(
     searchIntentType: string;
     textSample?: string;
   },
-  options?: { provider?: 'openai' | 'gemini'; model?: string; strictModel?: boolean }
+  options?: { model?: string; strictModel?: boolean }
 ): Promise<SEOOutputs> {
   // Allow per-request override; fallback to env
-  const provider = (options?.provider || process.env.SEO_LLM_PROVIDER || '').toLowerCase();
   const requireLLM = (process.env.SEO_LLM_REQUIRED || '').toLowerCase() === 'true';
   const strictModel = options?.strictModel ?? ((process.env.SEO_LLM_STRICT_MODEL || '').toLowerCase() === 'true');
 
@@ -290,83 +289,9 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
   }
 
   try {
-    // OpenAI
-    if (provider === 'openai' || (!provider && process.env.OPENAI_API_KEY)) {
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) throw new Error('OPENAI_API_KEY missing');
-  // Literal dynamic import so serverless bundlers can trace the dependency
-  const mod: any = await import('openai').catch(() => null);
-      if (!mod || !mod.default) throw new Error('openai sdk not installed');
-      const baseURL = process.env.OPENAI_BASE_URL;
-      const client = new mod.default({ apiKey, baseURL });
-      const primaryModel = options?.model || process.env.OPENAI_MODEL || 'gpt-4o-mini';
-      const fallbackModels = strictModel ? [] : [
-        'gpt-4o',
-        'gpt-4o-mini'
-      ].filter(m => m !== primaryModel);
-
-      async function tryModel(modelName: string): Promise<string | null> {
-        try {
-          // Prefer the Responses API for widest model compatibility
-          // Note: Some models reject 'max_tokens' on chat.completions – Responses API uses 'max_output_tokens'.
-          const res = await client.responses.create({
-            model: modelName,
-            input: [
-              { role: 'system', content: 'Ti si SEO asistent za srpski jezik.' },
-              { role: 'user', content: prompt }
-            ],
-            temperature: 0.4,
-            max_output_tokens: 350
-          } as any);
-
-          // Extract text from Responses API
-          // SDK returns: res.output_text or res.choices?.[0]?.message?.content depending on version
-          const outputText = (res as any).output_text
-            || (res as any).content?.[0]?.text
-            || (res as any).choices?.[0]?.message?.content
-            || '';
-          return outputText || '';
-        } catch (e: any) {
-          const msg = e?.error?.message || e?.message || '';
-          const code = e?.status || e?.code || '';
-          const isModelAccess = /model/i.test(msg) || code === 404 || code === 403;
-          if (isModelAccess) return null; // pokušaj sledeći model
-          // If Responses API not supported on SDK, fallback to chat.completions without max_tokens
-          try {
-            const res2 = await client.chat.completions.create({
-              model: modelName,
-              messages: [
-                { role: 'system', content: 'Ti si SEO asistent za srpski jezik.' },
-                { role: 'user', content: prompt }
-              ],
-              temperature: 0.4
-            });
-            return res2.choices?.[0]?.message?.content || '';
-          } catch (e2: any) {
-            throw e2;
-          }
-        }
-      }
-
-      let content = await tryModel(primaryModel);
-      if (!strictModel) {
-        for (const m of fallbackModels) {
-          if (content) break;
-          content = await tryModel(m);
-        }
-      }
-
-      if (!content) {
-        if (requireLLM) throw new Error(`LLM unavailable for models: ${[primaryModel, ...fallbackModels].join(', ')}`);
-        return fallback;
-      }
-      return parseOutput(content);
-    }
-
-    // Gemini
-    if (provider === 'gemini' || (!provider && process.env.GEMINI_API_KEY)) {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error('GEMINI_API_KEY missing');
+    // Only Gemini is supported
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error('GEMINI_API_KEY missing');
   // Literal dynamic import so serverless bundlers can trace the dependency
   const mod: any = await import('@google/generative-ai').catch(() => null);
       if (!mod || !mod.GoogleGenerativeAI) throw new Error('gemini sdk not installed');
@@ -431,12 +356,8 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
           try { out = await tryGemini(m); } catch { /* continue */ }
         }
       }
-  if (!out && requireLLM) throw new Error('Empty LLM response' + (lastErrMsg ? `: ${lastErrMsg}` : ''));
+      if (!out && requireLLM) throw new Error('Empty LLM response' + (lastErrMsg ? `: ${lastErrMsg}` : ''));
       return out ? parseOutput(out) : fallback;
-    }
-
-    if (requireLLM) throw new Error('No LLM provider configured');
-    return fallback;
   } catch (e) {
     if (requireLLM) throw e;
     return fallback;
