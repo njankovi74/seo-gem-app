@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TFIDFAnalyzer } from '@/lib/tfidf-analyzer';
 import { LSAAnalyzer } from '@/lib/lsa-analyzer';
-import { buildDeterministicSEO, buildSEOWithLLM } from '@/lib/seo-output';
+import { buildDeterministicSEO, buildSEOWithLLM, buildSEOWithDualLLM } from '@/lib/seo-output';
 import { computeAuthorMetrics } from '@/lib/author-metrics';
 import { buildAuthorRecommendations } from '@/lib/author-recommendations';
 import { prioritizeKeywords, prioritizedAsCSV, prioritizedAsCommaList } from '@/lib/keyword-prioritizer';
@@ -108,7 +108,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
     // to deterministic output but include diagnostics so UI can inform the user.
     const noBase = (process.env.SEO_NO_BASE_SEO || '').toLowerCase() === 'true';
     let seoOutputs: ReturnType<typeof buildDeterministicSEO> | undefined;
+    let seoOutputsGemini: ReturnType<typeof buildDeterministicSEO> | undefined;
+    let seoOutputsOpenAI: ReturnType<typeof buildDeterministicSEO> | undefined;
     let llmError: string | undefined;
+    let geminiError: string | undefined;
+    let openaiError: string | undefined;
     
     console.log('🚀 [analyze-text] Text stats:', { 
       titleLength: title?.length || 0, 
@@ -116,33 +120,78 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
       textSample: text.substring(0, 200) + '...',
       wordCount: text.split(/\s+/).length 
     });
-    console.log('🚀 [analyze-text] Calling buildSEOWithLLM:', { provider, model, strictModel, hasText: !!text });
+
+    // Check if dual LLM mode is enabled
+    const dualMode = process.env.SEO_DUAL_LLM === 'true';
+    console.log('🚀 [analyze-text] Dual mode:', dualMode);
     
-    try {
-      seoOutputs = await buildSEOWithLLM(
-        deterministicSEO,
-        {
-          documentTitle: title,
-          keyTerms: prioritized.map(p => p.term),
-          mainTopics,
-          searchIntentType: searchIntent.type,
-          textSample: text.slice(0, 1000)
-        },
-        { provider, model, strictModel }
-      );
+    if (dualMode) {
+      // Dual mode: Call both Gemini and OpenAI simultaneously
+      console.log('🔄 [analyze-text] Calling buildSEOWithDualLLM...');
+      try {
+        const dualResults = await buildSEOWithDualLLM(
+          deterministicSEO,
+          {
+            documentTitle: title,
+            keyTerms: prioritized.map(p => p.term),
+            mainTopics,
+            searchIntentType: searchIntent.type,
+            textSample: text.slice(0, 1000)
+          }
+        );
+        
+        seoOutputsGemini = dualResults.gemini || undefined;
+        seoOutputsOpenAI = dualResults.openai || undefined;
+        geminiError = dualResults.geminiError;
+        openaiError = dualResults.openaiError;
+        
+        console.log('✅ [analyze-text] Dual LLM results:', {
+          hasGemini: !!seoOutputsGemini,
+          hasOpenAI: !!seoOutputsOpenAI,
+          geminiError,
+          openaiError
+        });
+        
+        // For backwards compatibility, set seoOutputs to Gemini if available, else OpenAI
+        seoOutputs = seoOutputsGemini || seoOutputsOpenAI;
+        
+      } catch (e: any) {
+        llmError = e?.message || 'Dual LLM failure';
+        console.error('❌ [analyze-text] buildSEOWithDualLLM error:', llmError);
+        if (!noBase) {
+          seoOutputs = deterministicSEO;
+        }
+      }
+    } else {
+      // Single mode: Use existing logic
+      console.log('🚀 [analyze-text] Calling buildSEOWithLLM:', { model, strictModel, hasText: !!text });
       
-      console.log('✅ [analyze-text] buildSEOWithLLM success:', {
-        hasOutputs: !!seoOutputs,
-        titleMatch: seoOutputs?.title === deterministicSEO.title,
-        title: seoOutputs?.title
-      });
-      
-    } catch (e: any) {
-      // Preserve a user-friendly flow: keep deterministic SEO and expose reason in diagnostics
-      llmError = e?.message || 'LLM failure';
-      console.error('❌ [analyze-text] buildSEOWithLLM error:', llmError);
-      if (!noBase) {
-        seoOutputs = deterministicSEO;
+      try {
+        seoOutputs = await buildSEOWithLLM(
+          deterministicSEO,
+          {
+            documentTitle: title,
+            keyTerms: prioritized.map(p => p.term),
+            mainTopics,
+            searchIntentType: searchIntent.type,
+            textSample: text.slice(0, 1000)
+          },
+          { model, strictModel }
+        );
+        
+        console.log('✅ [analyze-text] buildSEOWithLLM success:', {
+          hasOutputs: !!seoOutputs,
+          titleMatch: seoOutputs?.title === deterministicSEO.title,
+          title: seoOutputs?.title
+        });
+        
+      } catch (e: any) {
+        // Preserve a user-friendly flow: keep deterministic SEO and expose reason in diagnostics
+        llmError = e?.message || 'LLM failure';
+        console.error('❌ [analyze-text] buildSEOWithLLM error:', llmError);
+        if (!noBase) {
+          seoOutputs = deterministicSEO;
+        }
       }
     }
 
@@ -183,7 +232,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
         lsaAnalysis,
         searchIntent,
         summary,
-  ...(seoOutputs ? { seoOutputs } : {}),
+        ...(seoOutputs ? { seoOutputs } : {}),
+        ...(dualMode && seoOutputsGemini ? { seoOutputsGemini } : {}),
+        ...(dualMode && seoOutputsOpenAI ? { seoOutputsOpenAI } : {}),
         authorMetrics,
         authorRecommendations,
         prioritizedKeywords: {
@@ -193,15 +244,23 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
         },
         // Non-breaking diagnostics for UI/logging
         llm: {
-          configuredProvider,
-          configuredModel,
-          strictModel: !!(strictModel ?? ((process.env.SEO_LLM_STRICT_MODEL || '').toLowerCase() === 'true')),
-          used: usedLLM,
+          dualMode,
+          ...(dualMode ? {
+            geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+            openaiModel: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+            geminiError,
+            openaiError
+          } : {
+            configuredProvider,
+            configuredModel,
+            strictModel: !!(strictModel ?? ((process.env.SEO_LLM_STRICT_MODEL || '').toLowerCase() === 'true')),
+            used: usedLLM,
+            error: llmError
+          }),
           hasKeys: {
             openai: !!process.env.OPENAI_API_KEY,
             gemini: !!process.env.GEMINI_API_KEY,
-          },
-          error: llmError
+          }
         }
       }
     });
@@ -277,7 +336,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<AnalysisRe
           searchIntentType: searchIntent.type,
           textSample: text.slice(0, 1000)
         },
-        { provider: providerParam, model, strictModel }
+        { model, strictModel }
       );
     } catch (e: any) {
       llmError = e?.message || 'LLM failure';

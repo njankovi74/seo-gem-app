@@ -5,6 +5,15 @@ export interface SEOOutputs {
   markdown: string;
 }
 
+export interface DualSEOOutputs {
+  gemini: SEOOutputs | null;
+  openai: SEOOutputs | null;
+  geminiModel?: string;
+  openaiModel?: string;
+  geminiError?: string;
+  openaiError?: string;
+}
+
 function truncate(str: string, limit: number): string {
   if (!str) return '';
   const s = str.trim();
@@ -97,24 +106,77 @@ export async function buildSEOWithLLM(
   "slug": string            // kratko, kebab-case, 4–8 reči, samo [a-z0-9-]
 }
 
-Pravila za SEO naslov i opis:
-- Jezik: srpski (latinica). Ton: stručan i koristan, bez senzacionalizma.
-- **KLJUČNO: ZADRŽI ORIGINALNU FORMU I AKCIJU iz naslova dokumenta!**
-  * **Pitanja:** Ako naslov počinje sa "Kako", "Šta", "Ko", "Zašto", "Kada", "Gde", "Da li" → **OBAVEZNO zadrži pitanje u SEO naslovu i završi sa znakom pitanja "?"!** (Ne pretvaraj "Kako X?" u "Vodič za X" ili "X: objašnjenje")
-    - PRAVILO: **SVE REČENICE SA "kako", "šta", "ko" MORAJU ZAVRŠITI SA "?"** - to je kritično za SEO!
-  * **Glagoli/akcije:** Ako naslov sadrži glagol (preminuo, uhapšen, najavio, otvorio, zatražio, podneo, pobedio, potpisao...) → **OBAVEZNO zadrži taj glagol ili direktan sinonim!**
-  * **Cilj:** Korisnik koji čita originalni naslov i SEO naslov mora prepoznati **ISTU SUŠTINSKU PORUKU** (samo SEO-optimizovanu, ne transformisanu u drugi žanr/ton)
-  * **Zabranjene transformacije:**
-    - "Kako X?" → ❌ "Vodič za X", ❌ "X: uputstvo", ❌ "Sve o X"  →  ✅ "Kako X: [detalji]?"
-    - "Preminuo Y" → ❌ "Biografija Y", ❌ "Život Y"  →  ✅ "Preminuo Y, [kontekst]"
-    - "Najavio Z" → ❌ "Planovi Z", ❌ "Budućnost Z"  →  ✅ "Najavio Z: [detalj]"
-- **Meta opis:** Ako je vest/događaj, sažmi suštinu (ko, šta, gde, kada, zašto/kako) - bez izmišljanja detalja, striktno na osnovu teksta
-  * **ZABRANJEN CTA ton:** NE koristi imperativ/poziv na akciju → ❌ "Saznajte", ❌ "Otkrijte", ❌ "Pogledajte", ❌ "Pročitajte"
-  * **Koristi informativan teaser stil:** Direktno naveđi suštinu sadržaja → ✅ "U skladu sa Zakonom...", ✅ "Nekadašnji predsednik...", ✅ "Procedura uključuje..."
-- Zabranjene fraze: ${bannedTokens.join(', ')}.
-- Ključne reči: prednost long‑tail frazama (2–4 reči); uključi varijante primarne fraze sa modifikatorima (lokacija, problem/rešenje, namera), izbegni generike ("autor", "društvo"), bez datuma/vremena.
-- Ukupna dužina finalnog stringa sa ključnim rečima (spojenih zarezima i razmacima: ", ") treba biti ≤ 300 karaktera; skrati listu po potrebi.
-- Poštuj ograničenja dužine. Ako mora skraćivanje, zadrži smisao i ključne reči.
+MAIN PRINCIP: **User First - Search Intent Matching**
+→ Naslov mora biti DIREKTAN ODGOVOR na pitanje koje user ima kada traži ključne reči
+→ User pretraga → Vidi naslov → Prepoznaje odgovor → Klikne
+
+Pravila za SEO naslov (USER-CENTRIC):
+- **JEZIK I TRANSKRPCIJA:**
+  * **OBAVEZNO koristi SRPSKU TRANSKRIPCIJU imena** kako je napisano u tekstu!
+  * ❌ "Mathias Lessort" → ✅ "Matijas Lesor" (ako je u tekstu srpski)
+  * ❌ "LeBron James" → ✅ "Lebron Džejms" (ako je u tekstu srpski)
+  * **NE "ispravljaj" imena u originalni engleski** - zadrži kako je u tekstu!
+
+- **PRIRODAN JEZIK - IZBEGAVAJ AI SMELL:**
+  * ❌ "vraća se na teren Panatinaikosa" (dečije, neprirodno)
+  * ✅ "centar Panatinaikosa vraća se na teren" (profesionalno)
+  * ✅ "košarkaš Panatinaikosa spreman za povratak" (prirodno)
+  * **Uključi POZICIJU/FUNKCIJU** kada je relevantno (centar, trener, premijer...)
+  * **Izbegavaj formulacije koje odmah otkrivaju da je AI pisao!**
+
+- **OBAVEZNO UKLJUČI:**
+  * Ako tekst pominje **IME OSOBE** → IME mora biti u naslovu (user traži tu osobu!)
+  * Ako tekst pominje **LOKACIJU** (grad, mesto) → LOKACIJA mora biti u naslovu
+  * Ako tekst opisuje **DOGAĐAJ/AKCIJU** → GLAGOL mora biti u naslovu (šta se desilo?)
+  * Ako tekst pominje **GODINE/STAROST** → DODAJ u naslov (relevantno za user)
+
+- **FORMAT: KO + ŠTA + GDE (ako postoje u tekstu)**
+  * Primer: "Dušan Knežević (18), paraatletičar iz Vršca osvaja medalje"
+           ↑ KO (ime+god) ↑ ŠTA (pozicija)  ↑ GDE    ↑ AKCIJA
+  * Primer: "Aleksandar Luković podneo ostavku u Radničkom"
+           ↑ KO           ↑ ŠTA (akcija)     ↑ GDE (klub)
+
+- **ZABRANJENO:**
+  * ❌ Generičke fraze: "Upornost i uspeh", "Priča o", "Inspirativna vest"
+  * ❌ Subjektivne ocene: "neverovatno", "senzacionalno", "dirljivo"  
+  * ❌ Transformacija u drugi žanr: News vest → NE smeš pretvoriti u feature story
+  * ❌ Presecanje naslova: Mora stati u 60 chars bez prekida rečenice
+
+- **ZADRŽI ORIGINALNU FORMU:**
+  * Pitanje → Pitanje sa "?" ("Kako X?" → "Kako X: detalji?")
+  * Glagol/akcija → Isti glagol ("podneo" → "podneo", NE "odlučio", NE "kraj ere")
+  * Ton → Isti žanr (vest → vest, vodič → vodič)
+
+- **PROVERA PRE SLANJA:**
+  1. Da li user koji traži ključne reči ODMAH vidi odgovor u naslovu?
+  2. Da li naslov ima IME/LOKACIJU/AKCIJU iz teksta?
+  3. Da li je naslov < 60 chars i ne prekida se na pola?
+  4. Da li je to news format, NE feature story?
+
+Meta opis: 
+- Sažmi KO + ŠTA + GDE + KADA/ZAŠTO - **KONKRETNO iz teksta**
+- **🚨 KRITIČNO - ZAVRŠENA REČENICA:**
+  * Meta opis MORA biti 150-160 karaktera
+  * Meta opis MORA biti završena rečenica sa tačkom na kraju!
+  * ❌ NEDOZVOLJENO: "...ukoliko se obaveze ne" (presečeno!)
+  * ✅ DOZVOLJENO: "...ukoliko se obaveze ne ispune." (završeno!)
+  * **Pre slanja proveri: Da li poslednja reč ima tačku i da li ima smisla?**
+- **🚨 NAJVAŽNIJE PRAVILO - NE SMEŠ PREKRŠITI:**
+  * **UVEK koristi PUNO IME I PREZIME osobe na PRVOM pomenu!**
+  * ❌ POGREŠNO: "Košarkaš Lesor..." → MORA: "Košarkaš Vasa Micić..."
+  * ❌ POGREŠNO: "Lesor, ključni igrač..." → MORA: "Vasa Micić, ključni igrač..."
+  * ❌ POGREŠNO: "Trener Ataman najavio..." → MORA: "Trener Ergin Ataman najavio..."
+  * **Samo prezime = NEPROFESIONALNO i NEDOVOLJNO PISMENO!**
+  * **Ovo je novinarsjki standard - bez izuzetaka!**
+- ❌ Bez CTA: "Saznajte", "Otkrijte", "Pročitajte"
+- ✅ Direktan info: "Košarkaš Vasa Micić vraća se...", "Trener Ergin Ataman podnosi...", "Procedura uključuje..."
+
+Ključne reči:
+- **KRITIČNO: Keywords MORAJU sadržati IME/NAZIV iz teksta u VEĆINI fraza!**
+  * ✅ "lesor povratak", "lesor panatinаikos", "lesor povreda" (ime u svakoj!)
+  * ❌ "oporavak nakon povrede", "trenerska procena" (generičko, neupotrebljivo!)
+- **User search intent:** Šta user KUCAu Google? "ime + akcija", "ime + lokacija", "ime + događaj"
+- Long-tail (2-4 reči), varijante sa lokacijom/kontekstom, bez generika/datuma
 
 Ulaz (sažetak):
 - Primarna ključna reč: ${primaryKW}
@@ -122,7 +184,7 @@ Ulaz (sažetak):
 - Glavne teme: ${context.mainTopics.join(', ')}
 - Intent: ${context.searchIntentType}
 - Naslov dokumenta: ${context.documentTitle || '(nema)'}
-- Uzorak teksta: ${(context.textSample || '').slice(0, 800)}
+- Uzorak teksta: ${(context.textSample || '').slice(0, 10000)}
 
 Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
 
@@ -289,17 +351,66 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
   }
 
   try {
-    // Only Gemini is supported
+    // Determine which provider to use based on model name
+    const requestedModel = options?.model || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const isOpenAI = requestedModel.startsWith('gpt-') || requestedModel.startsWith('o1-') || requestedModel.startsWith('o3-');
+
+    // OpenAI provider
+    if (isOpenAI) {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) throw new Error('OPENAI_API_KEY missing');
+      
+      const mod: any = await import('openai').catch(() => null);
+      if (!mod || !mod.default) throw new Error('openai sdk not installed');
+      
+      const client = new mod.default({ apiKey });
+      
+      console.log(`🟢 [OpenAI] Trying model: ${requestedModel}`);
+      
+      try {
+        // GPT-5 models don't support custom temperature, must use default (1)
+        // GPT-5 also uses reasoning tokens (chain-of-thought), needs much higher limit
+        // Testing shows: 4000 works for simple texts, but 8000 needed for complex/short texts
+        const isGPT5 = requestedModel.startsWith('gpt-5');
+        
+        const res = await client.chat.completions.create({
+          model: requestedModel,
+          messages: [
+            { role: 'system', content: 'Ti si SEO asistent za srpski jezik.' },
+            { role: 'user', content: prompt }
+          ],
+          ...(isGPT5 ? {} : { temperature: 0.4 }),
+          max_completion_tokens: isGPT5 ? 8000 : 2000
+        });
+        
+        const content = res.choices?.[0]?.message?.content || '';
+        
+        console.log(`✅ [OpenAI] Response:`, {
+          model: requestedModel,
+          textLength: content.length,
+          finishReason: res.choices?.[0]?.finish_reason,
+          sample: content.substring(0, 80)
+        });
+        
+        if (!content && requireLLM) throw new Error('Empty OpenAI response');
+        return content ? parseOutput(content) : fallback;
+      } catch (e: any) {
+        console.error(`❌ [OpenAI] Error:`, { model: requestedModel, msg: e?.message });
+        if (requireLLM) throw e;
+        return fallback;
+      }
+    }
+
+    // Gemini provider (default)
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY missing');
   // Literal dynamic import so serverless bundlers can trace the dependency
   const mod: any = await import('@google/generative-ai').catch(() => null);
       if (!mod || !mod.GoogleGenerativeAI) throw new Error('gemini sdk not installed');
-  // COST OPTIMIZATION: Use Flash-Lite (smallest & cheapest - perfect for SEO!)
+  // COST OPTIMIZATION: gemini-2.5-flash for A/B testing
   // gemini-2.5-pro: $10.00/M output tokens
   // gemini-2.5-flash: $2.50/M output tokens  
-  // gemini-2.5-flash-lite: $0.40/M output tokens (6x cheaper than Flash, 25x cheaper than Pro!)
-  const primaryModel = options?.model || process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+  const primaryModel = requestedModel;
   const client = new mod.GoogleGenerativeAI(apiKey);
   // Force JSON output to reduce parsing ambiguity on Gemini 2.x
   // Increased maxOutputTokens to 4000 - Serbian Cyrillic/Latin + complex keyword arrays need more tokens
@@ -362,4 +473,58 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
     if (requireLLM) throw e;
     return fallback;
   }
+}
+
+/**
+ * DUAL LLM MODE: Calls BOTH Gemini and OpenAI in parallel for A/B testing
+ * Only active when SEO_DUAL_LLM=true
+ */
+export async function buildSEOWithDualLLM(
+  fallback: SEOOutputs,
+  context: {
+    documentTitle?: string;
+    keyTerms: string[];
+    mainTopics: string[];
+    searchIntentType: string;
+    textSample?: string;
+  }
+): Promise<DualSEOOutputs> {
+  const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const openaiModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+
+  console.log('🔄 [DUAL MODE] Calling both Gemini and OpenAI in parallel...');
+
+  // Call both in parallel for speed
+  const [geminiResult, openaiResult] = await Promise.allSettled([
+    buildSEOWithLLM(fallback, context, { model: geminiModel }).catch(e => ({ error: e.message })),
+    buildSEOWithLLM(fallback, context, { model: openaiModel }).catch(e => ({ error: e.message }))
+  ]);
+
+  const gemini = geminiResult.status === 'fulfilled' && !('error' in geminiResult.value) 
+    ? geminiResult.value as SEOOutputs 
+    : null;
+  const geminiError = geminiResult.status === 'rejected' || ('error' in (geminiResult as any).value)
+    ? (geminiResult.status === 'rejected' ? geminiResult.reason?.message : (geminiResult as any).value.error)
+    : undefined;
+
+  const openai = openaiResult.status === 'fulfilled' && !('error' in openaiResult.value)
+    ? openaiResult.value as SEOOutputs
+    : null;
+  const openaiError = openaiResult.status === 'rejected' || ('error' in (openaiResult as any).value)
+    ? (openaiResult.status === 'rejected' ? openaiResult.reason?.message : (openaiResult as any).value.error)
+    : undefined;
+
+  console.log('✅ [DUAL MODE] Results:', {
+    gemini: gemini ? 'success' : `failed: ${geminiError}`,
+    openai: openai ? 'success' : `failed: ${openaiError}`
+  });
+
+  return {
+    gemini,
+    openai,
+    geminiModel,
+    openaiModel,
+    geminiError,
+    openaiError
+  };
 }

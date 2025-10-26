@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, FileText, Brain, BarChart3, ExternalLink, Copy, Check } from 'lucide-react';
+import { Search, FileText, Brain, BarChart3, ExternalLink, Copy, Check, Info } from 'lucide-react';
 
 interface AnalysisResult {
   tfidfAnalysis: any;
@@ -19,6 +19,25 @@ interface AnalysisResult {
     metaDescription: string;
     keywordsLine: string;
     markdown: string;
+  };
+  seoOutputsGemini?: {
+    title: string;
+    metaDescription: string;
+    keywordsLine: string;
+    markdown: string;
+  };
+  seoOutputsOpenAI?: {
+    title: string;
+    metaDescription: string;
+    keywordsLine: string;
+    markdown: string;
+  };
+  llm?: {
+    dualMode?: boolean;
+    geminiModel?: string;
+    openaiModel?: string;
+    geminiError?: string;
+    openaiError?: string;
   };
   authorMetrics?: {
     wordCount: number;
@@ -310,26 +329,33 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sadržaj (prikazano prvih 500 karaktera)
-                  </label>
-                  <div className="p-3 bg-gray-50 rounded-lg border max-h-48 overflow-y-auto">
-                    <p className="text-sm text-gray-700">
-                      {extractedContent.content.substring(0, 500)}
-                      {extractedContent.content.length > 500 && '...'}
-                    </p>
-                  </div>
-                </div>
-
                 {extractedContent.metadata.description && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Meta opis</label>
-                    <div className="p-3 bg-gray-50 rounded-lg border">
-                      <p className="text-sm">{extractedContent.metadata.description}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Lead / Meta opis</label>
+                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-sm font-medium text-blue-900">{extractedContent.metadata.description}</p>
                     </div>
                   </div>
                 )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Preuzet sadržaj: Lead + Body ({
+                      (extractedContent.metadata.description?.length || 0) + extractedContent.content.length
+                    } karaktera)
+                  </label>
+                  <div className="p-3 bg-gray-50 rounded-lg border max-h-96 overflow-y-auto">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                      {extractedContent.metadata.description && (
+                        <span className="font-semibold text-blue-900">
+                          {extractedContent.metadata.description}
+                          {'\n\n'}
+                        </span>
+                      )}
+                      {extractedContent.content}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="mt-6 flex justify-center">
@@ -358,8 +384,129 @@ export default function Home() {
         {/* Step 3: Analysis Results */}
         {step === 'analysis' && analysisResult && extractedContent && (
           <div className="space-y-6">
-            {/* 1) SEO izlaz (na vrhu) */}
-            {analysisResult.seoOutputs && (
+            {/* 1) SEO izlaz - Dual Mode or Single Mode */}
+            {analysisResult.llm?.dualMode && (analysisResult.seoOutputsGemini || analysisResult.seoOutputsOpenAI) ? (
+              <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl shadow-sm border p-6">
+                <div className="mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">🔬 A/B Test: Dual LLM Comparison</h3>
+                  <p className="text-sm text-gray-600">Comparing outputs from both models side-by-side</p>
+                </div>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Gemini Output */}
+                  <div className="bg-white rounded-lg border-2 border-blue-200 p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="text-lg font-bold text-blue-600">🔷 Gemini</h4>
+                        <p className="text-xs text-blue-500">{analysisResult.llm.geminiModel || 'gemini-2.5-flash'}</p>
+                      </div>
+                      {analysisResult.seoOutputsGemini && (
+                        <div className="flex gap-1">
+                          <button onClick={() => copyToClipboard(analysisResult.seoOutputsGemini!.markdown, 'gemini-md')} className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 rounded border border-blue-300">Copy MD</button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {analysisResult.llm.geminiError ? (
+                      <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
+                        ❌ Error: {analysisResult.llm.geminiError}
+                      </div>
+                    ) : analysisResult.seoOutputsGemini ? (
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-xs font-semibold text-gray-500">Title Tag</div>
+                            <div className="text-xs text-gray-400">
+                              {analysisResult.seoOutputsGemini.title.length} chars
+                            </div>
+                          </div>
+                          <div className="text-sm bg-blue-50 p-2 rounded border border-blue-100">{analysisResult.seoOutputsGemini.title}</div>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-xs font-semibold text-gray-500">Meta Description</div>
+                            <div className="text-xs text-gray-400 flex items-center gap-1">
+                              {analysisResult.seoOutputsGemini.metaDescription.length} chars
+                              {!analysisResult.seoOutputsGemini.metaDescription.trim().match(/[.!?]$/) && (
+                                <span className="text-red-500 font-bold" title="Meta opis nije završen sa tačkom!">⚠️</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-sm bg-blue-50 p-2 rounded border border-blue-100">{analysisResult.seoOutputsGemini.metaDescription}</div>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-xs font-semibold text-gray-500">Keywords</div>
+                            <div className="text-xs text-gray-400">
+                              {analysisResult.seoOutputsGemini.keywordsLine.length} chars
+                            </div>
+                          </div>
+                          <div className="text-xs bg-blue-50 p-2 rounded border border-blue-100 font-mono">{analysisResult.seoOutputsGemini.keywordsLine}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-400 italic">No output generated</div>
+                    )}
+                  </div>
+
+                  {/* OpenAI Output */}
+                  <div className="bg-white rounded-lg border-2 border-green-200 p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="text-lg font-bold text-green-600">🟢 OpenAI</h4>
+                        <p className="text-xs text-green-500">{analysisResult.llm.openaiModel || 'gpt-4o-mini'}</p>
+                      </div>
+                      {analysisResult.seoOutputsOpenAI && (
+                        <div className="flex gap-1">
+                          <button onClick={() => copyToClipboard(analysisResult.seoOutputsOpenAI!.markdown, 'openai-md')} className="px-2 py-1 text-xs bg-green-100 hover:bg-green-200 rounded border border-green-300">Copy MD</button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {analysisResult.llm.openaiError ? (
+                      <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
+                        ❌ Error: {analysisResult.llm.openaiError}
+                      </div>
+                    ) : analysisResult.seoOutputsOpenAI ? (
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-xs font-semibold text-gray-500">Title Tag</div>
+                            <div className="text-xs text-gray-400">
+                              {analysisResult.seoOutputsOpenAI.title.length} chars
+                            </div>
+                          </div>
+                          <div className="text-sm bg-green-50 p-2 rounded border border-green-100">{analysisResult.seoOutputsOpenAI.title}</div>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-xs font-semibold text-gray-500">Meta Description</div>
+                            <div className="text-xs text-gray-400 flex items-center gap-1">
+                              {analysisResult.seoOutputsOpenAI.metaDescription.length} chars
+                              {!analysisResult.seoOutputsOpenAI.metaDescription.trim().match(/[.!?]$/) && (
+                                <span className="text-red-500 font-bold" title="Meta opis nije završen sa tačkom!">⚠️</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-sm bg-green-50 p-2 rounded border border-green-100">{analysisResult.seoOutputsOpenAI.metaDescription}</div>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-xs font-semibold text-gray-500">Keywords</div>
+                            <div className="text-xs text-gray-400">
+                              {analysisResult.seoOutputsOpenAI.keywordsLine.length} chars
+                            </div>
+                          </div>
+                          <div className="text-xs bg-green-50 p-2 rounded border border-green-100 font-mono">{analysisResult.seoOutputsOpenAI.keywordsLine}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-400 italic">No output generated</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : analysisResult.seoOutputs ? (
               <div className="bg-white rounded-xl shadow-sm border p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">SEO izlaz (Markdown za kopiranje)</h3>
@@ -376,7 +523,7 @@ export default function Home() {
                   <CopyField label="3. Formatirana Lista Ključnih Reči" value={analysisResult.seoOutputs.keywordsLine} fieldKey="seo-kw-field" />
                 </div>
               </div>
-            )}
+            ) : null}
 
             {/* 2) SEO analiza (fokus na autoru) */}
             <div className="bg-white rounded-xl shadow-sm border p-6">
@@ -386,21 +533,72 @@ export default function Home() {
               </div>
 
               {/* Author-centric KPI kartice */}
-              <div className="grid md:grid-cols-4 gap-4 mb-8">
-                <div className="bg-blue-50 rounded-lg p-4">
+              <div className="grid md:grid-cols-5 gap-4 mb-8">
+                {/* Broj reči */}
+                <div className="bg-blue-50 rounded-lg p-4 relative group">
+                  <div className="absolute top-2 right-2 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-help">
+                    <Info className="w-4 h-4" />
+                  </div>
+                  <div className="absolute top-8 right-0 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
+                    <strong>Broj reči:</strong> Ukupan broj reči u članku (Lead + Body). Optimalno: 300-800 za vest, 800-2000 za feature članak.
+                  </div>
                   <div className="text-2xl font-bold text-blue-600">{extractedContent.wordCount}</div>
                   <div className="text-sm text-blue-800">Reči</div>
                 </div>
-                <div className="bg-green-50 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-green-600">{analysisResult.authorMetrics ? analysisResult.authorMetrics.readingTimeMin : Math.round(extractedContent.wordCount/200)}</div>
+
+                {/* Broj karaktera */}
+                <div className="bg-indigo-50 rounded-lg p-4 relative group">
+                  <div className="absolute top-2 right-2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-help">
+                    <Info className="w-4 h-4" />
+                  </div>
+                  <div className="absolute top-8 right-0 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
+                    <strong>Broj karaktera:</strong> Ukupan broj karaktera teksta (sa razmacima). Google indeksira na osnovu sadržaja, duži tekst = veća šansa za rangiranje.
+                  </div>
+                  <div className="text-2xl font-bold text-indigo-600">
+                    {(extractedContent.metadata.description?.length || 0) + extractedContent.content.length}
+                  </div>
+                  <div className="text-sm text-indigo-800">Karaktera</div>
+                </div>
+
+                {/* Vreme čitanja */}
+                <div className="bg-green-50 rounded-lg p-4 relative group">
+                  <div className="absolute top-2 right-2 text-green-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-help">
+                    <Info className="w-4 h-4" />
+                  </div>
+                  <div className="absolute top-8 right-0 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
+                    <strong>Vreme čitanja:</strong> Procenjeno vreme čitanja (200 reči/min). Korisnicima pokazuje investiciju vremena, utiče na bounce rate.
+                  </div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {analysisResult.authorMetrics ? analysisResult.authorMetrics.readingTimeMin : Math.round(extractedContent.wordCount/200)}
+                  </div>
                   <div className="text-sm text-green-800">Min čitanja</div>
                 </div>
-                <div className="bg-purple-50 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-purple-600">{analysisResult.authorMetrics ? analysisResult.authorMetrics.avgSentenceLength.toFixed(1) : '-'}</div>
-                  <div className="text-sm text-purple-800">Prosečna rečenica</div>
+
+                {/* Prosečna dužina rečenice */}
+                <div className="bg-purple-50 rounded-lg p-4 relative group">
+                  <div className="absolute top-2 right-2 text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-help">
+                    <Info className="w-4 h-4" />
+                  </div>
+                  <div className="absolute top-8 right-0 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
+                    <strong>Prosečna rečenica:</strong> Broj reči po rečenici. Optimalno: 15-20 reči (čitljivost). Previše kratke ili duge rečenice umanjuju kvalitet.
+                  </div>
+                  <div className="text-2xl font-bold text-purple-600">
+                    {analysisResult.authorMetrics ? analysisResult.authorMetrics.avgSentenceLength.toFixed(1) : '-'}
+                  </div>
+                  <div className="text-sm text-purple-800">Reči/rečenica</div>
                 </div>
-                <div className="bg-orange-50 rounded-lg p-4">
-                  <div className="text-xl font-bold text-orange-600 capitalize">{analysisResult.searchIntent.type}</div>
+
+                {/* Search Intent */}
+                <div className="bg-orange-50 rounded-lg p-4 relative group">
+                  <div className="absolute top-2 right-2 text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-help">
+                    <Info className="w-4 h-4" />
+                  </div>
+                  <div className="absolute top-8 right-0 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
+                    <strong>Search Intent:</strong> Tip pretrage (Informational, Commercial, Navigational). Informational = user traži znanje, optimizuj sa detaljima.
+                  </div>
+                  <div className="text-xl font-bold text-orange-600 capitalize">
+                    {analysisResult.searchIntent.type}
+                  </div>
                   <div className="text-sm text-orange-800">Search intent</div>
                 </div>
               </div>
@@ -408,12 +606,42 @@ export default function Home() {
               {/* Dodatne metrike za vrednost teksta */}
               {analysisResult.authorMetrics && (
                 <div className="grid md:grid-cols-3 gap-4 mb-6">
-                  <Metric label="TTR (raznolikost)" value={(analysisResult.authorMetrics.typeTokenRatio*100).toFixed(0) + '%'} tone="blue" />
-                  <Metric label="Repetitivnost" value={(analysisResult.authorMetrics.repetitionScore*100).toFixed(0) + '%'} tone="rose" />
-                  <Metric label="Pokrivenost tema" value={(analysisResult.authorMetrics.topicCoverage*100).toFixed(0) + '%'} tone="indigo" />
-                  <Metric label="Pokrivenost ključnih reči" value={(analysisResult.authorMetrics.keywordCoverage*100).toFixed(0) + '%'} tone="emerald" />
-                  <Metric label="Primarna gustina" value={(analysisResult.authorMetrics.primaryDensity*100).toFixed(2) + '%'} tone="amber" />
-                  <Metric label="Long-tail prisustvo" value={(analysisResult.authorMetrics.longTailUsage*100).toFixed(0) + '%'} tone="teal" />
+                  <Metric 
+                    label="TTR (raznolikost)" 
+                    value={(analysisResult.authorMetrics.typeTokenRatio*100).toFixed(0) + '%'} 
+                    tone="blue"
+                    tooltip="Type-Token Ratio: Odnos jedinstvenih reči prema ukupnom broju reči. Visok TTR (>50%) = bogat vokabular, nizak (<30%) = repetitivno. Optimalno: 40-60%."
+                  />
+                  <Metric 
+                    label="Repetitivnost" 
+                    value={(analysisResult.authorMetrics.repetitionScore*100).toFixed(0) + '%'} 
+                    tone="rose"
+                    tooltip="Stopa ponavljanja istih reči. Visoka repetitivnost (>50%) smanjuje kvalitet i čitljivost. Ciljaj <30% za profesionalan tekst."
+                  />
+                  <Metric 
+                    label="Pokrivenost tema" 
+                    value={(analysisResult.authorMetrics.topicCoverage*100).toFixed(0) + '%'} 
+                    tone="indigo"
+                    tooltip="Koliko detaljno tekst pokriva identifikovane teme. Visoka pokrivenost (>70%) = sveobuhvatan članak, Google rangira bolje."
+                  />
+                  <Metric 
+                    label="Pokrivenost ključnih reči" 
+                    value={(analysisResult.authorMetrics.keywordCoverage*100).toFixed(0) + '%'} 
+                    tone="emerald"
+                    tooltip="Koliko prirodno tekst koristi relevantne ključne reči. Optimalno: 60-80%. Ispod 40% = slaba SEO optimizacija, iznad 90% = keyword stuffing."
+                  />
+                  <Metric 
+                    label="Primarna gustina" 
+                    value={(analysisResult.authorMetrics.primaryDensity*100).toFixed(2) + '%'} 
+                    tone="amber"
+                    tooltip="Frekvencija primarne ključne reči u tekstu. Optimalno: 1-3%. Ispod 1% = premalo, iznad 3% = preopterećeno (Google penalizuje)."
+                  />
+                  <Metric 
+                    label="Long-tail prisustvo" 
+                    value={(analysisResult.authorMetrics.longTailUsage*100).toFixed(0) + '%'} 
+                    tone="teal"
+                    tooltip="Upotreba long-tail fraza (2-4 reči). Long-tail ključne reči imaju bolju konverziju i manju konkurenciju. Ciljaj >60%."
+                  />
                 </div>
               )}
 
@@ -467,7 +695,7 @@ export default function Home() {
   );
 }
 
-function Metric({ label, value, tone = 'gray' }: { label: string; value: string; tone?: string }) {
+function Metric({ label, value, tone = 'gray', tooltip }: { label: string; value: string; tone?: string; tooltip?: string }) {
   const toneMap: Record<string, string> = {
     blue: 'bg-blue-50 text-blue-800',
     rose: 'bg-rose-50 text-rose-800',
@@ -477,9 +705,29 @@ function Metric({ label, value, tone = 'gray' }: { label: string; value: string;
     teal: 'bg-teal-50 text-teal-800',
     gray: 'bg-gray-50 text-gray-800',
   };
+  const iconToneMap: Record<string, string> = {
+    blue: 'text-blue-400',
+    rose: 'text-rose-400',
+    indigo: 'text-indigo-400',
+    emerald: 'text-emerald-400',
+    amber: 'text-amber-400',
+    teal: 'text-teal-400',
+    gray: 'text-gray-400',
+  };
   const cls = toneMap[tone] || toneMap.gray;
+  const iconCls = iconToneMap[tone] || iconToneMap.gray;
   return (
-    <div className={`${cls} rounded-lg p-4`}>
+    <div className={`${cls} rounded-lg p-4 relative group`}>
+      {tooltip && (
+        <>
+          <div className={`absolute top-2 right-2 ${iconCls} opacity-0 group-hover:opacity-100 transition-opacity cursor-help`}>
+            <Info className="w-4 h-4" />
+          </div>
+          <div className="absolute top-8 right-0 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
+            {tooltip}
+          </div>
+        </>
+      )}
       <div className="text-sm">{label}</div>
       <div className="text-xl font-bold">{value}</div>
     </div>

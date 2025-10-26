@@ -233,7 +233,9 @@ async function extractByUrl(url: string) {
     .replace(/[^\w\sčćžšđČĆŽŠĐ.,!?;:-]/g, '')
     .trim();
 
-  const wordCount = cleanText.split(/\s+/).filter(word => word.length > 0).length;
+  // VAŽNO: Za tačno brojanje, kombinu Lead (metadata.description) + Body (content)
+  const fullArticleText = (metadata.description ? metadata.description + ' ' : '') + cleanText;
+  const wordCount = fullArticleText.split(/\s+/).filter(word => word.length > 0).length;
 
   const extractedContent: ExtractedContent = {
     title: title || 'Bez naslova',
