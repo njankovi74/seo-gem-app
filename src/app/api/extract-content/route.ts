@@ -99,9 +99,50 @@ async function extractByUrl(url: string) {
 
   const ld = tryJsonLD();
 
+  // Extract Lead/Description: Priority Serbian news sites specific selectors first
+  // 1) Try common Serbian news site Lead paragraph classes
+  // 2) Fall back to meta tags (often truncated)
+  let leadText = '';
+  
+  // Serbian news sites often have dedicated Lead paragraph classes
+  const leadSelectors = [
+    '.single-news-short-description',  // Newsmax Balkans
+    '.article-lead',
+    '.lead',
+    '.intro',
+    '.standfirst',
+    '.article-intro',
+    '.article__lead',
+    '.story-lead',
+    'p.lead',
+    'p.intro',
+    '[class*="lead"]',
+    '[class*="intro"]'
+  ];
+  
+  for (const selector of leadSelectors) {
+    const leadElement = $(selector).first();
+    if (leadElement.length) {
+      const text = leadElement.text().trim();
+      if (text.length > 50) {  // Valid Lead should be substantial
+        leadText = text;
+        console.log(`📰 [extract] Lead found via selector "${selector}": ${text.length} chars`);
+        break;
+      }
+    }
+  }
+  
+  // Fall back to meta description if no dedicated Lead found
+  if (!leadText) {
+    leadText = $('meta[name="description"]').attr('content') || 
+               $('meta[property="og:description"]').attr('content') || '';
+    if (leadText) {
+      console.log(`📰 [extract] Lead from meta tag: ${leadText.length} chars`);
+    }
+  }
+
   const metadata = {
-    description: $('meta[name="description"]').attr('content') || 
-                $('meta[property="og:description"]').attr('content') || '',
+    description: leadText,
     keywords: $('meta[name="keywords"]').attr('content') || '',
     author: $('meta[name="author"]').attr('content') || 
            $('meta[property="article:author"]').attr('content') || (ld?.author || ''),

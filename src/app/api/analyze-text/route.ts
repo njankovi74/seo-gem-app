@@ -5,6 +5,7 @@ import { buildDeterministicSEO, buildSEOWithLLM, buildSEOWithDualLLM } from '@/l
 import { computeAuthorMetrics } from '@/lib/author-metrics';
 import { buildAuthorRecommendations } from '@/lib/author-recommendations';
 import { prioritizeKeywords, prioritizedAsCSV, prioritizedAsCommaList } from '@/lib/keyword-prioritizer';
+import { saveTitleChoice } from '@/lib/title-history';
 
 interface AnalysisRequest {
   text: string;
@@ -12,6 +13,11 @@ interface AnalysisRequest {
   provider?: 'openai' | 'gemini';
   model?: string;
   strictModel?: boolean;
+  // New fields for title selection workflow
+  selectedTitle?: string;
+  selectionType?: 'ai_option_1' | 'ai_option_2' | 'ai_option_3' | 'custom';
+  offeredTitles?: Array<{ text: string; style: 'faktografski' | 'kontekstualni' | 'detaljni'; length: number; reasoning: string }>;
+  articleUrl?: string;
 }
 
 interface AnalysisResponse {
@@ -46,7 +52,17 @@ interface AnalysisResponse {
 
 export async function POST(request: NextRequest): Promise<NextResponse<AnalysisResponse>> {
   try {
-  const { text, title, provider, model, strictModel }: AnalysisRequest = await request.json();
+  const { 
+    text, 
+    title, 
+    provider, 
+    model, 
+    strictModel,
+    selectedTitle,
+    selectionType,
+    offeredTitles,
+    articleUrl
+  }: AnalysisRequest = await request.json();
 
     if (!text || text.trim().length < 50) {
       return NextResponse.json({
@@ -59,8 +75,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
     const tfidfAnalyzer = new TFIDFAnalyzer();
     const lsaAnalyzer = new LSAAnalyzer();
 
+    // Use selectedTitle if provided, otherwise fall back to title
+    const effectiveTitle = selectedTitle || title;
+
     // Combine title and text for analysis if title is provided
-    const fullText = title ? `${title}. ${text}` : text;
+    const fullText = effectiveTitle ? `${effectiveTitle}. ${text}` : text;
 
     // Perform TF-IDF analysis
     const tfidfAnalysis = tfidfAnalyzer.analyze(fullText);
@@ -98,11 +117,110 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
 
     // Generate SEO outputs (use prioritized keywords for inputs)
     const deterministicSEO = buildDeterministicSEO({
-      title,
+      title: effectiveTitle,
       keyTerms: prioritized.map(p => p.term),
       mainTopics,
       searchIntentType: searchIntent.type
     }, text);
+
+    // If selectedTitle is provided, use it directly and skip LLM title generation
+    // Only generate Meta description and Keywords with LLM
+    if (selectedTitle) {
+      console.log('🎯 [analyze-text] Using selectedTitle:', selectedTitle);
+      
+      // Override deterministic title with selected title
+      deterministicSEO.title = selectedTitle;
+      
+      // LLM will generate Meta + Keywords based on the selected title
+      let seoOutputs: ReturnType<typeof buildDeterministicSEO> | undefined;
+      try {
+        seoOutputs = await buildSEOWithLLM(
+          deterministicSEO,
+          {
+            documentTitle: selectedTitle,
+            keyTerms: prioritized.map(p => p.term),
+            mainTopics,
+            searchIntentType: searchIntent.type,
+            textSample: text
+          },
+          { model, strictModel, skipTitleGeneration: true }
+        );
+        
+        // Ensure the selected title is preserved (LLM should not generate a new one)
+        if (seoOutputs) {
+          seoOutputs.title = selectedTitle;
+        }
+        
+        console.log('✅ [analyze-text] Generated Meta + KW for selected title');
+        
+        // Save title choice to Supabase for RAG
+        try {
+          await saveTitleChoice({
+            articleUrl: articleUrl || '',
+            articleText: text.substring(0, 5000), // Save first 5000 chars
+            offeredTitles: offeredTitles || [],
+            selectedTitle,
+            selectionType: selectionType || 'custom',
+            metaDescription: seoOutputs?.metaDescription || '',
+            keywords: seoOutputs?.keywordsLine || ''
+          });
+          console.log('✅ [analyze-text] Saved title choice to Supabase for RAG');
+        } catch (saveError) {
+          console.error('⚠️ [analyze-text] Failed to save to Supabase (non-blocking):', saveError);
+          // Non-blocking error - continue with response
+        }
+        
+      } catch (e: any) {
+        console.error('❌ [analyze-text] LLM error for selected title:', e?.message);
+        seoOutputs = deterministicSEO;
+      }
+
+      // Author-focused metrics and recommendations
+      const prioritizedTerms = prioritized.map(p => p.term);
+      const authorMetrics = computeAuthorMetrics({
+        text,
+        topics: mainTopics,
+        prioritizedKeywords: prioritizedTerms
+      });
+
+      const authorRecommendations = buildAuthorRecommendations({
+        metrics: authorMetrics,
+        mainTopics,
+        prioritizedKeywords: prioritizedTerms,
+        seoTitle: seoOutputs?.title,
+        seoMeta: seoOutputs?.metaDescription
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          tfidfAnalysis,
+          lsaAnalysis,
+          searchIntent,
+          summary,
+          seoOutputs,
+          authorMetrics,
+          authorRecommendations,
+          prioritizedKeywords: {
+            items: prioritized,
+            csv: prioritizedAsCSV(prioritized),
+            commaList: prioritizedAsCommaList(prioritized)
+          },
+          llm: {
+            dualMode: false,
+            configuredProvider: process.env.SEO_LLM_PROVIDER || 'gemini',
+            configuredModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+            used: true,
+            selectedTitleMode: true,
+            savedToSupabase: true,
+            hasKeys: {
+              openai: !!process.env.OPENAI_API_KEY,
+              gemini: !!process.env.GEMINI_API_KEY,
+            }
+          }
+        }
+      });
+    }
 
     // LLM enhancement (provider-configurable). If LLM hard-fails, gracefully fall back
     // to deterministic output but include diagnostics so UI can inform the user.
@@ -136,7 +254,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
             keyTerms: prioritized.map(p => p.term),
             mainTopics,
             searchIntentType: searchIntent.type,
-            textSample: text.slice(0, 1000)
+            textSample: text
           }
         );
         
@@ -174,7 +292,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
             keyTerms: prioritized.map(p => p.term),
             mainTopics,
             searchIntentType: searchIntent.type,
-            textSample: text.slice(0, 1000)
+            textSample: text
           },
           { model, strictModel }
         );
@@ -334,7 +452,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<AnalysisRe
           keyTerms: prioritized.map(p => p.term),
           mainTopics,
           searchIntentType: searchIntent.type,
-          textSample: text.slice(0, 1000)
+          textSample: text
         },
         { model, strictModel }
       );

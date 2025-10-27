@@ -41,8 +41,8 @@ export function buildAuthorRecommendations(params: {
   // Naslov i meta
   const nm: string[] = [];
   if (seoTitle) {
-    if (seoTitle.length > 60) nm.push('Skrati SEO naslov na ≤ 60 karaktera.');
-    if (seoTitle.length < 40) nm.push('Pojačaj SEO naslov (40–60 karaktera, uključujući primarnu).');
+    if (seoTitle.length > 75) nm.push('Skrati SEO naslov na ≤ 75 karaktera.');
+    if (seoTitle.length < 40) nm.push('Pojačaj SEO naslov (40–75 karaktera, uključujući primarnu).');
   }
   if (seoMeta) {
     if (seoMeta.length > 160) nm.push('Skrati meta opis na 150–160 karaktera.');

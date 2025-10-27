@@ -84,11 +84,12 @@ export async function buildSEOWithLLM(
     searchIntentType: string;
     textSample?: string;
   },
-  options?: { model?: string; strictModel?: boolean }
+  options?: { model?: string; strictModel?: boolean; skipTitleGeneration?: boolean }
 ): Promise<SEOOutputs> {
   // Allow per-request override; fallback to env
   const requireLLM = (process.env.SEO_LLM_REQUIRED || '').toLowerCase() === 'true';
   const strictModel = options?.strictModel ?? ((process.env.SEO_LLM_STRICT_MODEL || '').toLowerCase() === 'true');
+  const skipTitleGeneration = options?.skipTitleGeneration ?? false;
 
   // Guardrails za kvalitet i usklađenost sa smernicama (sažeto iz dokumenta):
   const bannedTokens = [
@@ -98,19 +99,23 @@ export async function buildSEOWithLLM(
   const primaryKW = context.keyTerms?.[0] || context.mainTopics?.[0] || (context.documentTitle || '').split(' ').slice(0,3).join(' ');
   const secondaryKWs = context.keyTerms?.slice(1, 6) || [];
 
-  const prompt = `Ti si SEO asistent za srpski jezik (latinica). Na osnovu ulaza generiši striktno JSON sa sledećim poljima:
-{
-  "title": string,          // ≤ 60 karaktera, uključi primarnu ključnu reč, bez clickbaita, pravilna kapitalizacija, bez navodnika i brenda sajta
+  const jsonSchema = skipTitleGeneration 
+    ? `{
   "meta": string,           // 150–160 karaktera, informativan sažetak vrednosti teksta (bez CTA), uključi primarnu i 1 sekundarnu ključnu reč, bez navodnika/emodžija
   "keywords": string[],     // 10–14 komada, 70–90% long‑tail (2–4 reči), mala slova, bez duplikata/stop reči/ličnih imena/brenda, relevantne i precizne
   "slug": string            // kratko, kebab-case, 4–8 reči, samo [a-z0-9-]
-}
+}`
+    : `{
+  "title": string,          // ≤ 75 karaktera, uključi primarnu ključnu reč, bez clickbaita, pravilna kapitalizacija, bez navodnika i brenda sajta
+  "meta": string,           // 150–160 karaktera, informativan sažetak vrednosti teksta (bez CTA), uključi primarnu i 1 sekundarnu ključnu reč, bez navodnika/emodžija
+  "keywords": string[],     // 10–14 komada, 70–90% long‑tail (2–4 reči), mala slova, bez duplikata/stop reči/ličnih imena/brenda, relevantne i precizne
+  "slug": string            // kratko, kebab-case, 4–8 reči, samo [a-z0-9-]
+}`;
 
-MAIN PRINCIP: **User First - Search Intent Matching**
-→ Naslov mora biti DIREKTAN ODGOVOR na pitanje koje user ima kada traži ključne reči
-→ User pretraga → Vidi naslov → Prepoznaje odgovor → Klikne
-
-Pravila za SEO naslov (USER-CENTRIC):
+  const titleInstructions = skipTitleGeneration
+    ? `**NASLOV JE VEĆ ODREĐEN:** ${context.documentTitle}
+**TVOJ ZADATAK:** Generiši samo Meta opis, Keywords i Slug na osnovu ovog naslova.`
+    : `Pravila za SEO naslov (USER-CENTRIC):
 - **JEZIK I TRANSKRPCIJA:**
   * **OBAVEZNO koristi SRPSKU TRANSKRIPCIJU imena** kako je napisano u tekstu!
   * ❌ "Mathias Lessort" → ✅ "Matijas Lesor" (ako je u tekstu srpski)
@@ -140,7 +145,7 @@ Pravila za SEO naslov (USER-CENTRIC):
   * ❌ Generičke fraze: "Upornost i uspeh", "Priča o", "Inspirativna vest"
   * ❌ Subjektivne ocene: "neverovatno", "senzacionalno", "dirljivo"  
   * ❌ Transformacija u drugi žanr: News vest → NE smeš pretvoriti u feature story
-  * ❌ Presecanje naslova: Mora stati u 60 chars bez prekida rečenice
+  * ❌ Presecanje naslova: Mora stati u 75 chars bez prekida rečenice
 
 - **ZADRŽI ORIGINALNU FORMU:**
   * Pitanje → Pitanje sa "?" ("Kako X?" → "Kako X: detalji?")
@@ -150,8 +155,17 @@ Pravila za SEO naslov (USER-CENTRIC):
 - **PROVERA PRE SLANJA:**
   1. Da li user koji traži ključne reči ODMAH vidi odgovor u naslovu?
   2. Da li naslov ima IME/LOKACIJU/AKCIJU iz teksta?
-  3. Da li je naslov < 60 chars i ne prekida se na pola?
-  4. Da li je to news format, NE feature story?
+  3. Da li je naslov < 75 chars i ne prekida se na pola?
+  4. Da li je to news format, NE feature story?`;
+
+  const prompt = `Ti si SEO asistent za srpski jezik (latinica). Na osnovu ulaza generiši striktno JSON sa sledećim poljima:
+${jsonSchema}
+
+MAIN PRINCIP: **User First - Search Intent Matching**
+→ Naslov mora biti DIREKTAN ODGOVOR na pitanje koje user ima kada traži ključne reči
+→ User pretraga → Vidi naslov → Prepoznaje odgovor → Klikne
+
+${titleInstructions}
 
 Meta opis: 
 - Sažmi KO + ŠTA + GDE + KADA/ZAŠTO - **KONKRETNO iz teksta**

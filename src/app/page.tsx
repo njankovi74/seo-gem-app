@@ -69,14 +69,26 @@ interface ExtractedContent {
   cleanText: string;
 }
 
+interface TitleOption {
+  text: string;
+  style: 'faktografski' | 'kontekstualni' | 'detaljni';
+  length: number;
+  reasoning: string;
+}
+
 export default function Home() {
   const [url, setUrl] = useState('');
   const [extractedContent, setExtractedContent] = useState<ExtractedContent | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [step, setStep] = useState<'url' | 'content' | 'analysis'>('url');
+  const [step, setStep] = useState<'url' | 'content' | 'titleSelection' | 'analysis'>('url');
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  
+  // Title selection state
+  const [titleOptions, setTitleOptions] = useState<TitleOption[]>([]);
+  const [selectedTitleIndex, setSelectedTitleIndex] = useState<number | 'custom'>('custom');
+  const [customTitle, setCustomTitle] = useState('');
 
   const handleExtractContent = async () => {
     if (!url.trim()) {
@@ -119,12 +131,87 @@ export default function Home() {
     setError('');
 
     try {
+      // First, generate title options
+      // Combine title + lead + body for better context
+      const fullContext = [
+        extractedContent.title,
+        extractedContent.metadata?.description || '',
+        extractedContent.content
+      ].filter(Boolean).join('\n\n');
+
+      const titleResponse = await fetch('/api/generate-title-options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          articleText: fullContext,
+          primaryKeyword: '', // Will be extracted from content
+          secondaryKeywords: [],
+          mainTopics: [],
+          searchIntent: 'informational'
+        }),
+      });
+
+      const isJSON = titleResponse.headers.get('content-type')?.includes('application/json');
+      const titlePayload = isJSON ? await titleResponse.json() : await titleResponse.text();
+
+      if (!titleResponse.ok) {
+        const message = isJSON ? (titlePayload as any)?.error : 'Greška pri generisanju naslova';
+        throw new Error(message);
+      }
+
+      const titleData = titlePayload as any;
+      if (titleData.success && titleData.titles) {
+        setTitleOptions(titleData.titles);
+        setStep('titleSelection');
+      } else {
+        throw new Error('Nema generisanih naslova');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Neočekivana greška pri generisanju naslova');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateMetaAndKeywords = async () => {
+    if (!extractedContent) return;
+
+    // Determine selected title
+    let selectedTitle = '';
+    let selectionType: 'ai_option_1' | 'ai_option_2' | 'ai_option_3' | 'custom' = 'custom';
+    
+    if (selectedTitleIndex === 'custom') {
+      selectedTitle = customTitle.trim();
+      selectionType = 'custom';
+    } else if (typeof selectedTitleIndex === 'number' && titleOptions[selectedTitleIndex]) {
+      selectedTitle = titleOptions[selectedTitleIndex].text;
+      selectionType = `ai_option_${selectedTitleIndex + 1}` as any;
+    }
+
+    if (!selectedTitle) {
+      setError('Molimo odaberite ili unesite naslov');
+      return;
+    }
+
+    if (selectedTitle.length > 75) {
+      setError('Naslov mora biti kraći od 75 karaktera');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
       const response = await fetch('/api/analyze-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: extractedContent.content,  // Use full content, not cleanText
+          text: extractedContent.content,
           title: extractedContent.title,
+          selectedTitle,
+          selectionType,
+          offeredTitles: titleOptions,
+          articleUrl: url
         }),
       });
 
@@ -161,12 +248,18 @@ export default function Home() {
     setAnalysisResult(null);
     setError('');
     setStep('url');
+    setTitleOptions([]);
+    setSelectedTitleIndex('custom');
+    setCustomTitle('');
   };
 
   // Helper za render polja sa kopiranjem unutar samog polja
   const CopyField = ({ label, value, fieldKey }: { label: string; value: string; fieldKey: string }) => (
     <div className="mb-4">
-      <h4 className="font-medium">{label}</h4>
+      <div className="flex items-center justify-between mb-1">
+        <h4 className="font-medium">{label}</h4>
+        <span className="text-xs text-gray-500">{value.length} karaktera</span>
+      </div>
       <div className="relative">
         <pre className="mt-2 p-3 bg-gray-50 border rounded text-sm whitespace-pre-wrap pr-10">{value}</pre>
         <button
@@ -187,15 +280,19 @@ export default function Home() {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
+            <button
+              onClick={resetAnalysis}
+              className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
+              title="Povratak na početak"
+            >
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <Brain className="w-5 h-5 text-white" />
               </div>
-              <div>
+              <div className="text-left">
                 <h1 className="text-xl font-bold text-gray-900">SEO GEM</h1>
                 <p className="text-sm text-gray-500">Inteligentni SEO Asistent</p>
               </div>
-            </div>
+            </button>
             <div className="text-sm text-gray-500">
               v1.0 - Serbian Language Optimized
             </div>
@@ -206,26 +303,33 @@ export default function Home() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Progress Steps */}
         <div className="mb-8">
-          <div className="flex items-center justify-center space-x-8">
-            <div className={`flex items-center space-x-2 ${step === 'url' ? 'text-blue-600' : step === 'content' || step === 'analysis' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'url' ? 'bg-blue-600 text-white' : step === 'content' || step === 'analysis' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
+          <div className="flex items-center justify-center space-x-4">
+            <div className={`flex items-center space-x-2 ${step === 'url' ? 'text-blue-600' : (step === 'content' || step === 'titleSelection' || step === 'analysis') ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'url' ? 'bg-blue-600 text-white' : (step === 'content' || step === 'titleSelection' || step === 'analysis') ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
                 <Search className="w-4 h-4" />
               </div>
-              <span className="font-medium">Ekstrakcija Sadržaja</span>
+              <span className="font-medium text-sm">Ekstrakcija</span>
             </div>
-            <div className={`w-16 h-0.5 ${step === 'content' || step === 'analysis' ? 'bg-green-600' : 'bg-gray-200'}`}></div>
-            <div className={`flex items-center space-x-2 ${step === 'content' ? 'text-blue-600' : step === 'analysis' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'content' ? 'bg-blue-600 text-white' : step === 'analysis' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
+            <div className={`w-12 h-0.5 ${(step === 'content' || step === 'titleSelection' || step === 'analysis') ? 'bg-green-600' : 'bg-gray-200'}`}></div>
+            <div className={`flex items-center space-x-2 ${step === 'content' ? 'text-blue-600' : (step === 'titleSelection' || step === 'analysis') ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'content' ? 'bg-blue-600 text-white' : (step === 'titleSelection' || step === 'analysis') ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
                 <FileText className="w-4 h-4" />
               </div>
-              <span className="font-medium">Pregled Teksta</span>
+              <span className="font-medium text-sm">Pregled</span>
             </div>
-            <div className={`w-16 h-0.5 ${step === 'analysis' ? 'bg-green-600' : 'bg-gray-200'}`}></div>
+            <div className={`w-12 h-0.5 ${(step === 'titleSelection' || step === 'analysis') ? 'bg-green-600' : 'bg-gray-200'}`}></div>
+            <div className={`flex items-center space-x-2 ${step === 'titleSelection' ? 'text-blue-600' : step === 'analysis' ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'titleSelection' ? 'bg-blue-600 text-white' : step === 'analysis' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
+                <Brain className="w-4 h-4" />
+              </div>
+              <span className="font-medium text-sm">Izbor Naslova</span>
+            </div>
+            <div className={`w-12 h-0.5 ${step === 'analysis' ? 'bg-green-600' : 'bg-gray-200'}`}></div>
             <div className={`flex items-center space-x-2 ${step === 'analysis' ? 'text-blue-600' : 'text-gray-400'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'analysis' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
                 <BarChart3 className="w-4 h-4" />
               </div>
-              <span className="font-medium">SEO Analiza</span>
+              <span className="font-medium text-sm">SEO Analiza</span>
             </div>
           </div>
         </div>
@@ -378,6 +482,117 @@ export default function Home() {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Step 2.5: Title Selection */}
+        {step === 'titleSelection' && titleOptions.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm border p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Odaberi SEO Naslov</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  AI je generisao 3 Newsmax-style naslova. Odaberi jedan ili unesi sopstveni.
+                </p>
+              </div>
+              <button
+                onClick={() => setStep('content')}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                ← Nazad
+              </button>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              {titleOptions.map((option, idx) => (
+                <label
+                  key={idx}
+                  className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    selectedTitleIndex === idx
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="title"
+                    checked={selectedTitleIndex === idx}
+                    onChange={() => setSelectedTitleIndex(idx)}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900 mb-1">{option.text}</div>
+                    <div className="flex items-center gap-3 text-xs text-gray-500 mb-1">
+                      <span>{option.text.length} karaktera</span>
+                      <span>•</span>
+                      <span className="capitalize">{option.style}</span>
+                    </div>
+                    <div className="text-xs text-gray-400 italic">{option.reasoning}</div>
+                  </div>
+                </label>
+              ))}
+
+              {/* Custom Title Option */}
+              <label
+                className={`flex items-start gap-3 p-4 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
+                  selectedTitleIndex === 'custom'
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-gray-300 hover:border-purple-300 hover:bg-gray-50'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="title"
+                  checked={selectedTitleIndex === 'custom'}
+                  onChange={() => setSelectedTitleIndex('custom')}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900 mb-2">✏️ Sopstveni naslov</div>
+                  <input
+                    type="text"
+                    value={customTitle}
+                    onChange={(e) => {
+                      setCustomTitle(e.target.value);
+                      setSelectedTitleIndex('custom');
+                    }}
+                    maxLength={75}
+                    placeholder="Unesite sopstveni SEO naslov..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                  <div className={`text-xs mt-1 ${customTitle.length > 75 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                    {customTitle.length}/75 karaktera
+                    {customTitle.length > 75 && ' - PREDUGAČKO!'}
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <div className="flex justify-center">
+              <button
+                onClick={handleGenerateMetaAndKeywords}
+                disabled={loading || (selectedTitleIndex === 'custom' && !customTitle.trim())}
+                className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Generišem Meta opis + Ključne reči...</span>
+                  </>
+                ) : (
+                  <>
+                    <BarChart3 className="w-4 h-4" />
+                    <span>Generiši Meta opis + Ključne reči</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {error && (
+              <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="text-sm text-red-700">{error}</div>
+              </div>
+            )}
           </div>
         )}
 
