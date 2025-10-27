@@ -181,9 +181,12 @@ async function extractByUrl(url: string) {
   }
   if (!content || content.length < 100) {
     try {
+      console.log('🔍 [extract] Attempting Readability extraction...');
       const { JSDOM } = await import('jsdom');
       const { Readability } = await import('@mozilla/readability');
+      console.log('✅ [extract] JSDOM and Readability imported successfully');
       const dom = new JSDOM(html, { url });
+      console.log('✅ [extract] JSDOM created successfully');
       
       // BEFORE Readability: Agresivno uklanjanje noise elemenata
       const doc = dom.window.document;
@@ -228,7 +231,10 @@ async function extractByUrl(url: string) {
         extractionMethod = 'readability';
         if (!title && parsed.title) title = parsed.title.trim();
       }
-    } catch {}
+    } catch (readabilityError) {
+      console.error('❌ [extract] Readability failed:', readabilityError);
+      console.error('❌ [extract] Error details:', readabilityError instanceof Error ? readabilityError.message : String(readabilityError));
+    }
   }
   if (!content || content.length < 100) {
     const articleSelectors = [
