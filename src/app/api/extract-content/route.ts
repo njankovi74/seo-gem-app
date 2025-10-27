@@ -56,9 +56,22 @@ async function extractByUrl(url: string) {
   const html = response.data;
   const $ = cheerio.load(html);
 
-  // Remove unwanted elements (boilerplate removal)
+  // Remove unwanted elements (boilerplate removal) - AGRESIVNO!
   $('script, style, nav, header, footer, aside, .sidebar, .menu, .navigation, .ads, .advertisement, .social-share, .comments, .comment, #comments, .related-posts, .popup, .modal, .cookie-notice').remove();
   $('.ad, .ads, .advertisement, .banner, .popup, .modal, .newsletter, .subscription, .social, .share, .nav, .navigation, .menu, .sidebar, .widget, .footer, .header').remove();
+  
+  // Newsmax Balkans specifični elementi (app promo, social embeds, itd.)
+  $('.app-download, .app-promo, .download-app, .store-buttons, .google-play, .app-store').remove();
+  $('[class*="app-"], [class*="download"], [class*="store-button"]').remove();
+  
+  // Ukloni sve što sadrži "Google Play", "App Store", "preuzeti aplikaciju" u tekstu
+  $('p, div, section').filter((_, el) => {
+    const text = $(el).text().toLowerCase();
+    return text.includes('google play') || 
+           text.includes('app store') || 
+           text.includes('preuzeti aplikaciju') ||
+           text.includes('preuzmite aplikaciju');
+  }).remove();
 
   function tryJsonLD() {
     try {
@@ -172,17 +185,30 @@ async function extractByUrl(url: string) {
       const { Readability } = await import('@mozilla/readability');
       const dom = new JSDOM(html, { url });
       
-      // BEFORE Readability: Try to remove common noise elements more aggressively
+      // BEFORE Readability: Agresivno uklanjanje noise elemenata
       const doc = dom.window.document;
       const noisySelectors = [
         '.related-articles', '.related-posts', '.article-footer', 
         '.share-buttons', '.social-share', '.tags', '.categories',
         '.popular-posts', '.trending', '.recommended', '.more-stories',
         '.newsletter-signup', '.subscription-box', '.ad-container',
-        'aside', '[class*="sidebar"]', '[id*="sidebar"]'
+        '.app-download', '.app-promo', '.download-app', '.store-buttons',
+        'aside', '[class*="sidebar"]', '[id*="sidebar"]',
+        '[class*="promo"]', '[class*="banner"]', '[class*="widget"]'
       ];
       noisySelectors.forEach(sel => {
         doc.querySelectorAll(sel).forEach(el => el.remove());
+      });
+      
+      // Ukloni paragrafe sa app promo tekstom
+      doc.querySelectorAll('p, div').forEach(el => {
+        const text = el.textContent?.toLowerCase() || '';
+        if (text.includes('google play') || 
+            text.includes('app store') || 
+            text.includes('preuzeti aplikaciju') ||
+            text.includes('preuzmite aplikaciju')) {
+          el.remove();
+        }
       });
       
       const reader = new Readability(doc, {
@@ -191,31 +217,13 @@ async function extractByUrl(url: string) {
       });
       const parsed = reader.parse();
       if (parsed?.textContent && parsed.textContent.trim().length > 100) {
-        // AGGRESSIVE whitespace cleaning BEFORE truncation
-        let fullContent = parsed.textContent
+        // AGGRESSIVE whitespace cleaning
+        content = parsed.textContent
           .replace(/\s+/g, ' ')  // Collapse all whitespace to single space
           .replace(/\n\s*\n/g, '\n')  // Remove excessive newlines
           .trim();
         
-        // Additional heuristic: Serbian news articles are typically 500-2500 chars
-        // If much longer, likely includes footer/navigation content
-        // Take first portion that ends at sentence boundary
-        if (fullContent.length > 2500) {
-          // Find last sentence ending (. ! ?) before char 2300
-          const cutoffSearch = fullContent.substring(0, 2300);
-          const lastSentenceMatch = cutoffSearch.match(/[.!?]\s+(?=[A-ZČĆŽŠĐ]|$)/g);
-          if (lastSentenceMatch && lastSentenceMatch.length > 0) {
-            const cutoffIndex = cutoffSearch.lastIndexOf(lastSentenceMatch[lastSentenceMatch.length - 1]) + 1;
-            content = fullContent.substring(0, cutoffIndex).trim();
-            console.log(`📄 [extract] Readability (sentence-truncated): ${fullContent.length} → ${content.length} chars`);
-          } else {
-            content = fullContent.substring(0, 2300);
-            console.log(`📄 [extract] Readability (hard-truncated): ${fullContent.length} → ${content.length} chars`);
-          }
-        } else {
-          content = fullContent;
-          console.log(`📄 [extract] Readability: ${content.length} chars`);
-        }
+        console.log(`📄 [extract] Readability: ${content.length} chars`);
         extractionMethod = 'readability';
         if (!title && parsed.title) title = parsed.title.trim();
       }
