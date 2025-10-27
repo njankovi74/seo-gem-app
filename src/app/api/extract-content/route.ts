@@ -99,45 +99,74 @@ async function extractByUrl(url: string) {
 
   const ld = tryJsonLD();
 
-  // Extract Lead/Description: Priority Serbian news sites specific selectors first
-  // 1) Try common Serbian news site Lead paragraph classes
-  // 2) Fall back to meta tags (often truncated)
+  // Extract Lead/Description: STRICT - samo prvi pasus posle naslova
+  // Cilj: 150-250 karaktera, maksimalno 2 rečenice
   let leadText = '';
   
-  // Serbian news sites often have dedicated Lead paragraph classes
-  const leadSelectors = [
-    '.single-news-short-description',  // Newsmax Balkans
-    '.article-lead',
-    '.lead',
-    '.intro',
-    '.standfirst',
-    '.article-intro',
-    '.article__lead',
-    '.story-lead',
-    'p.lead',
-    'p.intro',
-    '[class*="lead"]',
-    '[class*="intro"]'
-  ];
-  
-  for (const selector of leadSelectors) {
-    const leadElement = $(selector).first();
-    if (leadElement.length) {
-      const text = leadElement.text().trim();
-      if (text.length > 50) {  // Valid Lead should be substantial
-        leadText = text;
-        console.log(`📰 [extract] Lead found via selector "${selector}": ${text.length} chars`);
-        break;
+  // 1) Pokušaj naći prvi paragraf POSLE naslova (h1)
+  const h1 = $('h1').first();
+  if (h1.length) {
+    // Nađi prvi <p> tag koji dolazi POSLE h1 u DOM-u
+    let firstParagraph = h1.nextAll('p').first();
+    
+    // Ako nije direktno posle, traži unutar parent containera
+    if (!firstParagraph.length) {
+      const articleContainer = h1.closest('article, .article, .post, .entry-content, main');
+      if (articleContainer.length) {
+        firstParagraph = articleContainer.find('p').first();
+      }
+    }
+    
+    if (firstParagraph.length) {
+      const fullText = firstParagraph.text().trim();
+      
+      // Uzmi samo prvu ili dve rečenice (maksimalno 250 karaktera)
+      const sentences = fullText.match(/[^.!?]+[.!?]+/g) || [];
+      if (sentences.length > 0) {
+        leadText = sentences[0].trim();
+        // Ako je prva rečenica prekratka, dodaj drugu
+        if (leadText.length < 100 && sentences.length > 1) {
+          leadText = (sentences[0] + ' ' + sentences[1]).trim();
+        }
+        // Hard limit: 250 karaktera
+        if (leadText.length > 250) {
+          leadText = leadText.substring(0, 247) + '...';
+        }
+        console.log(`📰 [extract] Lead from first <p>: ${leadText.length} chars`);
       }
     }
   }
   
-  // Fall back to meta description if no dedicated Lead found
-  if (!leadText) {
-    leadText = $('meta[name="description"]').attr('content') || 
-               $('meta[property="og:description"]').attr('content') || '';
-    if (leadText) {
+  // 2) Fall back: Meta description (ali skrati na 250 chars)
+  if (!leadText || leadText.length < 50) {
+    const metaDesc = $('meta[name="description"]').attr('content') || 
+                     $('meta[property="og:description"]').attr('content') || '';
+    if (metaDesc && metaDesc.length > 50) {
+      leadText = metaDesc.length > 250 ? metaDesc.substring(0, 247) + '...' : metaDesc;
       console.log(`📰 [extract] Lead from meta tag: ${leadText.length} chars`);
+    }
+  }
+  
+  // 3) Fall back: Prvi bilo koji paragraf na stranici (kratko!)
+  if (!leadText || leadText.length < 50) {
+    const firstP = $('p').filter((_, el) => {
+      const text = $(el).text().trim();
+      return text.length > 50 && text.length < 500;
+    }).first();
+    
+    if (firstP.length) {
+      const fullText = firstP.text().trim();
+      const sentences = fullText.match(/[^.!?]+[.!?]+/g) || [];
+      if (sentences.length > 0) {
+        leadText = sentences[0].trim();
+        if (leadText.length < 100 && sentences.length > 1) {
+          leadText = (sentences[0] + ' ' + sentences[1]).trim();
+        }
+        if (leadText.length > 250) {
+          leadText = leadText.substring(0, 247) + '...';
+        }
+        console.log(`📰 [extract] Lead from fallback <p>: ${leadText.length} chars`);
+      }
     }
   }
 
