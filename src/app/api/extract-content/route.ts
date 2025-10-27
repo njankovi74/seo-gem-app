@@ -174,69 +174,17 @@ async function extractByUrl(url: string) {
   let content = '';
   let extractionMethod = 'none';
   
+  // 1) Priority: JSON-LD articleBody (najčistiji izvor)
   if (ld?.articleBody && ld.articleBody.toString().trim().length > 100) {
     content = ld.articleBody.toString();
     extractionMethod = 'json-ld';
-    console.log(`📄 [extract] JSON-LD articleBody: ${content.length} chars, sample: "${content.substring(0, 100)}..."`);
+    console.log(`📄 [extract] JSON-LD articleBody: ${content.length} chars`);
   }
+  
+  // 2) Fallback: ULTRA-optimizovana CSS selector strategija
   if (!content || content.length < 100) {
-    try {
-      console.log('🔍 [extract] Attempting Readability extraction...');
-      const { JSDOM } = await import('jsdom');
-      const { Readability } = await import('@mozilla/readability');
-      console.log('✅ [extract] JSDOM and Readability imported successfully');
-      const dom = new JSDOM(html, { url });
-      console.log('✅ [extract] JSDOM created successfully');
-      
-      // BEFORE Readability: Agresivno uklanjanje noise elemenata
-      const doc = dom.window.document;
-      const noisySelectors = [
-        '.related-articles', '.related-posts', '.article-footer', 
-        '.share-buttons', '.social-share', '.tags', '.categories',
-        '.popular-posts', '.trending', '.recommended', '.more-stories',
-        '.newsletter-signup', '.subscription-box', '.ad-container',
-        '.app-download', '.app-promo', '.download-app', '.store-buttons',
-        'aside', '[class*="sidebar"]', '[id*="sidebar"]',
-        '[class*="promo"]', '[class*="banner"]', '[class*="widget"]'
-      ];
-      noisySelectors.forEach(sel => {
-        doc.querySelectorAll(sel).forEach(el => el.remove());
-      });
-      
-      // Ukloni paragrafe sa app promo tekstom
-      doc.querySelectorAll('p, div').forEach(el => {
-        const text = el.textContent?.toLowerCase() || '';
-        if (text.includes('google play') || 
-            text.includes('app store') || 
-            text.includes('preuzeti aplikaciju') ||
-            text.includes('preuzmite aplikaciju')) {
-          el.remove();
-        }
-      });
-      
-      const reader = new Readability(doc, {
-        charThreshold: 50,
-        classesToPreserve: []
-      });
-      const parsed = reader.parse();
-      if (parsed?.textContent && parsed.textContent.trim().length > 100) {
-        // AGGRESSIVE whitespace cleaning
-        content = parsed.textContent
-          .replace(/\s+/g, ' ')  // Collapse all whitespace to single space
-          .replace(/\n\s*\n/g, '\n')  // Remove excessive newlines
-          .trim();
-        
-        console.log(`📄 [extract] Readability RAW: ${content.length} chars`);
-        console.log(`📄 [extract] Readability PREVIEW (first 500 chars): "${content.substring(0, 500)}"`);
-        extractionMethod = 'readability';
-        if (!title && parsed.title) title = parsed.title.trim();
-      }
-    } catch (readabilityError) {
-      console.error('❌ [extract] Readability failed:', readabilityError);
-      console.error('❌ [extract] Error details:', readabilityError instanceof Error ? readabilityError.message : String(readabilityError));
-    }
-  }
-  if (!content || content.length < 100) {
+    console.log('🔍 [extract] Using smart CSS selector extraction...');
+    
     const articleSelectors = [
       'article', '.article', '.post', '.entry-content', '.post-content',
       '.article-content', '[itemprop="articleBody"]', '.article__content',
@@ -244,36 +192,68 @@ async function extractByUrl(url: string) {
       '.post-body', '.post__content', '.post-text', '.story-content', 'main',
       '.main-content', '#content', '.story-body'
     ];
-    const baseTitle = (ld?.headline || $('h1').first().text() || title || '').toLowerCase();
-    const stop = new Set<string>(['je','za','u','na','i','od','do','se','da','koji','kako','što','sto','ili','ali','pa','su','sa','o']);
-    const tokens = baseTitle
-      .split(/[^a-zčćžšđ0-9]+/i)
-      .map((t: string) => t.trim())
-      .filter((t: string) => t.length > 2 && !stop.has(t));
-    let best = { score: 0, text: '' } as { score: number; text: string };
+    
+    // Pokušaj naći glavni article container
+    let articleContainer = null;
     for (const selector of articleSelectors) {
-      const element = $(selector);
-      if (!element.length) continue;
-      const paragraphs = element.find('p').map((_, el) => $(el).text().trim()).get();
-      const joined = paragraphs.filter(p => p.length > 40).join('\n');
-      const raw = (joined && joined.length > 100) ? joined : element.text().trim();
-      if (!raw || raw.length < 100) continue;
-      const low = raw.toLowerCase();
-      const hits = tokens.reduce((acc: number, t: string) => acc + (low.split(t).length - 1), 0);
-      const score = hits * 100 + Math.min(raw.length, 20000) / 100;
-      if (score > best.score) best = { score, text: raw };
+      const element = $(selector).first();
+      if (element.length && element.find('p').length > 2) {
+        articleContainer = element;
+        console.log(`📦 [extract] Found article container: ${selector}`);
+        break;
+      }
     }
-    if (best.text) {
-      content = best.text;
-      extractionMethod = 'css-selector';
-      console.log(`📄 [extract] CSS selector: ${content.length} chars`);
+    
+    if (articleContainer) {
+      // Izvuci sve paragrafe iz article containera
+      const paragraphs: string[] = [];
+      articleContainer.find('p').each((_, el) => {
+        const $p = $(el);
+        const text = $p.text().trim();
+        
+        // FILTER: Preskoči noise paragrafe
+        const textLower = text.toLowerCase();
+        const isNoise = 
+          text.length < 40 || // Prekratki paragrafi
+          textLower.includes('google play') ||
+          textLower.includes('app store') ||
+          textLower.includes('preuzeti aplikaciju') ||
+          textLower.includes('preuzmite aplikaciju') ||
+          textLower.includes('pročitajte') ||
+          textLower.includes('povezan') ||
+          textLower.includes('pratite nas') ||
+          textLower.includes('share') ||
+          textLower.includes('follow') ||
+          $p.parent().hasClass('social') ||
+          $p.parent().hasClass('share') ||
+          $p.parent().hasClass('related') ||
+          $p.closest('.related-articles, .related-posts, .social-share, .app-promo').length > 0;
+        
+        if (!isNoise) {
+          paragraphs.push(text);
+        }
+      });
+      
+      content = paragraphs.join('\n');
+      extractionMethod = 'css-selector-smart';
+      console.log(`📄 [extract] Smart CSS selector: ${paragraphs.length} paragraphs, ${content.length} chars`);
     }
   }
+  
+  // 3) Last resort fallback: Svi <p> tagovi sa filteringom
   if (!content || content.length < 100) {
-    const paragraphs = $('p').map((_, el) => $(el).text().trim()).get();
-    content = paragraphs.filter(p => p.length > 40).join('\n');
+    console.log('🔍 [extract] Using fallback: all <p> tags with filtering...');
+    const allParagraphs = $('p').map((_, el) => $(el).text().trim()).get();
+    const filtered = allParagraphs.filter(p => {
+      const textLower = p.toLowerCase();
+      return p.length > 40 && 
+        !textLower.includes('google play') &&
+        !textLower.includes('app store') &&
+        !textLower.includes('preuzeti aplikaciju');
+    });
+    content = filtered.join('\n');
     extractionMethod = 'fallback-paragraphs';
-    console.log(`📄 [extract] Fallback <p> tags: ${content.length} chars`);
+    console.log(`📄 [extract] Fallback <p> tags: ${filtered.length} paragraphs, ${content.length} chars`);
   }
 
   console.log(`✅ [extract] Final method: ${extractionMethod}, length: ${content.length} chars, wordCount: ${content.split(/\s+/).length}`);
