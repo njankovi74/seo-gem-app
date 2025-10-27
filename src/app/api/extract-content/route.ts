@@ -223,7 +223,8 @@ async function extractByUrl(url: string) {
           .replace(/\n\s*\n/g, '\n')  // Remove excessive newlines
           .trim();
         
-        console.log(`📄 [extract] Readability: ${content.length} chars`);
+        console.log(`📄 [extract] Readability RAW: ${content.length} chars`);
+        console.log(`📄 [extract] Readability PREVIEW (first 500 chars): "${content.substring(0, 500)}"`);
         extractionMethod = 'readability';
         if (!title && parsed.title) title = parsed.title.trim();
       }
