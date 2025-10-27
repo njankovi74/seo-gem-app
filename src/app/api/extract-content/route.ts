@@ -226,8 +226,21 @@ async function extractByUrl(url: string) {
         
         // FILTER: Preskoči noise paragrafe
         const textLower = text.toLowerCase();
+        
+        // Proveri da li je ovo related news item (Newsmax Balkans specific)
+        const isRelatedNews = 
+          $p.hasClass('news-item-description') ||
+          $p.hasClass('news-item-time') ||
+          $p.closest('.news-item').length > 0;
+        
+        // Proveri da li paragraf sadrži SAMO link ka drugoj vesti (related content)
+        const hasOnlyLink = $p.find('a[href*="/"]').length > 0 && 
+                           $p.find('a').text().length > text.length * 0.7; // >70% teksta je u linku
+        
         const isNoise = 
           text.length < 40 || // Prekratki paragrafi
+          isRelatedNews || // Related news items (Newsmax specific)
+          hasOnlyLink || // Paragraf je samo link ka drugoj vesti
           textLower.includes('google play') ||
           textLower.includes('app store') ||
           textLower.includes('preuzeti aplikaciju') ||
@@ -237,6 +250,8 @@ async function extractByUrl(url: string) {
           textLower.includes('pratite nas') ||
           textLower.includes('share') ||
           textLower.includes('follow') ||
+          textLower.includes('preuzmi') ||
+          textLower.includes('lekari bez granica') || // Ovaj deo je usually footer/credit
           $p.parent().hasClass('social') ||
           $p.parent().hasClass('share') ||
           $p.parent().hasClass('related') ||
