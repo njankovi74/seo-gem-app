@@ -181,24 +181,37 @@ async function extractByUrl(url: string) {
     console.log(`📄 [extract] JSON-LD articleBody: ${content.length} chars`);
   }
   
-  // 2) Fallback: ULTRA-optimizovana CSS selector strategija
+  // 2) Fallback: CSS selector strategija sa specifičnim site selektorima
   if (!content || content.length < 100) {
     console.log('🔍 [extract] Using smart CSS selector extraction...');
     
+    // PRIORITET: Site-specific selektori (najčistiji)
+    const siteSpecificSelectors = [
+      '.single-news-content',  // Newsmax Balkans - GLAVNI CONTENT
+      '.article-text',
+      '.story-text',
+      '.post-text'
+    ];
+    
+    // GENERIČKI: Article containeri
     const articleSelectors = [
       'article', '.article', '.post', '.entry-content', '.post-content',
       '.article-content', '[itemprop="articleBody"]', '.article__content',
       '.article-body__content', '.article-body', '.single-article', '.single-content',
-      '.post-body', '.post__content', '.post-text', '.story-content', 'main',
+      '.post-body', '.post__content', '.story-content', 'main',
       '.main-content', '#content', '.story-body'
     ];
     
+    const allSelectors = [...siteSpecificSelectors, ...articleSelectors];
+    
     // Pokušaj naći glavni article container
     let articleContainer = null;
-    for (const selector of articleSelectors) {
+    let usedSelector = '';
+    for (const selector of allSelectors) {
       const element = $(selector).first();
-      if (element.length && element.find('p').length > 2) {
+      if (element.length && element.find('p').length > 0) {
         articleContainer = element;
+        usedSelector = selector;
         console.log(`📦 [extract] Found article container: ${selector}`);
         break;
       }
