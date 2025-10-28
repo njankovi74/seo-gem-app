@@ -51,6 +51,11 @@ export function buildDeterministicSEO(
   rawTitle = truncate(rawTitle, 60);
   let baseMeta = `${capitalize(primary)} utiče na vašu publiku i rezultate. Saznajte kako se odnosi na ${secondary || 'ključne pojmove'} i zašto je važno za SEO. Pročitajte kompletnu analizu.`;
   baseMeta = truncate(baseMeta, 160);
+  
+  // Remove trailing period from title and meta description (SEO best practice)
+  rawTitle = rawTitle.trim().replace(/\.$/, '');
+  baseMeta = baseMeta.trim().replace(/\.$/, '');
+  
   const uniq = Array.from(new Set(params.keyTerms.filter(k => k && k.length > 2)));
   const keywordsLine = joinWithCharLimit(uniq.slice(0, 14), 300, ', ');
   const markdown = [
@@ -360,6 +365,11 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
     title = truncate(title, 60);
     meta = truncate(meta, 160);
     kwLine = kwLine ? kwLine.slice(0, 300) : '';
+    
+    // Remove trailing period from title and meta description (SEO best practice)
+    title = title.trim().replace(/\.$/, '');
+    meta = meta.trim().replace(/\.$/, '');
+    
     const markdown = ['1. SEO Naslov (Title Tag)','', '```', title, '```', '', '2. Meta Opis (Meta Description)', '', '```', meta, '```', '', '3. Formatirana Lista Ključnih Reči', '', '```', kwLine, '```'].join('\n');
     return { title, metaDescription: meta, keywordsLine: kwLine, markdown };
   }
