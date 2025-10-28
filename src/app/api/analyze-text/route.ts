@@ -476,6 +476,16 @@ export async function GET(request: NextRequest): Promise<NextResponse<AnalysisRe
       seoOutputs.keywordsLine !== deterministicSEO.keywordsLine
     );
 
+    // Cleanup: Ukloni tačku sa kraja SEO title i description
+    if (seoOutputs) {
+      if (seoOutputs.title && seoOutputs.title.endsWith('.')) {
+        seoOutputs.title = seoOutputs.title.slice(0, -1);
+      }
+      if (seoOutputs.metaDescription && seoOutputs.metaDescription.endsWith('.')) {
+        seoOutputs.metaDescription = seoOutputs.metaDescription.slice(0, -1);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {

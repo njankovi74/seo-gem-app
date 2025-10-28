@@ -56,6 +56,13 @@ Ponuđeni:
 
 **BRAND VOICE: Informativni, bez clickbaita, bez senzacionalizma**
 ${fewShotExamples}
+${similarExamples.length > 0 ? `
+**‼️ KRITIČNO: ANALIZIRAJ GORNJE PRIMERE**
+Novinar je ranije birao naslove za slične članke. ${preferredPattern}
+**TVOJ ZADATAK:** Generiši naslove koji PRATE OVAJ ISTI PATTERN koji novinar preferira!
+Ako novinar bira faktografske naslove - NE GENERIŠI emotivne!
+Ako novinar bira detaljne naslove - dodaj kontekst i specifičnosti!
+` : ''}
 Generiši 3 različita SEO naslova za sledeći tekst:
 
 **STIL 1: FAKTOGRAFSKI** (Newsmax standard)
