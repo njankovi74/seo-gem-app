@@ -917,6 +917,153 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Help Modal */}
+      {showHelp && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Brain className="w-8 h-8" />
+                  <div>
+                    <h2 className="text-2xl font-bold">Uputstvo za korišćenje</h2>
+                    <p className="text-blue-100 text-sm">SEO GEM - Inteligentni SEO Asistent</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowHelp(false)}
+                  className="hover:bg-white/20 rounded-lg p-2 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* Step 1 */}
+              <div className="flex space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
+                    1
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Ekstrakcija sadržaja</h3>
+                  <p className="text-gray-600 mb-2">
+                    Unesite URL vesti i kliknite <strong>"Ekstraktuj sadržaj"</strong>
+                  </p>
+                  <div className="bg-blue-50 border-l-4 border-blue-600 p-3 rounded">
+                    <p className="text-sm text-gray-700">
+                      <strong>💡 Tip:</strong> Sistem automatski izvlači naslov, lead i glavni tekst članka
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className="flex space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
+                    2
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Izbor SEO naslova</h3>
+                  <p className="text-gray-600 mb-2">
+                    AI generiše <strong>3 različita stila naslova</strong>:
+                  </p>
+                  <ul className="space-y-2 mb-3">
+                    <li className="flex items-start space-x-2">
+                      <span className="text-blue-600 font-bold">•</span>
+                      <span className="text-gray-700"><strong>Faktografski:</strong> Direktan, bez emotivnosti</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-green-600 font-bold">•</span>
+                      <span className="text-gray-700"><strong>Kontekstualni:</strong> Sa dodatnim kontekstom</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-purple-600 font-bold">•</span>
+                      <span className="text-gray-700"><strong>Detaljni:</strong> Optimizovan za Google</span>
+                    </li>
+                  </ul>
+                  <div className="bg-green-50 border-l-4 border-green-600 p-3 rounded">
+                    <p className="text-sm text-gray-700">
+                      <strong>🎯 Važno:</strong> Odabir naslova pomaže sistemu da "nauči" vaš stil!
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
+                    3
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">SEO analiza i preporuke</h3>
+                  <p className="text-gray-600 mb-2">
+                    Nakon izbora naslova, kliknite <strong>"Pokreni SEO Analizu"</strong>
+                  </p>
+                  <p className="text-gray-600 mb-3">
+                    Dobijate kompletne SEO elemente:
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <div className="bg-gray-50 p-2 rounded">
+                      <span className="text-xs font-semibold text-gray-700">✓ SEO Naslov (optimizovan)</span>
+                    </div>
+                    <div className="bg-gray-50 p-2 rounded">
+                      <span className="text-xs font-semibold text-gray-700">✓ Meta Opis</span>
+                    </div>
+                    <div className="bg-gray-50 p-2 rounded">
+                      <span className="text-xs font-semibold text-gray-700">✓ Ključne reči</span>
+                    </div>
+                    <div className="bg-gray-50 p-2 rounded">
+                      <span className="text-xs font-semibold text-gray-700">✓ Analitika</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* RAG Learning */}
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <Brain className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
+                  <div>
+                    <h4 className="font-semibold text-amber-900 mb-2">🧠 Sistem učenja (RAG)</h4>
+                    <p className="text-sm text-amber-800">
+                      Svaki put kada odaberete naslov, sistem zapamti vašu preferenciju. 
+                      Nakon 5-10 odabira, AI će automatski generisati naslove u stilu koji PREFERIRATE!
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Copy funkcija */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-2">📋 Kopiranje rezultata</h4>
+                <p className="text-sm text-gray-700">
+                  Kliknite na ikonicu <Copy className="w-4 h-4 inline" /> pored bilo kog rezultata da kopirate u clipboard.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 p-4 rounded-b-lg border-t">
+              <button
+                onClick={() => setShowHelp(false)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+              >
+                Razumem, idemo!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -959,151 +1106,4 @@ function Metric({ label, value, tone = 'gray', tooltip }: { label: string; value
     </div>
   );
 }
-
-{/* Help Modal */}
-{showHelp && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-      {/* Header */}
-      <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Brain className="w-8 h-8" />
-            <div>
-              <h2 className="text-2xl font-bold">Uputstvo za korišćenje</h2>
-              <p className="text-blue-100 text-sm">SEO GEM - Inteligentni SEO Asistent</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowHelp(false)}
-            className="hover:bg-white/20 rounded-lg p-2 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-6 space-y-6">
-        {/* Step 1 */}
-        <div className="flex space-x-4">
-          <div className="flex-shrink-0">
-            <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
-              1
-            </div>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Ekstrakcija sadržaja</h3>
-            <p className="text-gray-600 mb-2">
-              Unesite URL vesti i kliknite <strong>"Ekstraktuj sadržaj"</strong>
-            </p>
-            <div className="bg-blue-50 border-l-4 border-blue-600 p-3 rounded">
-              <p className="text-sm text-gray-700">
-                <strong>💡 Tip:</strong> Sistem automatski izvlači naslov, lead i glavni tekst članka
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Step 2 */}
-        <div className="flex space-x-4">
-          <div className="flex-shrink-0">
-            <div className="w-10 h-10 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
-              2
-            </div>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Izbor SEO naslova</h3>
-            <p className="text-gray-600 mb-2">
-              AI generiše <strong>3 različita stila naslova</strong>:
-            </p>
-            <ul className="space-y-2 mb-3">
-              <li className="flex items-start space-x-2">
-                <span className="text-blue-600 font-bold">•</span>
-                <span className="text-gray-700"><strong>Faktografski:</strong> Direktan, bez emotivnosti</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <span className="text-green-600 font-bold">•</span>
-                <span className="text-gray-700"><strong>Kontekstualni:</strong> Sa dodatnim kontekstom</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <span className="text-purple-600 font-bold">•</span>
-                <span className="text-gray-700"><strong>Detaljni:</strong> Optimizovan za Google</span>
-              </li>
-            </ul>
-            <div className="bg-green-50 border-l-4 border-green-600 p-3 rounded">
-              <p className="text-sm text-gray-700">
-                <strong>🎯 Važno:</strong> Odabir naslova pomaže sistemu da "nauči" vaš stil!
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Step 3 */}
-        <div className="flex space-x-4">
-          <div className="flex-shrink-0">
-            <div className="w-10 h-10 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
-              3
-            </div>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">SEO analiza i preporuke</h3>
-            <p className="text-gray-600 mb-2">
-              Nakon izbora naslova, kliknite <strong>"Pokreni SEO Analizu"</strong>
-            </p>
-            <p className="text-gray-600 mb-3">
-              Dobijate kompletne SEO elemente:
-            </p>
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <div className="bg-gray-50 p-2 rounded">
-                <span className="text-xs font-semibold text-gray-700">✓ SEO Naslov (optimizovan)</span>
-              </div>
-              <div className="bg-gray-50 p-2 rounded">
-                <span className="text-xs font-semibold text-gray-700">✓ Meta Opis</span>
-              </div>
-              <div className="bg-gray-50 p-2 rounded">
-                <span className="text-xs font-semibold text-gray-700">✓ Ključne reči</span>
-              </div>
-              <div className="bg-gray-50 p-2 rounded">
-                <span className="text-xs font-semibold text-gray-700">✓ Analitika</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* RAG Learning */}
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-lg p-4">
-          <div className="flex items-start space-x-3">
-            <Brain className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
-            <div>
-              <h4 className="font-semibold text-amber-900 mb-2">🧠 Sistem učenja (RAG)</h4>
-              <p className="text-sm text-amber-800">
-                Svaki put kada odaberete naslov, sistem zapamti vašu preferenciju. 
-                Nakon 5-10 odabira, AI će automatski generisati naslove u stilu koji PREFERIRATE!
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Copy funkcija */}
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <h4 className="font-semibold text-gray-900 mb-2">📋 Kopiranje rezultata</h4>
-          <p className="text-sm text-gray-700">
-            Kliknite na ikonicu <Copy className="w-4 h-4 inline" /> pored bilo kog rezultata da kopirate u clipboard.
-          </p>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="bg-gray-50 p-4 rounded-b-lg border-t">
-        <button
-          onClick={() => setShowHelp(false)}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
-        >
-          Razumem, idemo!
-        </button>
-      </div>
-    </div>
-  </div>
-)}
 
