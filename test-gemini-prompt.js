@@ -4,7 +4,11 @@ async function testGeminiPrompt() {
     console.log('🔍 Testiram Gemini sa pravim SEO promptom...\n');
     
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const apiKey = 'AIzaSyA5KObzEPB51hPyDeviz1NfGeXspTncbdY';
+    const apiKey = process.env.GEMINI_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY not found in environment');
+    }
     
     const client = new GoogleGenerativeAI(apiKey);
     

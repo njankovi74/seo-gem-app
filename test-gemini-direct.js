@@ -4,7 +4,11 @@ async function testGeminiDirect() {
     console.log('🔍 Testiram Gemini SDK direktno...\n');
     
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const apiKey = 'AIzaSyA5KObzEPB51hPyDeviz1NfGeXspTncbdY'; // Vaš ključ iz .env.local
+    const apiKey = process.env.GEMINI_API_KEY; // Load from environment
+    
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY not found in environment');
+    }
     
     const client = new GoogleGenerativeAI(apiKey);
     
