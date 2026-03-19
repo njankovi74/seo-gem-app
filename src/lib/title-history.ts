@@ -7,7 +7,7 @@ const openai = new OpenAI({
 
 export interface TitleOption {
   text: string;
-  style: 'faktografski' | 'kontekstualni' | 'detaljni';
+  style: 'informativni' | 'geo_pitanje' | 'discover_hook';
   length: number;
   reasoning: string;
 }

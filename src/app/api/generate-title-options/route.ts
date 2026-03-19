@@ -52,9 +52,7 @@ Ponuđeni:
           .join('\n')}\n**PATTERN:** Novinar preferira ${preferredPattern}\n`
       : '';
 
-    const prompt = `Ti si SEO asistent za Newsmax Balkans - informativni portal fokusiran na FAKTOGRAFIJU i AUTORITET.
-
-**BRAND VOICE: Informativni, bez clickbaita, bez senzacionalizma**
+    const prompt = `Ti si Senior Urednik nacionalnog informativnog portala i ekspert za SEO i GEO (Generative Engine Optimization) na srpskom tržištu. Tvoj zadatak je da, na osnovu priloženog teksta i RAG primera, generišeš tačno 3 različite opcije SEO naslova.
 ${fewShotExamples}
 ${similarExamples.length > 0 ? `
 **‼️ KRITIČNO: ANALIZIRAJ GORNJE PRIMERE**
@@ -63,46 +61,37 @@ Novinar je ranije birao naslove za slične članke. ${preferredPattern}
 Ako novinar bira faktografske naslove - NE GENERIŠI emotivne!
 Ako novinar bira detaljne naslove - dodaj kontekst i specifičnosti!
 ` : ''}
-Generiši 3 različita SEO naslova za sledeći tekst:
 
-**STIL 1: FAKTOGRAFSKI** (Newsmax standard)
-- IME + GLAGOL + ČINJENICA
-- Primer: "Marko Petrović podneo ostavku u klubu"
-- Fokus: Ko + šta + gde (bez emotivnih reči)
-- User intent: "Šta se desilo?" - direktan odgovor
+**PRE nego što ispišeš naslove, moraš interno da uradiš sledeću analizu (Chain-of-Thought):**
+1. Ekstrahuj glavni entitet ili fenomen iz teksta. OPREZ: Ako je osoba pomenuta u tekstu samo sagovornik, ekspert ili izvor (koji nije opštepoznata javna ličnost), NJENO IME NIJE GLAVNI ENTITET. U tom slučaju, glavni entitet je tema/fenomen o kom se govori (npr. sajber kriminal, zakon, bolest).
+2. Definiši nameru pretrage korisnika (Search Intent).
+3. Zatim, generiši 3 opcije naslova prema sledećoj strukturi:
 
-**STIL 2: KONTEKSTUALNI** (malo drama, ali fakti)
-- AKCIJA + POSLEDICA ili IME + IZJAVA
-- Primer: "Petrović klubu: Odlazim zbog nepravde"
-- Fokus: User traži "šta je rekao", "zašto se desilo"
-- Dodaje dramatični element uz očuvanje faktografije
+**Opcija 1 — Tradicionalni/Informativni naslov:**
+- Fokusiran na glavni entitet
+- Jasan, direktan, idealan za klasičnu pretragu
+- FORMAT: KO + ŠTA + GDE
 
-**STIL 3: DETALJNI** (long-tail SEO optimized)
-- IME + DETALJNA AKCIJA + SPECIFIČAN KONTEKST
-- Primer: "Marko Petrović (32), kapiten kluba, podneo ostavku nakon spora"
-- Fokus: Maksimalan SEO (godine, pozicija, razlog)
-- Idealno za Google rank - kompletna informacija
+**Opcija 2 — GEO/Pitanje-Odgovor:**
+- Formulisan tako da direktno pogađa konverzacijski upit korisnika (npr. "Kako da...", "Ko je...", "Zašto je...")
+- Idealan za AI Overviews i glasovnu pretragu
+- Mora zvučati kao prirodno pitanje koje korisnik postavlja
 
-**OBAVEZNA PRAVILA ZA SVA 3:**
-- ✅ Srpska transkripcija imena (Tramp, ne Trump; Matijas Lesor, ne Mathias Lessort)
+**Opcija 3 — Discover Hook:**
+- Naslov koji budi radoznalost za Google Discover feed
+- Apsolutno zadržava novinarski integritet
+- Privlači klik bez clickbaita — koristi specifičnost i kontekst umesto senzacionalizma
+
+**STROGA PRAVILA (Negative Prompting):**
+- ❌ SVI naslovi MORAJU biti kraći od 70 karaktera (uključujući razmake)!
+- ❌ STROGO ZABRANJENO je korišćenje clickbait reči: "šokantno", "neverovatno", "nećete verovati", "haos", "skandal", "užas"
+- ❌ ZABRANJENO: Ne stavljaj imena sagovornika, eksperata ili analitičara u naslov (npr. "Džim Fuda:", "Marko Marković:"). Imena u naslovu koristi SAMO ako je reč o opštepoznatim javnim ličnostima od nacionalnog ili globalnog značaja (predsednici, poznati sportisti, estradne zvezde). U suprotnom, fokusiraj naslov isključivo na TEMU ili PROBLEM.
+- ❌ Zadrži strog, objektivan novinarski ton. Izbegavaj marketinški jezik i AI floskule.
+- ❌ Engleska imena u srpskom tekstu — koristi srpsku transkripciju kako je u tekstu!
+- ❌ Emotivne ocene: "dirljivo", "inspirativno", "tužno"
 - ✅ Puno ime + prezime (ne samo prezime!)
 - ✅ Pozicija/funkcija kada relevantno (centar, premijer, trener...)
-- ✅ Prirodan jezik - NE "se vraća na teren Panatinаikosa" (dečije)
-- ✅ Naslov < 75 karaktera (OBAVEZNO!)
 - ✅ Završena rečenica (ne prekidati na pola!)
-
-**ZABRANJENO:**
-- ❌ Clickbait: "Nećete verovati...", "Šok!", "Neverovatno!"
-- ❌ Senzacionalizam: "Skandal!", "Užas u..."
-- ❌ Emotivne ocene: "Dirljivo", "Inspirativno", "Tužno"
-- ❌ Engleska imena u srpskom tekstu
-
-**PROVERA PRE SLANJA:**
-1. Da li svaki naslov ima PUNO IME (ne samo prezime)?
-2. Da li je < 75 chars?
-3. Da li je srpska transkripcija (Tramp, ne Trump)?
-4. Da li je prirodan jezik (ne AI smell)?
-5. Da li odgovara na user search intent?
 
 **KONTEKST:**
 - Primarna ključna reč: ${primaryKeyword}
@@ -118,19 +107,19 @@ ${articleText}
   "titles": [
     {
       "text": "...",
-      "style": "faktografski",
+      "style": "informativni",
       "length": 56,
-      "reasoning": "Zašto je ovaj naslov dobar za Newsmax stil"
+      "reasoning": "Chain-of-thought: koji entitet, koji intent, zašto ovaj naslov"
     },
     {
       "text": "...",
-      "style": "kontekstualni",
+      "style": "geo_pitanje",
       "length": 58,
       "reasoning": "..."
     },
     {
       "text": "...",
-      "style": "detaljni",
+      "style": "discover_hook",
       "length": 60,
       "reasoning": "..."
     }
@@ -139,6 +128,7 @@ ${articleText}
 
     const model = genAI.getGenerativeModel({
       model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      generationConfig: { temperature: 0.6 },
     });
 
     const result = await model.generateContent(prompt);
@@ -168,8 +158,8 @@ ${articleText}
     // Fix: Recalculate length field to ensure accuracy (LLM sometimes miscounts)
     titles.forEach((title, idx) => {
       title.length = title.text.length; // Overwrite LLM's length with actual character count
-      if (!title.text || title.text.length > 75) {
-        console.warn(`⚠️ Title ${idx + 1} too long: ${title.text?.length || 0} chars`);
+      if (!title.text || title.text.length > 70) {
+        console.warn(`⚠️ Title ${idx + 1} too long: ${title.text?.length || 0} chars (limit: 70)`);
       }
     });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, FileText, Brain, BarChart3, ExternalLink, Copy, Check, Info, HelpCircle, X } from 'lucide-react';
+import { Search, FileText, Brain, BarChart3, ExternalLink, Copy, Check, Info, HelpCircle, X, RefreshCw } from 'lucide-react';
 
 interface AnalysisResult {
   tfidfAnalysis: any;
@@ -18,18 +18,21 @@ interface AnalysisResult {
     title: string;
     metaDescription: string;
     keywordsLine: string;
+    schemaMarkup: string;
     markdown: string;
   };
   seoOutputsGemini?: {
     title: string;
     metaDescription: string;
     keywordsLine: string;
+    schemaMarkup: string;
     markdown: string;
   };
   seoOutputsOpenAI?: {
     title: string;
     metaDescription: string;
     keywordsLine: string;
+    schemaMarkup: string;
     markdown: string;
   };
   llm?: {
@@ -71,7 +74,7 @@ interface ExtractedContent {
 
 interface TitleOption {
   text: string;
-  style: 'faktografski' | 'kontekstualni' | 'detaljni';
+  style: 'informativni' | 'geo_pitanje' | 'discover_hook';
   length: number;
   reasoning: string;
 }
@@ -506,12 +509,23 @@ export default function Home() {
                   AI je generisao 3 Newsmax-style naslova. Odaberi jedan ili unesi sopstveni.
                 </p>
               </div>
-              <button
-                onClick={() => setStep('content')}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                ← Nazad
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleAnalyzeContent}
+                  disabled={loading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 border border-blue-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Generiši nove naslove"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                  Generiši ponovo
+                </button>
+                <button
+                  onClick={() => setStep('content')}
+                  className="text-sm text-gray-500 hover:text-gray-700"
+                >
+                  ← Nazad
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3 mb-6">
@@ -740,13 +754,19 @@ export default function Home() {
                     <button onClick={() => copyToClipboard(analysisResult.seoOutputs!.title, 'seo-title-top')} className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border">Kopiraj Title</button>
                     <button onClick={() => copyToClipboard(analysisResult.seoOutputs!.metaDescription, 'seo-meta-top')} className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border">Kopiraj Meta</button>
                     <button onClick={() => copyToClipboard(analysisResult.seoOutputs!.keywordsLine, 'seo-kw-top')} className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border">Kopiraj Keywords</button>
+                    {analysisResult.seoOutputs!.schemaMarkup && (
+                      <button onClick={() => copyToClipboard(analysisResult.seoOutputs!.schemaMarkup, 'seo-schema-top')} className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border">Kopiraj Schema</button>
+                    )}
                     <button onClick={() => copyToClipboard(analysisResult.seoOutputs!.markdown, 'seo-md-top')} className="px-3 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700 rounded">Kopiraj ceo Markdown</button>
                   </div>
                 </div>
                 <div className="prose max-w-none">
                   <CopyField label="1. SEO Naslov (Title Tag)" value={analysisResult.seoOutputs.title} fieldKey="seo-title-field" />
-                  <CopyField label="2. Meta Opis (Meta Description)" value={analysisResult.seoOutputs.metaDescription} fieldKey="seo-meta-field" />
-                  <CopyField label="3. Formatirana Lista Ključnih Reči" value={analysisResult.seoOutputs.keywordsLine} fieldKey="seo-kw-field" />
+                  <CopyField label="2. Meta Opis (Answer Nugget)" value={analysisResult.seoOutputs.metaDescription} fieldKey="seo-meta-field" />
+                  <CopyField label="3. Ključne reči / Tagovi (Named Entities)" value={analysisResult.seoOutputs.keywordsLine} fieldKey="seo-kw-field" />
+                  {analysisResult.seoOutputs.schemaMarkup && (
+                    <CopyField label="4. Schema Markup (JSON-LD)" value={analysisResult.seoOutputs.schemaMarkup} fieldKey="seo-schema-field" />
+                  )}
                 </div>
               </div>
             ) : null}

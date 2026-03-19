@@ -2,6 +2,7 @@ export interface SEOOutputs {
   title: string;
   metaDescription: string;
   keywordsLine: string;
+  schemaMarkup: string;
   markdown: string;
 }
 
@@ -58,6 +59,7 @@ export function buildDeterministicSEO(
   
   const uniq = Array.from(new Set(params.keyTerms.filter(k => k && k.length > 2)));
   const keywordsLine = joinWithCharLimit(uniq.slice(0, 14), 300, ', ');
+  const schemaMarkup = '';
   const markdown = [
     '1. SEO Naslov (Title Tag)',
     '',
@@ -77,7 +79,7 @@ export function buildDeterministicSEO(
     keywordsLine,
     '```'
   ].join('\n');
-  return { title: rawTitle, metaDescription: baseMeta, keywordsLine, markdown };
+  return { title: rawTitle, metaDescription: baseMeta, keywordsLine, schemaMarkup, markdown };
 }
 
 export async function buildSEOWithLLM(
@@ -106,96 +108,54 @@ export async function buildSEOWithLLM(
 
   const jsonSchema = skipTitleGeneration 
     ? `{
-  "meta": string,           // 150–160 karaktera, informativan sažetak vrednosti teksta (bez CTA), uključi primarnu i 1 sekundarnu ključnu reč, bez navodnika/emodžija
-  "keywords": string[],     // 10–14 komada, 70–90% long‑tail (2–4 reči), mala slova, bez duplikata/stop reči/ličnih imena/brenda, relevantne i precizne
-  "slug": string            // kratko, kebab-case, 4–8 reči, samo [a-z0-9-]
+  "meta_description": string,  // Answer Nugget, max 160 karaktera, sa CTA na kraju
+  "keywords": string[],        // 5–10 Named Entities (ličnosti, institucije, lokacije, zakoni, pojmovi)
+  "schema_markup": string      // validan JSON-LD za NewsArticle schemu
 }`
     : `{
-  "title": string,          // ≤ 75 karaktera, uključi primarnu ključnu reč, bez clickbaita, pravilna kapitalizacija, bez navodnika i brenda sajta
-  "meta": string,           // 150–160 karaktera, informativan sažetak vrednosti teksta (bez CTA), uključi primarnu i 1 sekundarnu ključnu reč, bez navodnika/emodžija
-  "keywords": string[],     // 10–14 komada, 70–90% long‑tail (2–4 reči), mala slova, bez duplikata/stop reči/ličnih imena/brenda, relevantne i precizne
-  "slug": string            // kratko, kebab-case, 4–8 reči, samo [a-z0-9-]
+  "title": string,             // ≤ 70 karaktera SEO naslov
+  "meta_description": string,  // Answer Nugget, max 160 karaktera, sa CTA na kraju
+  "keywords": string[],        // 5–10 Named Entities (ličnosti, institucije, lokacije, zakoni, pojmovi)
+  "schema_markup": string      // validan JSON-LD za NewsArticle schemu
 }`;
 
   const titleInstructions = skipTitleGeneration
     ? `**NASLOV JE VEĆ ODREĐEN:** ${context.documentTitle}
-**TVOJ ZADATAK:** Generiši samo Meta opis, Keywords i Slug na osnovu ovog naslova.`
-    : `Pravila za SEO naslov (USER-CENTRIC):
-- **JEZIK I TRANSKRPCIJA:**
-  * **OBAVEZNO koristi SRPSKU TRANSKRIPCIJU imena** kako je napisano u tekstu!
-  * ❌ "Mathias Lessort" → ✅ "Matijas Lesor" (ako je u tekstu srpski)
-  * ❌ "LeBron James" → ✅ "Lebron Džejms" (ako je u tekstu srpski)
-  * **NE "ispravljaj" imena u originalni engleski** - zadrži kako je u tekstu!
+**TVOJ ZADATAK:** Generiši Meta opis (Answer Nugget), Keywords (Named Entities) i Schema Markup na osnovu ovog naslova i teksta.`
+    : `**Generiši SEO naslov:** ≤ 70 karaktera, uključi primarnu ključnu reč, bez clickbaita, koristi srpsku transkripciju imena kako je u tekstu.`;
 
-- **PRIRODAN JEZIK - IZBEGAVAJ AI SMELL:**
-  * ❌ "vraća se na teren Panatinaikosa" (dečije, neprirodno)
-  * ✅ "centar Panatinaikosa vraća se na teren" (profesionalno)
-  * ✅ "košarkaš Panatinaikosa spreman za povratak" (prirodno)
-  * **Uključi POZICIJU/FUNKCIJU** kada je relevantno (centar, trener, premijer...)
-  * **Izbegavaj formulacije koje odmah otkrivaju da je AI pisao!**
-
-- **OBAVEZNO UKLJUČI:**
-  * Ako tekst pominje **IME OSOBE** → IME mora biti u naslovu (user traži tu osobu!)
-  * Ako tekst pominje **LOKACIJU** (grad, mesto) → LOKACIJA mora biti u naslovu
-  * Ako tekst opisuje **DOGAĐAJ/AKCIJU** → GLAGOL mora biti u naslovu (šta se desilo?)
-  * Ako tekst pominje **GODINE/STAROST** → DODAJ u naslov (relevantno za user)
-
-- **FORMAT: KO + ŠTA + GDE (ako postoje u tekstu)**
-  * Primer: "Dušan Knežević (18), paraatletičar iz Vršca osvaja medalje"
-           ↑ KO (ime+god) ↑ ŠTA (pozicija)  ↑ GDE    ↑ AKCIJA
-  * Primer: "Aleksandar Luković podneo ostavku u Radničkom"
-           ↑ KO           ↑ ŠTA (akcija)     ↑ GDE (klub)
-
-- **ZABRANJENO:**
-  * ❌ Generičke fraze: "Upornost i uspeh", "Priča o", "Inspirativna vest"
-  * ❌ Subjektivne ocene: "neverovatno", "senzacionalno", "dirljivo"  
-  * ❌ Transformacija u drugi žanr: News vest → NE smeš pretvoriti u feature story
-  * ❌ Presecanje naslova: Mora stati u 75 chars bez prekida rečenice
-
-- **ZADRŽI ORIGINALNU FORMU:**
-  * Pitanje → Pitanje sa "?" ("Kako X?" → "Kako X: detalji?")
-  * Glagol/akcija → Isti glagol ("podneo" → "podneo", NE "odlučio", NE "kraj ere")
-  * Ton → Isti žanr (vest → vest, vodič → vodič)
-
-- **PROVERA PRE SLANJA:**
-  1. Da li user koji traži ključne reči ODMAH vidi odgovor u naslovu?
-  2. Da li naslov ima IME/LOKACIJU/AKCIJU iz teksta?
-  3. Da li je naslov < 75 chars i ne prekida se na pola?
-  4. Da li je to news format, NE feature story?`;
-
-  const prompt = `Ti si SEO asistent za srpski jezik (latinica). Na osnovu ulaza generiši striktno JSON sa sledećim poljima:
+  const prompt = `Ti si Senior Urednik nacionalnog informativnog portala i GEO (Generative Engine Optimization) ekspert. Na osnovu ulaza generiši striktno JSON sa sledećim poljima:
 ${jsonSchema}
-
-MAIN PRINCIP: **User First - Search Intent Matching**
-→ Naslov mora biti DIREKTAN ODGOVOR na pitanje koje user ima kada traži ključne reči
-→ User pretraga → Vidi naslov → Prepoznaje odgovor → Klikne
 
 ${titleInstructions}
 
-Meta opis: 
-- Sažmi KO + ŠTA + GDE + KADA/ZAŠTO - **KONKRETNO iz teksta**
-- **🚨 KRITIČNO - ZAVRŠENA REČENICA:**
-  * Meta opis MORA biti 150-160 karaktera
-  * Meta opis MORA biti završena rečenica sa tačkom na kraju!
+**1. Meta Opis (meta_description) — Answer Nugget format:**
+- Formuliši kao DIREKTAN, INFORMATIVAN ODGOVOR na glavno pitanje ili temu članka.
+- Aktivan ton, bez okolišanja. Kreni ODMAH sa činjenicama.
+- STROGO ograničenje: maksimalno 160 karaktera.
+- Na samom kraju dodaj kratak, prirodan CTA, npr. "Saznajte više." ili "Pročitajte analizu."
+- ZABRANJENO: Ne započinji opis frazama poput "Ovaj članak govori o..." ili "Saznajte kako...". Kreni odmah sa činjenicama.
+- UVEK koristi PUNO IME I PREZIME na prvom pomenu osobe.
+- Meta opis MORA biti završena rečenica.
   * ❌ NEDOZVOLJENO: "...ukoliko se obaveze ne" (presečeno!)
-  * ✅ DOZVOLJENO: "...ukoliko se obaveze ne ispune." (završeno!)
-  * **Pre slanja proveri: Da li poslednja reč ima tačku i da li ima smisla?**
-- **🚨 NAJVAŽNIJE PRAVILO - NE SMEŠ PREKRŠITI:**
-  * **UVEK koristi PUNO IME I PREZIME osobe na PRVOM pomenu!**
-  * ❌ POGREŠNO: "Košarkaš Lesor..." → MORA: "Košarkaš Vasa Micić..."
-  * ❌ POGREŠNO: "Lesor, ključni igrač..." → MORA: "Vasa Micić, ključni igrač..."
-  * ❌ POGREŠNO: "Trener Ataman najavio..." → MORA: "Trener Ergin Ataman najavio..."
-  * **Samo prezime = NEPROFESIONALNO i NEDOVOLJNO PISMENO!**
-  * **Ovo je novinarsjki standard - bez izuzetaka!**
-- ❌ Bez CTA: "Saznajte", "Otkrijte", "Pročitajte"
-- ✅ Direktan info: "Košarkaš Vasa Micić vraća se...", "Trener Ergin Ataman podnosi...", "Procedura uključuje..."
+  * ✅ ISPRAVNO: "Milan Janković osvojio zlato na EP u paraatletici. Saznajte više."
 
-Ključne reči:
-- **KRITIČNO: Keywords MORAJU sadržati IME/NAZIV iz teksta u VEĆINI fraza!**
-  * ✅ "lesor povratak", "lesor panatinаikos", "lesor povreda" (ime u svakoj!)
-  * ❌ "oporavak nakon povrede", "trenerska procena" (generičko, neupotrebljivo!)
-- **User search intent:** Šta user KUCAu Google? "ime + akcija", "ime + lokacija", "ime + događaj"
-- Long-tail (2-4 reči), varijante sa lokacijom/kontekstom, bez generika/datuma
+**2. Ključne reči / Tagovi (keywords) — Named Entities:**
+- Ekstrahuj između 5 i 8 najvažnijih ENTITETA (Named Entities) iz teksta.
+- To su: ključne ličnosti, institucije, specifične lokacije, zakoni, pojmovi.
+- ZABRANJENO: Ne koristi generičke reči (npr. "vesti", "srbija", "novo"). Svaki tag mora biti specifičan entitet.
+- Maksimalno 10 fraza ukupno. Mala slova, bez duplikata.
+
+**3. Schema Markup (schema_markup) — JSON-LD:**
+- Generiši validan JSON-LD string za NewsArticle schemu.
+- Schema mora sadržati:
+  * "@context": "https://schema.org"
+  * "@type": "NewsArticle"
+  * "headline": izabran ili generisan SEO naslov
+  * "articleBody": sažetak teksta do 200 reči
+  * "author": kao {"@type": "Person", "name": "..."} ako je autor naveden u tekstu, inače izostavi
+  * "publisher": {"@type": "Organization", "name": "[Ime Portala]"}
+- Vrati schema_markup kao STRING (escaped JSON), NE kao ugnežden JSON objekat!
 
 Ulaz (sažetak):
 - Primarna ključna reč: ${primaryKW}
@@ -334,6 +294,7 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
     let title = fallback.title;
     let meta = fallback.metaDescription;
     let kwLine = fallback.keywordsLine;
+    let schemaMarkup = '';
     try {
       // Pokušaj da parsiraš kao JSON direktno
       const firstBrace = out.indexOf('{');
@@ -341,16 +302,25 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
       const jsonStr = firstBrace >= 0 && lastBrace > firstBrace ? out.slice(firstBrace, lastBrace + 1) : out;
       const obj = JSON.parse(jsonStr);
       if (obj?.title) title = obj.title.toString();
-      if (obj?.meta) meta = obj.meta.toString();
+      // Support both old "meta" and new "meta_description" field names
+      if (obj?.meta_description) meta = obj.meta_description.toString();
+      else if (obj?.meta) meta = obj.meta.toString();
       if (Array.isArray(obj?.keywords)) {
         const cleaned = sanitizeKeywords(
           obj.keywords.map((x: any) => x?.toString?.() || ''),
           primaryKW,
           secondaryKWs
         );
-  kwLine = joinWithCharLimit(cleaned, 300, ', ');
+        kwLine = joinWithCharLimit(cleaned, 300, ', ');
       }
-      // slug trenutno ne prikazujemo u UI, ali ga možemo kasnije dodati
+      // Parse schema_markup — could be a string or an object
+      if (obj?.schema_markup) {
+        if (typeof obj.schema_markup === 'string') {
+          schemaMarkup = obj.schema_markup;
+        } else if (typeof obj.schema_markup === 'object') {
+          schemaMarkup = JSON.stringify(obj.schema_markup, null, 2);
+        }
+      }
     } catch {
       // Fallback: heuristike iz prethodne verzije (ako model nije poslao JSON)
       const text = ensureText(out);
@@ -362,16 +332,15 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
       if (idx2 >= 0 && ((idx3 > idx2) || idx3 === -1)) meta = lines[idx2 + 1] || meta;
       if (idx3 >= 0) kwLine = lines[idx3 + 1] || kwLine;
     }
-    title = truncate(title, 60);
+    title = truncate(title, 70);
     meta = truncate(meta, 160);
     kwLine = kwLine ? kwLine.slice(0, 300) : '';
     
-    // Remove trailing period from title and meta description (SEO best practice)
+    // Remove trailing period from title (SEO best practice), keep meta as-is (has CTA with period)
     title = title.trim().replace(/\.$/, '');
-    meta = meta.trim().replace(/\.$/, '');
     
-    const markdown = ['1. SEO Naslov (Title Tag)','', '```', title, '```', '', '2. Meta Opis (Meta Description)', '', '```', meta, '```', '', '3. Formatirana Lista Ključnih Reči', '', '```', kwLine, '```'].join('\n');
-    return { title, metaDescription: meta, keywordsLine: kwLine, markdown };
+    const markdown = ['1. SEO Naslov (Title Tag)','', '```', title, '```', '', '2. Meta Opis (Meta Description)', '', '```', meta, '```', '', '3. Ključne reči / Tagovi (Named Entities)', '', '```', kwLine, '```', '', '4. Schema Markup (JSON-LD)', '', '```json', schemaMarkup || '(nije generisan)', '```'].join('\n');
+    return { title, metaDescription: meta, keywordsLine: kwLine, schemaMarkup, markdown };
   }
 
   try {
@@ -400,11 +369,11 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
         const res = await client.chat.completions.create({
           model: requestedModel,
           messages: [
-            { role: 'system', content: 'Ti si SEO asistent za srpski jezik.' },
+            { role: 'system', content: 'Ti si Senior Urednik nacionalnog informativnog portala i GEO (Generative Engine Optimization) ekspert.' },
             { role: 'user', content: prompt }
           ],
-          ...(isGPT5 ? {} : { temperature: 0.4 }),
-          max_completion_tokens: isGPT5 ? 8000 : 2000
+          ...(isGPT5 ? {} : { temperature: 0.6 }),
+          max_completion_tokens: isGPT5 ? 8000 : 4000
         });
         
         const content = res.choices?.[0]?.message?.content || '';
@@ -438,7 +407,7 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
   const client = new mod.GoogleGenerativeAI(apiKey);
   // Force JSON output to reduce parsing ambiguity on Gemini 2.x
   // Increased maxOutputTokens to 4000 - Serbian Cyrillic/Latin + complex keyword arrays need more tokens
-  const genConfig = { temperature: 0.4, maxOutputTokens: 4000, responseMimeType: 'application/json' } as any;
+  const genConfig = { temperature: 0.6, maxOutputTokens: 4000, responseMimeType: 'application/json' } as any;
 
       let lastErrMsg: string | undefined;
       async function tryGemini(modelName: string): Promise<string | null> {

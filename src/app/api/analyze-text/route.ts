@@ -16,7 +16,7 @@ interface AnalysisRequest {
   // New fields for title selection workflow
   selectedTitle?: string;
   selectionType?: 'ai_option_1' | 'ai_option_2' | 'ai_option_3' | 'custom';
-  offeredTitles?: Array<{ text: string; style: 'faktografski' | 'kontekstualni' | 'detaljni'; length: number; reasoning: string }>;
+  offeredTitles?: Array<{ text: string; style: 'informativni' | 'geo_pitanje' | 'discover_hook'; length: number; reasoning: string }>;
   articleUrl?: string;
 }
 
