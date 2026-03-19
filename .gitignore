@@ -36,6 +36,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local test/debug scripts
+check-supabase.js
+test-production-llm.js
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

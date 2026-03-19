@@ -27,22 +27,29 @@ LLM integration (project-specific conventions)
 - Fallback policy: if `SEO_LLM_STRICT_MODEL=true`, do not fall back to alternates; otherwise try reasonable alternates (see `seo-output.ts`). If `SEO_LLM_REQUIRED=true`, throw on LLM failure; else return deterministic output and include diagnostics.
 - Never echo API key values. Diagnostics expose only booleans (hasKeys) and error strings. Respect `SEO_DEBUG` when formatting error messages.
 - Use literal dynamic imports for SDKs so bundlers/serverless tracing include packages: `await import('openai')`, `await import('@google/generative-ai')`.
+- Dual-mode LLM support: `buildSEOWithDualLLM` runs both providers simultaneously for comparison; single providers via `buildSEOWithLLM`.
 
 Important patterns and gotchas
 - All API routes set `export const runtime = 'nodejs'` and `export const dynamic = 'force-dynamic'` to avoid static optimization and enable Node libs (JSDOM, Cheerio).
 - `next.config.ts` sets `serverExternalPackages` for heavy Node deps.
 - Extraction prefers JSON‑LD `articleBody`, then Readability, then selector heuristics with Serbian stop tokens.
+- Content extraction includes aggressive boilerplate removal targeting Serbian news sites (Newsmax Balkans patterns like app download prompts, social embeds).
 - When adding outputs that must fit UX constraints, reuse `truncate` and `joinWithCharLimit` patterns (see `seo-output.ts`) and keep Serbian tone/format rules.
 - Logging: return JSON errors; map Axios/network errors to user‑friendly messages in `extract-content` and honor `SEO_DEBUG` in analysis.
+- Test files (test-*.js) use Node.js http module with localhost:3000 for API validation - prefer these over manual testing.
 
 Developer workflows
 - Run locally (Windows PowerShell):
   - `npm install`
-  - `npm run dev` (Next.js dev server)
+  - `npm run dev` (Next.js dev server on http://localhost:3000)
   - Optional checks: `npm run lint`, `npm run build`, `npm start`
-- API probes:
+- API testing: Use included test scripts instead of manual curl/postman:
+  - `node test-api.js` (basic endpoint health checks)
+  - `node test-api-analyze.js` (full analysis pipeline tests)
+  - `node test-gemini-direct.js` (LLM connectivity tests)
+- API probes for debugging:
   - Extract: `GET /api/extract-content?url=<encoded>`
-  - Analyze quick test: `GET /api/analyze-text?text=...&provider=gemini&model=gemini-2.5-pro` (use for light checks)
+  - Analyze quick test: `GET /api/analyze-text?text=...&provider=gemini&model=gemini-1.5-flash`
   - LLM status: `GET /api/health`, `GET /api/models?provider=openai|gemini`, `GET /api/llm-test?provider=...&model=...`, `GET /api/self-check`
 
 When extending the system
