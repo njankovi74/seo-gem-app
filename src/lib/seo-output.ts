@@ -52,11 +52,11 @@ export function buildDeterministicSEO(
   rawTitle = truncate(rawTitle, 60);
   let baseMeta = `${capitalize(primary)} utiče na vašu publiku i rezultate. Saznajte kako se odnosi na ${secondary || 'ključne pojmove'} i zašto je važno za SEO. Pročitajte kompletnu analizu.`;
   baseMeta = truncate(baseMeta, 160);
-  
+
   // Remove trailing period from title and meta description (SEO best practice)
   rawTitle = rawTitle.trim().replace(/\.$/, '');
   baseMeta = baseMeta.trim().replace(/\.$/, '');
-  
+
   const uniq = Array.from(new Set(params.keyTerms.filter(k => k && k.length > 2)));
   const keywordsLine = joinWithCharLimit(uniq.slice(0, 14), 300, ', ');
   const schemaMarkup = '';
@@ -100,28 +100,28 @@ export async function buildSEOWithLLM(
 
   // Guardrails za kvalitet i usklađenost sa smernicama (sažeto iz dokumenta):
   const bannedTokens = [
-    'kliknite ovde','odmah','besplatno','najbolje ikad','šokantno','neverovatno','viralno','ekskluzivno','!!!'
+    'kliknite ovde', 'odmah', 'besplatno', 'najbolje ikad', 'šokantno', 'neverovatno', 'viralno', 'ekskluzivno', '!!!'
   ];
 
-  const primaryKW = context.keyTerms?.[0] || context.mainTopics?.[0] || (context.documentTitle || '').split(' ').slice(0,3).join(' ');
+  const primaryKW = context.keyTerms?.[0] || context.mainTopics?.[0] || (context.documentTitle || '').split(' ').slice(0, 3).join(' ');
   const secondaryKWs = context.keyTerms?.slice(1, 6) || [];
 
-  const jsonSchema = skipTitleGeneration 
+  const jsonSchema = skipTitleGeneration
     ? `{
   "meta_description": string,  // Answer Nugget, max 160 karaktera, sa CTA na kraju
-  "keywords": string[],        // 5–10 Named Entities (ličnosti, institucije, lokacije, zakoni, pojmovi)
+  "keywords": string[],        // 8–10 fraza: long-tail (3-4), mid-tail (3-4), core entiteti (2)
   "schema_markup": string      // validan JSON-LD za NewsArticle schemu
 }`
     : `{
   "title": string,             // ≤ 70 karaktera SEO naslov
   "meta_description": string,  // Answer Nugget, max 160 karaktera, sa CTA na kraju
-  "keywords": string[],        // 5–10 Named Entities (ličnosti, institucije, lokacije, zakoni, pojmovi)
+  "keywords": string[],        // 8–10 fraza: long-tail (3-4), mid-tail (3-4), core entiteti (2)
   "schema_markup": string      // validan JSON-LD za NewsArticle schemu
 }`;
 
   const titleInstructions = skipTitleGeneration
     ? `**NASLOV JE VEĆ ODREĐEN:** ${context.documentTitle}
-**TVOJ ZADATAK:** Generiši Meta opis (Answer Nugget), Keywords (Named Entities) i Schema Markup na osnovu ovog naslova i teksta.`
+**TVOJ ZADATAK:** Generiši Meta opis (Answer Nugget), Keywords (Long-Tail First hijerarhija) i Schema Markup na osnovu ovog naslova i teksta.`
     : `**Generiši SEO naslov:** ≤ 70 karaktera, uključi primarnu ključnu reč, bez clickbaita, koristi srpsku transkripciju imena kako je u tekstu.`;
 
   const prompt = `Ti si Senior Urednik nacionalnog informativnog portala i GEO (Generative Engine Optimization) ekspert. Na osnovu ulaza generiši striktno JSON sa sledećim poljima:
@@ -140,11 +140,28 @@ ${titleInstructions}
   * ❌ NEDOZVOLJENO: "...ukoliko se obaveze ne" (presečeno!)
   * ✅ ISPRAVNO: "Milan Janković osvojio zlato na EP u paraatletici. Saznajte više."
 
-**2. Ključne reči / Tagovi (keywords) — Named Entities:**
-- Ekstrahuj između 5 i 8 najvažnijih ENTITETA (Named Entities) iz teksta.
-- To su: ključne ličnosti, institucije, specifične lokacije, zakoni, pojmovi.
-- ZABRANJENO: Ne koristi generičke reči (npr. "vesti", "srbija", "novo"). Svaki tag mora biti specifičan entitet.
-- Maksimalno 10 fraza ukupno. Mala slova, bez duplikata.
+**2. Ključne reči / Tagovi (keywords) — Long-Tail First hijerarhija:**
+Tvoj zadatak je da generišeš hijerarhijsku listu od tačno 8 do 10 ključnih reči i fraza koje korisnici ZAISTA ukucavaju u pretraživač.
+Redosled i struktura niza MORAJU biti sledeći:
+
+**Nivo 1: Long-tail fraze (Prioritet! Generiši 3 do 4 fraze):**
+- Ove fraze moraju imati između 3 i 6 reči.
+- Formuliši ih kao prirodna korisnička pitanja ili visoko specifične konverzacijske upite (Voice Search stil) na koje ovaj članak daje odgovor.
+- Primer: "kako se bezbedno evakuisati iz inostranstva", "najbolji načini za zaštitu dece na internetu"
+- Ovo je ključno za AI Overviews.
+
+**Nivo 2: Mid-tail fraze (Generiši 3 do 4 fraze):**
+- Ove fraze imaju 2 do 3 reči.
+- Spajaju glavni entitet sa akcijom ili problemom.
+- Primer: "evakuacija državljana Srbije", "vrbovanje maloletnika online"
+
+**Nivo 3: Core Entiteti (Generiši 2 fraze):**
+- Najviše 2 glavna entiteta (1 do 2 reči, npr. ime specifične lokacije, institucije ili osobe od javnog značaja) radi mapiranja u Knowledge Graph.
+
+❌ STROGO ZABRANJENO (Negative Prompting):
+- NE SMEŠ da generišeš besmislene SEO permutacije istih reči (npr. ako staviš "evakuacija iz Katara", ne smeš dodati "Katar evakuacija" ili "evakuacija Katar"). Svaka fraza mora biti unikatna po nameri.
+- Izbegavaj generičke reči od jedne reči (vesti, srbija, novo, danas) ukoliko nisu deo šire fraze.
+- Vrati strogo jedan niz (array) stringova koji prati ovu hijerarhiju. Mala slova, bez duplikata.
 
 **3. Schema Markup (schema_markup) — JSON-LD:**
 - Generiši validan JSON-LD string za NewsArticle schemu.
@@ -172,7 +189,7 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
     try {
       if (val == null) return '';
       if (typeof val === 'string') return val;
-      
+
       // PRIORITY 1: Gemini SDK result shape - result.response.text() is a METHOD
       // This is the primary way Gemini SDK returns content in current versions
       if (val.response && typeof val.response.text === 'function') {
@@ -183,14 +200,14 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
           // If text() throws, continue to fallbacks
         }
       }
-      
+
       // PRIORITY 2: Direct text method or property on the value itself
       if (typeof val.text === 'function') {
         const t = val.text();
         return typeof t === 'string' ? t : String(t ?? '');
       }
       if (typeof val.text === 'string') return val.text;
-      
+
       // PRIORITY 3: response.text as a string property (older or alternative SDK shapes)
       if (val.response) {
         const r = val.response;
@@ -241,7 +258,7 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
   }
 
   function sanitizeKeywords(arr: string[], primary: string, secondaries: string[]): string[] {
-    const stop = new Set(['je','za','u','na','i','od','do','se','da','koji','kako','što','sto','ili','ali','pa','su','sa','o','autor','društvo','hronika','video','foto','komentar','najnovije']);
+    const stop = new Set(['je', 'za', 'u', 'na', 'i', 'od', 'do', 'se', 'da', 'koji', 'kako', 'što', 'sto', 'ili', 'ali', 'pa', 'su', 'sa', 'o', 'autor', 'društvo', 'hronika', 'video', 'foto', 'komentar', 'najnovije']);
     const out: string[] = [];
     for (const k of arr || []) {
       const t = (k || '').toString().trim().toLowerCase();
@@ -260,7 +277,7 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
 
     // ako nema dovoljno long‑tail, sintetizuj na osnovu primarne + sekundarnih
     const primaryBase = (primary || '').toLowerCase().trim();
-    const sec = (secondaries || []).map(s => (s || '').toLowerCase().trim()).filter(Boolean).slice(0,6);
+    const sec = (secondaries || []).map(s => (s || '').toLowerCase().trim()).filter(Boolean).slice(0, 6);
     for (const s of sec) {
       if (out.length >= 14) break;
       const combo1 = `${primaryBase} ${s}`.trim();
@@ -335,11 +352,11 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
     title = truncate(title, 70);
     meta = truncate(meta, 160);
     kwLine = kwLine ? kwLine.slice(0, 300) : '';
-    
+
     // Remove trailing period from title (SEO best practice), keep meta as-is (has CTA with period)
     title = title.trim().replace(/\.$/, '');
-    
-    const markdown = ['1. SEO Naslov (Title Tag)','', '```', title, '```', '', '2. Meta Opis (Meta Description)', '', '```', meta, '```', '', '3. Ključne reči / Tagovi (Named Entities)', '', '```', kwLine, '```', '', '4. Schema Markup (JSON-LD)', '', '```json', schemaMarkup || '(nije generisan)', '```'].join('\n');
+
+    const markdown = ['1. SEO Naslov (Title Tag)', '', '```', title, '```', '', '2. Meta Opis (Meta Description)', '', '```', meta, '```', '', '3. Ključne reči / Tagovi (Named Entities)', '', '```', kwLine, '```', '', '4. Schema Markup (JSON-LD)', '', '```json', schemaMarkup || '(nije generisan)', '```'].join('\n');
     return { title, metaDescription: meta, keywordsLine: kwLine, schemaMarkup, markdown };
   }
 
@@ -352,20 +369,20 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
     if (isOpenAI) {
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) throw new Error('OPENAI_API_KEY missing');
-      
+
       const mod: any = await import('openai').catch(() => null);
       if (!mod || !mod.default) throw new Error('openai sdk not installed');
-      
+
       const client = new mod.default({ apiKey });
-      
+
       console.log(`🟢 [OpenAI] Trying model: ${requestedModel}`);
-      
+
       try {
         // GPT-5 models don't support custom temperature, must use default (1)
         // GPT-5 also uses reasoning tokens (chain-of-thought), needs much higher limit
         // Testing shows: 4000 works for simple texts, but 8000 needed for complex/short texts
         const isGPT5 = requestedModel.startsWith('gpt-5');
-        
+
         const res = await client.chat.completions.create({
           model: requestedModel,
           messages: [
@@ -375,16 +392,16 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
           ...(isGPT5 ? {} : { temperature: 0.6 }),
           max_completion_tokens: isGPT5 ? 8000 : 4000
         });
-        
+
         const content = res.choices?.[0]?.message?.content || '';
-        
+
         console.log(`✅ [OpenAI] Response:`, {
           model: requestedModel,
           textLength: content.length,
           finishReason: res.choices?.[0]?.finish_reason,
           sample: content.substring(0, 80)
         });
-        
+
         if (!content && requireLLM) throw new Error('Empty OpenAI response');
         return content ? parseOutput(content) : fallback;
       } catch (e: any) {
@@ -397,71 +414,71 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
     // Gemini provider (default)
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY missing');
-  // Literal dynamic import so serverless bundlers can trace the dependency
-  const mod: any = await import('@google/generative-ai').catch(() => null);
-      if (!mod || !mod.GoogleGenerativeAI) throw new Error('gemini sdk not installed');
-  // COST OPTIMIZATION: gemini-2.5-flash for A/B testing
-  // gemini-2.5-pro: $10.00/M output tokens
-  // gemini-2.5-flash: $2.50/M output tokens  
-  const primaryModel = requestedModel;
-  const client = new mod.GoogleGenerativeAI(apiKey);
-  // Force JSON output to reduce parsing ambiguity on Gemini 2.x
-  // Increased maxOutputTokens to 4000 - Serbian Cyrillic/Latin + complex keyword arrays need more tokens
-  const genConfig = { temperature: 0.6, maxOutputTokens: 4000, responseMimeType: 'application/json' } as any;
+    // Literal dynamic import so serverless bundlers can trace the dependency
+    const mod: any = await import('@google/generative-ai').catch(() => null);
+    if (!mod || !mod.GoogleGenerativeAI) throw new Error('gemini sdk not installed');
+    // COST OPTIMIZATION: gemini-2.5-flash for A/B testing
+    // gemini-2.5-pro: $10.00/M output tokens
+    // gemini-2.5-flash: $2.50/M output tokens  
+    const primaryModel = requestedModel;
+    const client = new mod.GoogleGenerativeAI(apiKey);
+    // Force JSON output to reduce parsing ambiguity on Gemini 2.x
+    // Increased maxOutputTokens to 4000 - Serbian Cyrillic/Latin + complex keyword arrays need more tokens
+    const genConfig = { temperature: 0.6, maxOutputTokens: 4000, responseMimeType: 'application/json' } as any;
 
-      let lastErrMsg: string | undefined;
-      async function tryGemini(modelName: string): Promise<string | null> {
-        try {
-          console.log(`🔵 [Gemini] Trying model: ${modelName}`);
-          const model = client.getGenerativeModel({ model: modelName, generationConfig: genConfig });
-          // Prefer JSON response; pass plain text prompt
-          const result = await model.generateContent(prompt as any);
-          const out = ensureText(result);
-          
-          console.log(`✅ [Gemini] Response:`, {
-            model: modelName,
-            textLength: out?.length || 0,
-            finishReason: result?.response?.candidates?.[0]?.finishReason,
-            sample: out?.substring(0, 80)
-          });
-          
-          return out || '';
-        } catch (e: any) {
-          const msg = e?.message || '';
-          lastErrMsg = msg || lastErrMsg;
-          const status = e?.status || e?.code || '';
-          
-          console.error(`❌ [Gemini] Error:`, { model: modelName, msg, status });
-          
-          const isAccess = /model/i.test(msg) || /not found/i.test(msg) || /permission/i.test(msg) || /unsupported/i.test(msg) || /404/.test(msg) || /403/.test(msg);
-          const isQuotaOrSafety = /quota|exceeded|blocked|safety|rate/i.test(msg) || status === 429 || status === 400;
-          // On any recoverable error, signal caller to try fallback models
-          if (isAccess || isQuotaOrSafety) return null;
-          // Non-recoverable → rethrow so caller can decide (and propagate when REQUIRED=true)
-          throw e;
-        }
+    let lastErrMsg: string | undefined;
+    async function tryGemini(modelName: string): Promise<string | null> {
+      try {
+        console.log(`🔵 [Gemini] Trying model: ${modelName}`);
+        const model = client.getGenerativeModel({ model: modelName, generationConfig: genConfig });
+        // Prefer JSON response; pass plain text prompt
+        const result = await model.generateContent(prompt as any);
+        const out = ensureText(result);
+
+        console.log(`✅ [Gemini] Response:`, {
+          model: modelName,
+          textLength: out?.length || 0,
+          finishReason: result?.response?.candidates?.[0]?.finishReason,
+          sample: out?.substring(0, 80)
+        });
+
+        return out || '';
+      } catch (e: any) {
+        const msg = e?.message || '';
+        lastErrMsg = msg || lastErrMsg;
+        const status = e?.status || e?.code || '';
+
+        console.error(`❌ [Gemini] Error:`, { model: modelName, msg, status });
+
+        const isAccess = /model/i.test(msg) || /not found/i.test(msg) || /permission/i.test(msg) || /unsupported/i.test(msg) || /404/.test(msg) || /403/.test(msg);
+        const isQuotaOrSafety = /quota|exceeded|blocked|safety|rate/i.test(msg) || status === 429 || status === 400;
+        // On any recoverable error, signal caller to try fallback models
+        if (isAccess || isQuotaOrSafety) return null;
+        // Non-recoverable → rethrow so caller can decide (and propagate when REQUIRED=true)
+        throw e;
       }
+    }
 
-      // Fallback policy: avoid crossing major generations unless explicitly requested.
-      // For 2.x primaries (e.g., 2.5-pro), don't auto-fallback to 1.5 models to prevent 404s on some projects.
-      const fallbackModels = strictModel ? [] : (
-        primaryModel.startsWith('gemini-2.5-') ? [] :
+    // Fallback policy: avoid crossing major generations unless explicitly requested.
+    // For 2.x primaries (e.g., 2.5-pro), don't auto-fallback to 1.5 models to prevent 404s on some projects.
+    const fallbackModels = strictModel ? [] : (
+      primaryModel.startsWith('gemini-2.5-') ? [] :
         primaryModel.startsWith('gemini-1.5-pro') ? ['gemini-1.5-flash'] :
-        primaryModel.startsWith('gemini-1.5-flash') ? ['gemini-1.5-pro'] :
-        []
-      ).filter(m => m !== primaryModel);
+          primaryModel.startsWith('gemini-1.5-flash') ? ['gemini-1.5-pro'] :
+            []
+    ).filter(m => m !== primaryModel);
 
-      let out: string | null = null;
-      // Be lenient: even if first call throws, keep trying fallbacks when strictModel=false
-      try { out = await tryGemini(primaryModel); } catch (e) { if (strictModel) throw e; }
-      if (!strictModel) {
-        for (const m of fallbackModels) {
-          if (out) break;
-          try { out = await tryGemini(m); } catch { /* continue */ }
-        }
+    let out: string | null = null;
+    // Be lenient: even if first call throws, keep trying fallbacks when strictModel=false
+    try { out = await tryGemini(primaryModel); } catch (e) { if (strictModel) throw e; }
+    if (!strictModel) {
+      for (const m of fallbackModels) {
+        if (out) break;
+        try { out = await tryGemini(m); } catch { /* continue */ }
       }
-      if (!out && requireLLM) throw new Error('Empty LLM response' + (lastErrMsg ? `: ${lastErrMsg}` : ''));
-      return out ? parseOutput(out) : fallback;
+    }
+    if (!out && requireLLM) throw new Error('Empty LLM response' + (lastErrMsg ? `: ${lastErrMsg}` : ''));
+    return out ? parseOutput(out) : fallback;
   } catch (e) {
     if (requireLLM) throw e;
     return fallback;
@@ -493,8 +510,8 @@ export async function buildSEOWithDualLLM(
     buildSEOWithLLM(fallback, context, { model: openaiModel }).catch(e => ({ error: e.message }))
   ]);
 
-  const gemini = geminiResult.status === 'fulfilled' && !('error' in geminiResult.value) 
-    ? geminiResult.value as SEOOutputs 
+  const gemini = geminiResult.status === 'fulfilled' && !('error' in geminiResult.value)
+    ? geminiResult.value as SEOOutputs
     : null;
   const geminiError = geminiResult.status === 'rejected' || ('error' in (geminiResult as any).value)
     ? (geminiResult.status === 'rejected' ? geminiResult.reason?.message : (geminiResult as any).value.error)

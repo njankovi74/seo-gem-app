@@ -763,7 +763,7 @@ export default function Home() {
                 <div className="prose max-w-none">
                   <CopyField label="1. SEO Naslov (Title Tag)" value={analysisResult.seoOutputs.title} fieldKey="seo-title-field" />
                   <CopyField label="2. Meta Opis (Answer Nugget)" value={analysisResult.seoOutputs.metaDescription} fieldKey="seo-meta-field" />
-                  <CopyField label="3. Ključne reči / Tagovi (Named Entities)" value={analysisResult.seoOutputs.keywordsLine} fieldKey="seo-kw-field" />
+                  <CopyField label="3. Ključne reči (Long-Tail First)" value={analysisResult.seoOutputs.keywordsLine} fieldKey="seo-kw-field" />
                   {analysisResult.seoOutputs.schemaMarkup && (
                     <CopyField label="4. Schema Markup (JSON-LD)" value={analysisResult.seoOutputs.schemaMarkup} fieldKey="seo-schema-field" />
                   )}
