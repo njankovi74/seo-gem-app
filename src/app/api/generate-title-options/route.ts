@@ -86,7 +86,7 @@ Na osnovu gornje analize, generiši po 2 unikatne varijacije za sledeća tri sti
 - Primer: "Dejan Gavrilović: Najveći rizik za kupce nije nov zakon, već njegova primena"
 
 **STROGA PRAVILA ZA IZLAZ:**
-- ❌ SVI naslovi MORAJU biti kraći od 65 karaktera (uključujući razmake)!
+- ❌ SVI naslovi MORAJU biti kraći od 70 karaktera (uključujući razmake)!
 - ❌ ZABRANJENE su clickbait reči (šokantno, neverovatno, haos). Zadrži objektivan novinarski ton.
 - ❌ Engleska imena u srpskom tekstu — koristi srpsku transkripciju kako je u tekstu!
 - ✅ Puno ime + prezime (ne samo prezime!) u discover_hook naslovima
@@ -175,8 +175,8 @@ ${articleText}
     // Fix: Recalculate length field to ensure accuracy (LLM sometimes miscounts)
     titles.forEach((title, idx) => {
       title.length = title.text.length; // Overwrite LLM's length with actual character count
-      if (!title.text || title.text.length > 65) {
-        console.warn(`⚠️ Title ${idx + 1} too long: ${title.text?.length || 0} chars (limit: 65)`);
+      if (!title.text || title.text.length > 70) {
+        console.warn(`⚠️ Title ${idx + 1} too long: ${title.text?.length || 0} chars (limit: 70)`);
       }
     });
 
