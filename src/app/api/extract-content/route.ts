@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import { JSDOM } from 'jsdom';
+import { Readability } from '@mozilla/readability';
 
 interface ExtractedContent {
   title: string;
@@ -23,100 +25,185 @@ export const dynamic = 'force-dynamic';
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
-    headers: {
-      'Allow': 'GET, POST, OPTIONS',
-    },
+    headers: { 'Allow': 'GET, POST, OPTIONS' },
   });
 }
 
-// Shared implementation used by GET/POST
-async function extractByUrl(url: string) {
-  // Validate URL format
+// ─────────────────────────────────────────────────────────────
+// Priority A: JSON-LD articleBody extraction (cleanest source)
+// ─────────────────────────────────────────────────────────────
+function tryJsonLD($: cheerio.CheerioAPI): {
+  headline: string;
+  author: string;
+  publishDate: string;
+  articleBody: string;
+} | null {
   try {
-    new URL(url);
-  } catch {
-    return NextResponse.json(
-      { error: 'Neispravan format URL-a' },
-      { status: 400 }
-    );
-  }
+    const candidates: any[] = [];
+    $('script[type="application/ld+json"]').each((_, el) => {
+      const raw = $(el).contents().text();
+      if (!raw) return;
+      try { candidates.push(JSON.parse(raw)); } catch {}
+    });
 
-  // Fetch HTML content
-  const response = await axios.get(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-      'Accept-Language': 'sr-RS,sr;q=0.9,en;q=0.8',
-      'Connection': 'keep-alive',
-      'Upgrade-Insecure-Requests': '1',
-    },
-    timeout: 10000,
-  });
+    const flat: any[] = [];
+    const flatten = (node: any) => {
+      if (!node) return;
+      if (Array.isArray(node)) { node.forEach(flatten); return; }
+      flat.push(node);
+      if (node['@graph']) flatten(node['@graph']);
+    };
+    candidates.forEach(flatten);
 
-  const html = response.data;
-  const $ = cheerio.load(html);
+    const article = flat.find(n => {
+      const t = (n['@type'] || n.type || '').toString().toLowerCase();
+      return ['newsarticle', 'article', 'blogposting'].some(x => t.includes(x));
+    });
+    if (!article) return null;
 
-  // Remove unwanted elements (boilerplate removal) - AGRESIVNO!
-  $('script, style, nav, header, footer, aside, .sidebar, .menu, .navigation, .ads, .advertisement, .social-share, .comments, .comment, #comments, .related-posts, .popup, .modal, .cookie-notice').remove();
-  $('.ad, .ads, .advertisement, .banner, .popup, .modal, .newsletter, .subscription, .social, .share, .nav, .navigation, .menu, .sidebar, .widget, .footer, .header').remove();
-  
-  // Newsmax Balkans specifični elementi (app promo, social embeds, itd.)
-  $('.app-download, .app-promo, .download-app, .store-buttons, .google-play, .app-store').remove();
-  $('[class*="app-"], [class*="download"], [class*="store-button"]').remove();
-  
-  // Ukloni sve što sadrži "Google Play", "App Store", "preuzeti aplikaciju" u tekstu
-  $('p, div, section').filter((_, el) => {
-    const text = $(el).text().toLowerCase();
-    return text.includes('google play') || 
-           text.includes('app store') || 
-           text.includes('preuzeti aplikaciju') ||
-           text.includes('preuzmite aplikaciju');
-  }).remove();
-
-  function tryJsonLD() {
-    try {
-      const candidates: any[] = [];
-      $('script[type="application/ld+json"]').each((_, el) => {
-        const raw = $(el).contents().text();
-        if (!raw) return;
-        try {
-          const json = JSON.parse(raw);
-          candidates.push(json);
-        } catch {}
-      });
-      const flat: any[] = [];
-      const flatten = (node: any) => {
-        if (!node) return;
-        if (Array.isArray(node)) { node.forEach(flatten); return; }
-        flat.push(node);
-        if (node['@graph']) flatten(node['@graph']);
-      };
-      candidates.forEach(flatten);
-
-      const article = flat.find(n => {
-        const t = (n['@type'] || n.type || '').toString().toLowerCase();
-        return ['newsarticle', 'article', 'blogposting'].some(x => t.includes(x));
-      });
-      if (!article) return null;
-      const headline = article.headline || article.name || '';
-      const author = typeof article.author === 'string' ? article.author
-        : Array.isArray(article.author) ? (article.author[0]?.name || '')
+    const headline = article.headline || article.name || '';
+    const author = typeof article.author === 'string'
+      ? article.author
+      : Array.isArray(article.author)
+        ? (article.author[0]?.name || '')
         : (article.author?.name || '');
-      const publishDate = article.datePublished || article.dateCreated || '';
-      const articleBody = article.articleBody || '';
-      return { headline, author, publishDate, articleBody };
-    } catch {
-      return null;
-    }
+    const publishDate = article.datePublished || article.dateCreated || '';
+    const articleBody = article.articleBody || '';
+    return { headline, author, publishDate, articleBody };
+  } catch {
+    return null;
   }
+}
 
-  const ld = tryJsonLD();
+// Helper: extract description from JSON-LD (clean source for Lead)
+function findLdDescription($: cheerio.CheerioAPI): string | undefined {
+  try {
+    let desc: string | undefined;
+    $('script[type="application/ld+json"]').each((_, el) => {
+      if (desc) return;
+      const raw = $(el).contents().text();
+      if (!raw) return;
+      try {
+        const json = JSON.parse(raw);
+        const flat: any[] = [];
+        const flatten = (n: any) => {
+          if (!n) return;
+          if (Array.isArray(n)) { n.forEach(flatten); return; }
+          flat.push(n);
+          if (n['@graph']) flatten(n['@graph']);
+        };
+        flatten(json);
+        for (const n of flat) {
+          if (n.description && typeof n.description === 'string' && n.description.length > 30) {
+            desc = n.description;
+            return;
+          }
+        }
+      } catch {}
+    });
+    return desc;
+  } catch { return undefined; }
+}
 
-  // Extract Lead/Description: Priority Serbian news sites specific selectors first
-  // 1) Try common Serbian news site Lead paragraph classes
-  // 2) Fall back to meta tags (often truncated)
-  let leadText = '';
-  
+// ─────────────────────────────────────────────────────────────
+// Priority B: Mozilla Readability extraction (universal)
+// ─────────────────────────────────────────────────────────────
+function tryReadability(html: string, url: string): string {
+  try {
+    // Pre-clean: strip script, style, svg, noscript tags BEFORE passing to JSDOM
+    // This prevents JS code and JSON-LD from leaking into Readability's textContent
+    const cleanedHtml = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<svg[\s\S]*?<\/svg>/gi, '')
+      .replace(/<noscript[\s\S]*?<\/noscript>/gi, '');
+
+    const dom = new JSDOM(cleanedHtml, { url });
+    const reader = new Readability(dom.window.document);
+    const article = reader.parse();
+    if (article && article.textContent) {
+      // Post-process: remove residual noise
+      const text = article.textContent
+        // Remove JS variable declarations that may have leaked
+        .replace(/var\s+\w+\s*=[\s\S]*?;/g, '')
+        // Remove JSON-like blobs
+        .replace(/\{[\s\S]{200,}?\}/g, '')
+        // Remove URLs
+        .replace(/https?:\/\/\S+/g, '')
+        // Collapse excessive newlines
+        .replace(/\n{3,}/g, '\n\n')
+        // Remove lines that are just whitespace or very short (< 3 chars)
+        .split('\n')
+        .filter(line => line.trim().length > 2)
+        .join('\n')
+        .trim();
+      console.log(`📖 [extract] Readability: ${text.length} chars`);
+      return text;
+    }
+    return '';
+  } catch (e) {
+    console.error('❌ [extract] Readability error:', e);
+    return '';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Priority C: LLM fallback — clean HTML then send to Gemini
+// ─────────────────────────────────────────────────────────────
+async function tryLLMExtraction(html: string): Promise<string> {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn('⚠️ [extract] No GEMINI_API_KEY for LLM fallback');
+      return '';
+    }
+
+    // Pre-process: strip heavy non-content tags to minimize tokens
+    const $ = cheerio.load(html);
+    $('script, style, svg, nav, header, footer, aside, iframe, noscript, link, meta, img, video, audio, picture, source, form, input, button, select, textarea').remove();
+    $('.sidebar, .menu, .navigation, .ads, .advertisement, .social-share, .comments, .related-posts, .cookie-notice, .popup, .modal, .newsletter, .widget').remove();
+
+    // Get cleaned text (limit to ~8000 chars to save tokens)
+    const cleanedText = $.text()
+      .replace(/[ \t\f\v]+/g, ' ')
+      .replace(/\n{2,}/g, '\n')
+      .trim()
+      .slice(0, 8000);
+
+    if (cleanedText.length < 100) return '';
+
+    console.log(`🤖 [extract] LLM fallback: sending ${cleanedText.length} chars to Gemini`);
+
+    const mod: any = await import('@google/generative-ai').catch(() => null);
+    if (!mod?.GoogleGenerativeAI) return '';
+
+    const genAI = new mod.GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      generationConfig: { temperature: 0.1, maxOutputTokens: 4000 },
+    });
+
+    const prompt = `Iz sledećeg teksta izvuci SAMO novinarski članak — telo teksta (Lead + Body).
+Izbaci navigaciju, menije, reklame, komentare, footer, related articles.
+Vrati SAMO čist tekst članka, bez formatiranja, bez objašnjenja.
+
+TEKST:
+${cleanedText}`;
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().trim();
+    console.log(`✅ [extract] LLM fallback: extracted ${text.length} chars`);
+    return text;
+  } catch (e) {
+    console.error('❌ [extract] LLM fallback error:', e);
+    return '';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Lead extraction (kept from original — works well)
+// ─────────────────────────────────────────────────────────────
+function extractLead($: cheerio.CheerioAPI, ldDescription?: string): string {
   // Serbian news sites often have dedicated Lead paragraph classes
   const leadSelectors = [
     '.single-news-short-description',  // Newsmax Balkans
@@ -132,172 +219,134 @@ async function extractByUrl(url: string) {
     '[class*="lead"]',
     '[class*="intro"]'
   ];
-  
+
   for (const selector of leadSelectors) {
     const leadElement = $(selector).first();
     if (leadElement.length) {
       const text = leadElement.text().trim();
-      if (text.length > 50) {  // Valid Lead should be substantial
-        leadText = text;
+      if (text.length > 50 && !text.includes('var ') && !text.includes('function(')) {
         console.log(`📰 [extract] Lead found via selector "${selector}": ${text.length} chars`);
-        break;
+        return text;
       }
     }
   }
-  
-  // Fall back to meta description if no dedicated Lead found
-  if (!leadText) {
-    leadText = $('meta[name="description"]').attr('content') || 
-               $('meta[property="og:description"]').attr('content') || '';
-    if (leadText) {
-      console.log(`📰 [extract] Lead from meta tag: ${leadText.length} chars`);
-    }
+
+  // Try JSON-LD description (very clean source)
+  if (ldDescription && ldDescription.length > 30 && !ldDescription.includes('var ')) {
+    console.log(`📰 [extract] Lead from JSON-LD description: ${ldDescription.length} chars`);
+    return ldDescription;
   }
+
+  // Fall back to meta description (validate it's not JS code)
+  const metaDesc = $('meta[name="description"]').attr('content') ||
+    $('meta[property="og:description"]').attr('content') || '';
+  if (metaDesc && metaDesc.length > 30 && !metaDesc.includes('var ') && !metaDesc.includes('function(')) {
+    console.log(`📰 [extract] Lead from meta tag: ${metaDesc.length} chars`);
+    return metaDesc;
+  }
+  return '';
+}
+
+// ─────────────────────────────────────────────────────────────
+// Main extraction pipeline
+// ─────────────────────────────────────────────────────────────
+async function extractByUrl(url: string) {
+  // Validate URL
+  try { new URL(url); } catch {
+    return NextResponse.json({ error: 'Neispravan format URL-a' }, { status: 400 });
+  }
+
+  // Fetch HTML
+  const response = await axios.get(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Language': 'sr-RS,sr;q=0.9,en;q=0.8',
+      'Connection': 'keep-alive',
+      'Upgrade-Insecure-Requests': '1',
+    },
+    timeout: 10000,
+  });
+
+  const html = response.data;
+  const $ = cheerio.load(html);
+
+  // ── Metadata ──
+  const ld = tryJsonLD($);
+
+  const leadText = extractLead($, ld?.articleBody ? undefined : findLdDescription($));
 
   const metadata = {
     description: leadText,
     keywords: $('meta[name="keywords"]').attr('content') || '',
-    author: $('meta[name="author"]').attr('content') || 
-           $('meta[property="article:author"]').attr('content') || (ld?.author || ''),
-    publishDate: $('meta[property="article:published_time"]').attr('content') || 
-                $('meta[name="publish-date"]').attr('content') || 
-                $('time').attr('datetime') || (ld?.publishDate || '')
+    author: $('meta[name="author"]').attr('content') ||
+      $('meta[property="article:author"]').attr('content') || (ld?.author || ''),
+    publishDate: $('meta[property="article:published_time"]').attr('content') ||
+      $('meta[name="publish-date"]').attr('content') ||
+      $('time').attr('datetime') || (ld?.publishDate || ''),
   };
 
-  // Priority: 1) og:title (social - kompletan), 2) twitter:title, 3) <title>, 4) <h1>, 5) JSON-LD headline
-  let title = $('meta[property="og:title"]').attr('content') || 
-              $('meta[name="twitter:title"]').attr('content') ||
-              $('title').text().trim() ||
-              $('h1').first().text().trim();
+  // ── Title ──
+  let title = $('meta[property="og:title"]').attr('content') ||
+    $('meta[name="twitter:title"]').attr('content') ||
+    $('title').text().trim() ||
+    $('h1').first().text().trim();
   if (ld?.headline && (!title || title.length < 5)) title = ld.headline;
 
+  // ── Content Extraction (3-tier priority) ──
   let content = '';
   let extractionMethod = 'none';
-  
-  // 1) Priority: JSON-LD articleBody (najčistiji izvor)
+
+  // Priority A: JSON-LD articleBody
   if (ld?.articleBody && ld.articleBody.toString().trim().length > 100) {
     content = ld.articleBody.toString();
     extractionMethod = 'json-ld';
-    console.log(`📄 [extract] JSON-LD articleBody: ${content.length} chars`);
+    console.log(`📄 [extract] Priority A — JSON-LD articleBody: ${content.length} chars`);
   }
-  
-  // 2) Fallback: CSS selector strategija sa specifičnim site selektorima
-  if (!content || content.length < 100) {
-    console.log('🔍 [extract] Using smart CSS selector extraction...');
-    
-    // PRIORITET: Site-specific selektori (najčistiji)
-    const siteSpecificSelectors = [
-      '.single-news-content',  // Newsmax Balkans - GLAVNI CONTENT
-      '.article-text',
-      '.story-text',
-      '.post-text'
-    ];
-    
-    // GENERIČKI: Article containeri
-    const articleSelectors = [
-      'article', '.article', '.post', '.entry-content', '.post-content',
-      '.article-content', '[itemprop="articleBody"]', '.article__content',
-      '.article-body__content', '.article-body', '.single-article', '.single-content',
-      '.post-body', '.post__content', '.story-content', 'main',
-      '.main-content', '#content', '.story-body'
-    ];
-    
-    const allSelectors = [...siteSpecificSelectors, ...articleSelectors];
-    
-    // Pokušaj naći glavni article container
-    let articleContainer = null;
-    let usedSelector = '';
-    for (const selector of allSelectors) {
-      const element = $(selector).first();
-      if (element.length && element.find('p').length > 0) {
-        articleContainer = element;
-        usedSelector = selector;
-        console.log(`📦 [extract] Found article container: ${selector}`);
-        break;
-      }
-    }
-    
-    if (articleContainer) {
-      // Izvuci sve paragrafe iz article containera
-      const paragraphs: string[] = [];
-      articleContainer.find('p').each((_, el) => {
-        const $p = $(el);
-        const text = $p.text().trim();
-        
-        // FILTER: Preskoči noise paragrafe
-        const textLower = text.toLowerCase();
-        
-        // Proveri da li je ovo related news item (Newsmax Balkans specific)
-        const isRelatedNews = 
-          $p.hasClass('news-item-description') ||
-          $p.hasClass('news-item-time') ||
-          $p.closest('.news-item').length > 0;
-        
-        // Proveri da li paragraf sadrži SAMO link ka drugoj vesti (related content)
-        const hasOnlyLink = $p.find('a[href*="/"]').length > 0 && 
-                           $p.find('a').text().length > text.length * 0.7; // >70% teksta je u linku
-        
-        const isNoise = 
-          text.length < 40 || // Prekratki paragrafi
-          isRelatedNews || // Related news items (Newsmax specific)
-          hasOnlyLink || // Paragraf je samo link ka drugoj vesti
-          textLower.includes('google play') ||
-          textLower.includes('app store') ||
-          textLower.includes('preuzeti aplikaciju') ||
-          textLower.includes('preuzmite aplikaciju') ||
-          textLower.includes('pročitajte') ||
-          textLower.includes('povezan') ||
-          textLower.includes('pratite nas') ||
-          textLower.includes('share') ||
-          textLower.includes('follow') ||
-          textLower.includes('preuzmi') ||
-          textLower.includes('lekari bez granica') || // Ovaj deo je usually footer/credit
-          $p.parent().hasClass('social') ||
-          $p.parent().hasClass('share') ||
-          $p.parent().hasClass('related') ||
-          $p.closest('.related-articles, .related-posts, .social-share, .app-promo').length > 0;
-        
-        if (!isNoise) {
-          paragraphs.push(text);
-        }
-      });
-      
-      content = paragraphs.join('\n');
-      extractionMethod = 'css-selector-smart';
-      console.log(`📄 [extract] Smart CSS selector: ${paragraphs.length} paragraphs, ${content.length} chars`);
+
+  // Priority B: Mozilla Readability
+  if (!content || content.length < 200) {
+    console.log('📖 [extract] Trying Priority B — Mozilla Readability...');
+    const readabilityContent = tryReadability(html, url);
+    if (readabilityContent.length >= 200) {
+      content = readabilityContent;
+      extractionMethod = 'readability';
+      console.log(`📄 [extract] Priority B — Readability: ${content.length} chars`);
     }
   }
-  
-  // 3) Last resort fallback: Svi <p> tagovi sa filteringom
-  if (!content || content.length < 100) {
-    console.log('🔍 [extract] Using fallback: all <p> tags with filtering...');
-    const allParagraphs = $('p').map((_, el) => $(el).text().trim()).get();
-    const filtered = allParagraphs.filter(p => {
-      const textLower = p.toLowerCase();
-      return p.length > 40 && 
-        !textLower.includes('google play') &&
-        !textLower.includes('app store') &&
-        !textLower.includes('preuzeti aplikaciju');
-    });
-    content = filtered.join('\n');
-    extractionMethod = 'fallback-paragraphs';
-    console.log(`📄 [extract] Fallback <p> tags: ${filtered.length} paragraphs, ${content.length} chars`);
+
+  // Priority C: LLM fallback (cleaned HTML → Gemini)
+  if (!content || content.length < 200) {
+    console.log('🤖 [extract] Trying Priority C — LLM fallback...');
+    const llmContent = await tryLLMExtraction(html);
+    if (llmContent.length > 100) {
+      content = llmContent;
+      extractionMethod = 'llm-fallback';
+      console.log(`📄 [extract] Priority C — LLM fallback: ${content.length} chars`);
+    }
   }
 
-  console.log(`✅ [extract] Final method: ${extractionMethod}, length: ${content.length} chars, wordCount: ${content.split(/\s+/).length}`);
+  console.log(`✅ [extract] Final method: ${extractionMethod}, length: ${content.length} chars`);
 
-
-  const cleanText = content
+  // ── Post-processing ──
+  let cleanText = content
     .replace(/[ \t\f\v]+/g, ' ')
     .replace(/\n{2,}/g, '\n')
-    .replace(/\bPre\s?\d+\s?[hm]\b/gi, '')
-    .replace(/\b\d{1,2}:\d{2}\b/g, '')
-    .replace(/\b\d{1,2}\.\d{1,2}\.\d{2,4}\b/g, '')
-    // zadrži srpska slova i osnovnu interpunkciju
-    .replace(/[^\w\sčćžšđČĆŽŠĐ.,!?;:-]/g, '')
     .trim();
 
-  // VAŽNO: Za tačno brojanje, kombinu Lead (metadata.description) + Body (content)
+  // Strip social media / subscription noise from end of article
+  const socialNoisePatterns = [
+    /Pratite nas na[\s\S]*$/i,
+    /Pretplatite se na[\s\S]*$/i,
+    /Prijavite se na[\s\S]*$/i,
+    /Zapratite nas[\s\S]*$/i,
+    /Budite u toku[\s\S]*$/i,
+    /Facebook i Instagram[\s\S]*$/i,
+  ];
+  for (const pattern of socialNoisePatterns) {
+    cleanText = cleanText.replace(pattern, '').trim();
+  }
+
   const fullArticleText = (metadata.description ? metadata.description + ' ' : '') + cleanText;
   const wordCount = fullArticleText.split(/\s+/).filter(word => word.length > 0).length;
 
@@ -306,10 +355,12 @@ async function extractByUrl(url: string) {
     content,
     metadata,
     wordCount,
-    cleanText
+    cleanText,
   };
   return NextResponse.json(extractedContent);
 }
+
+// ─── Route handlers ─────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
   try {
@@ -327,34 +378,20 @@ export async function GET(req: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { url } = await request.json();
-
     if (!url) {
-      return NextResponse.json(
-        { error: 'URL je obavezan parametar' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'URL je obavezan parametar' }, { status: 400 });
     }
-
     return await extractByUrl(url);
-
   } catch (error) {
     console.error('Error extracting content:', error);
-    
     if (axios.isAxiosError(error)) {
       if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-        return NextResponse.json(
-          { error: 'Sajt nije dostupan ili URL ne postoji' },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: 'Sajt nije dostupan ili URL ne postoji' }, { status: 404 });
       }
       if (error.code === 'ETIMEDOUT') {
-        return NextResponse.json(
-          { error: 'Timeout - sajt predugo odgovara' },
-          { status: 408 }
-        );
+        return NextResponse.json({ error: 'Timeout - sajt predugo odgovara' }, { status: 408 });
       }
     }
-
     return NextResponse.json(
       { error: 'Greška pri obradi URL-a. Molimo pokušajte ponovo.' },
       { status: 500 }

@@ -257,53 +257,20 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
     }
   }
 
-  function sanitizeKeywords(arr: string[], primary: string, secondaries: string[]): string[] {
-    const stop = new Set(['je', 'za', 'u', 'na', 'i', 'od', 'do', 'se', 'da', 'koji', 'kako', 'što', 'sto', 'ili', 'ali', 'pa', 'su', 'sa', 'o', 'autor', 'društvo', 'hronika', 'video', 'foto', 'komentar', 'najnovije']);
+  function sanitizeKeywords(arr: string[], _primary: string, _secondaries: string[]): string[] {
+    const stop = new Set(['je', 'za', 'u', 'na', 'i', 'od', 'do', 'se', 'da', 'koji', 'kako', 'što', 'sto', 'ili', 'ali', 'pa', 'su', 'sa', 'o', 'autor', 'društvo', 'hronika', 'video', 'foto', 'komentar', 'najnovije', 'vesti', 'srbija', 'novo', 'danas']);
     const out: string[] = [];
     for (const k of arr || []) {
       const t = (k || '').toString().trim().toLowerCase();
-      if (!t) continue;
-      if (t.length < 3) continue;
+      if (!t || t.length < 3) continue;
       if (/[0-9]:[0-9]/.test(t)) continue; // vreme
       if (/\d{1,2}\.\d{1,2}\./.test(t)) continue; // datum
       if (stop.has(t)) continue;
       if (bannedTokens.some(b => t.includes(b))) continue;
       if (!out.includes(t)) out.push(t);
     }
-    // Obavezni udeo long‑tail fraza (≥ 70%) i maksimalno 12–14 ukupno
-    function isLong(s: string) { return s.trim().split(/\s+/).length >= 2 && s.trim().split(/\s+/).length <= 4; }
-    const targetTotal = Math.max(10, Math.min(14, out.length));
-    const targetLong = Math.ceil(targetTotal * 0.7);
-
-    // ako nema dovoljno long‑tail, sintetizuj na osnovu primarne + sekundarnih
-    const primaryBase = (primary || '').toLowerCase().trim();
-    const sec = (secondaries || []).map(s => (s || '').toLowerCase().trim()).filter(Boolean).slice(0, 6);
-    for (const s of sec) {
-      if (out.length >= 14) break;
-      const combo1 = `${primaryBase} ${s}`.trim();
-      const combo2 = `${s} ${primaryBase}`.trim();
-      for (const c of [combo1, combo2]) {
-        if (!c || out.includes(c)) continue;
-        if (!isLong(c)) continue;
-        if (c.length < 8 || c.length > 40) continue;
-        out.push(c);
-      }
-    }
-
-    // osiguraj udeo long‑tail
-    const longs = out.filter(isLong);
-    if (longs.length < targetLong) {
-      // pokušaj da proširiš single‑tail dodavanjem konteksta primarne reči
-      const singles = out.filter(k => !isLong(k));
-      for (const s of singles) {
-        if (longs.length >= targetLong) break;
-        const c = `${s} ${primaryBase}`.trim();
-        if (!out.includes(c) && isLong(c)) { out.push(c); longs.push(c); }
-      }
-    }
-
-    // krajnji rez
-    return out.slice(0, 14);
+    // Respect LLM's hierarchical output — no synthetic permutations, cap at 10
+    return out.slice(0, 10);
   }
 
   function parseOutput(outRaw: any): SEOOutputs {

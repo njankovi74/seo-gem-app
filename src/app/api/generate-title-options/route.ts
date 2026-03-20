@@ -63,7 +63,8 @@ Ako novinar bira detaljne naslove - dodaj kontekst i specifičnosti!
 ` : ''}
 
 **PRE nego što ispišeš naslove, moraš interno da uradiš sledeću analizu (Chain-of-Thought):**
-1. Ekstrahuj glavni entitet ili fenomen iz teksta. OPREZ: Ako je osoba pomenuta u tekstu samo sagovornik, ekspert ili izvor (koji nije opštepoznata javna ličnost), NJENO IME NIJE GLAVNI ENTITET. U tom slučaju, glavni entitet je tema/fenomen o kom se govori (npr. sajber kriminal, zakon, bolest).
+0. Analiziraj FORMAT članka: Da li je ovo opšta vest/izveštaj (gde se stručnjaci samo usputno citiraju) ili je ovo INTERVJU / EKSKLUZIVNA IZJAVA (gde je jedna osoba u potpunom fokusu teksta)?
+1. Ekstrahuj glavni entitet. AKO je format teksta INTERVJU ili IZJAVA, intervjuisana osoba (npr. reditelj, pisac, političar) JESTE GLAVNI ENTITET. Ako je format opšta vest, osoba koja je samo sagovornik ili posmatrač NIJE glavni entitet, već je to sama tema.
 2. Definiši nameru pretrage korisnika (Search Intent).
 3. Zatim, generiši 3 opcije naslova prema sledećoj strukturi:
 
@@ -85,7 +86,7 @@ Ako novinar bira detaljne naslove - dodaj kontekst i specifičnosti!
 **STROGA PRAVILA (Negative Prompting):**
 - ❌ SVI naslovi MORAJU biti kraći od 70 karaktera (uključujući razmake)!
 - ❌ STROGO ZABRANJENO je korišćenje clickbait reči: "šokantno", "neverovatno", "nećete verovati", "haos", "skandal", "užas"
-- ❌ ZABRANJENO: Ne stavljaj imena sagovornika, eksperata ili analitičara u naslov (npr. "Džim Fuda:", "Marko Marković:"). Imena u naslovu koristi SAMO ako je reč o opštepoznatim javnim ličnostima od nacionalnog ili globalnog značaja (predsednici, poznati sportisti, estradne zvezde). U suprotnom, fokusiraj naslov isključivo na TEMU ili PROBLEM.
+- ⚠️ PRAVILO ZA IMENA U NASLOVU: Ako je članak opšta vest, ZABRANJENO je stavljati imena sporednih sagovornika i analitičara u naslov (fokusiraj se na temu). Međutim, AKO JE ČLANAK INTERVJU, AUTORSKI TEKST ILI EKSKLUZIVNA IZJAVA, tada OBAVEZNO stavi Ime i Prezime te osobe na sam početak naslova (npr. "Ime Prezime: Citat ili suština izjave").
 - ❌ Zadrži strog, objektivan novinarski ton. Izbegavaj marketinški jezik i AI floskule.
 - ❌ Engleska imena u srpskom tekstu — koristi srpsku transkripciju kako je u tekstu!
 - ❌ Emotivne ocene: "dirljivo", "inspirativno", "tužno"
