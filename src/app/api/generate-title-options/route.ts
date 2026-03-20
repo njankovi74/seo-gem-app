@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     const body: GenerateTitlesRequest = await request.json();
     const { articleText, primaryKeyword, secondaryKeywords, mainTopics, searchIntent } = body;
 
-    console.log('🎯 Generating 3 title options...');
+    console.log('🎯 Generating 6 title options...');
 
     // Get similar past examples for RAG (if any exist)
     const similarExamples = await getSimilarTitleExamples(articleText, 3);
@@ -43,55 +43,53 @@ export async function POST(request: NextRequest) {
             (ex, i) => `PRIMER ${i + 1}:
 Tekst: "${ex.article_text.substring(0, 150)}..."
 Ponuđeni:
-  1. ${ex.offered_titles[0]?.text || 'N/A'}
-  2. ${ex.offered_titles[1]?.text || 'N/A'}
-  3. ${ex.offered_titles[2]?.text || 'N/A'}
+${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`).join('\n')}
 ✅ ODABRAN: "${ex.selected_title}"
 `
           )
           .join('\n')}\n**PATTERN:** Novinar preferira ${preferredPattern}\n`
       : '';
 
-    const prompt = `Ti si Senior Urednik nacionalnog informativnog portala i ekspert za SEO i GEO (Generative Engine Optimization) na srpskom tržištu. Tvoj zadatak je da, na osnovu priloženog teksta i RAG primera, generišeš tačno 3 različite opcije SEO naslova.
+    const prompt = `Ti si Senior Urednik nacionalnog informativnog portala i ekspert za SEO i GEO (Generative Engine Optimization) na srpskom tržištu. Tvoj zadatak je da generišeš tačno 6 opcija SEO naslova za priloženi tekst.
 ${fewShotExamples}
 ${similarExamples.length > 0 ? `
 **‼️ KRITIČNO: ANALIZIRAJ GORNJE PRIMERE**
 Novinar je ranije birao naslove za slične članke. ${preferredPattern}
 **TVOJ ZADATAK:** Generiši naslove koji PRATE OVAJ ISTI PATTERN koji novinar preferira!
-Ako novinar bira faktografske naslove - NE GENERIŠI emotivne!
-Ako novinar bira detaljne naslove - dodaj kontekst i specifičnosti!
 ` : ''}
 
-**PRE nego što ispišeš naslove, moraš interno da uradiš sledeću analizu (Chain-of-Thought):**
-0. Analiziraj FORMAT članka: Da li je ovo opšta vest/izveštaj (gde se stručnjaci samo usputno citiraju) ili je ovo INTERVJU / EKSKLUZIVNA IZJAVA (gde je jedna osoba u potpunom fokusu teksta)?
-1. Ekstrahuj glavni entitet. AKO je format teksta INTERVJU ili IZJAVA, intervjuisana osoba (npr. reditelj, pisac, političar) JESTE GLAVNI ENTITET. Ako je format opšta vest, osoba koja je samo sagovornik ili posmatrač NIJE glavni entitet, već je to sama tema.
-2. Definiši nameru pretrage korisnika (Search Intent).
-3. Zatim, generiši 3 opcije naslova prema sledećoj strukturi:
+**KORAK 1: INTERNA ANALIZA (Chain-of-Thought)**
+PRE generisanja naslova, obavezno sprovedi sledeću analizu teksta:
 
-**Opcija 1 — Tradicionalni/Informativni naslov:**
-- Fokusiran na glavni entitet
-- Jasan, direktan, idealan za klasičnu pretragu
-- FORMAT: KO + ŠTA + GDE
+1. **Analiza formata i uloga (Subjekat vs. Izvor):** Da li je ovo opšta vest (gde stručnjaci samo komentarišu pojavu) ili je direktan intervju/ekskluzivna izjava? Ko je/šta je stvarna TEMA (Subjekat), a ko je samo STRUČNI IZVOR (analitičar, predsednik udruženja, stručnjak, itd.)?
 
-**Opcija 2 — GEO/Pitanje-Odgovor:**
-- Formulisan tako da direktno pogađa konverzacijski upit korisnika (npr. "Kako da...", "Ko je...", "Zašto je...")
-- Idealan za AI Overviews i glasovnu pretragu
-- Mora zvučati kao prirodno pitanje koje korisnik postavlja
+2. **Pravilo eliminacije imena:** Ako osoba u tekstu samo daje stručno mišljenje i pojašnjava temu, ona je ISKLJUČIVO IZVOR. Njeno ime NE SME biti u klasičnim SEO i GEO naslovima, bez obzira na to koliko je puta citirana. Ime može ići isključivo u E-E-A-T (Discover) naslove.
 
-**Opcija 3 — Discover Hook:**
-- Naslov koji budi radoznalost za Google Discover feed
-- Apsolutno zadržava novinarski integritet
-- Privlači klik bez clickbaita — koristi specifičnost i kontekst umesto senzacionalizma
+3. **Definisanje namere:** Šta korisnik zaista ukucava u pretraživač kada ga zanima glavni Subjekat ovog teksta?
 
-**STROGA PRAVILA (Negative Prompting):**
-- ❌ SVI naslovi MORAJU biti kraći od 70 karaktera (uključujući razmake)!
-- ❌ STROGO ZABRANJENO je korišćenje clickbait reči: "šokantno", "neverovatno", "nećete verovati", "haos", "skandal", "užas"
-- ⚠️ PRAVILO ZA IMENA U NASLOVU: Ako je članak opšta vest, ZABRANJENO je stavljati imena sporednih sagovornika i analitičara u naslov (fokusiraj se na temu). Međutim, AKO JE ČLANAK INTERVJU, AUTORSKI TEKST ILI EKSKLUZIVNA IZJAVA, tada OBAVEZNO stavi Ime i Prezime te osobe na sam početak naslova (npr. "Ime Prezime: Citat ili suština izjave").
-- ❌ Zadrži strog, objektivan novinarski ton. Izbegavaj marketinški jezik i AI floskule.
+**KORAK 2: GENERISANJE 6 NASLOVA**
+Na osnovu gornje analize, generiši po 2 unikatne varijacije za sledeća tri stila:
+
+**Opcija 1 i 2 (Stil: informativni):**
+- Klasični, oštri SEO naslovi. Fokus isključivo na glavnom problemu, zakonu ili fenomenu (Subjekat).
+- STROGO ZABRANJENA imena sagovornika i eksperata (osim globalnih VIP ličnosti).
+- Primer: "Novi Zakon o zaštiti potrošača: Zašto se cene na polici i kasi ne poklapaju?"
+
+**Opcija 3 i 4 (Stil: geo_pitanje):**
+- Konverzacijska pitanja usmerena na korisnika, optimizovana za AI Overviews (SGE) i glasovnu pretragu.
+- STROGO ZABRANJENA imena sagovornika.
+- Primer: "Šta da radite kada vam trgovci na kasi naplate veću cenu od istaknute?"
+
+**Opcija 5 i 6 (Stil: discover_hook):**
+- E-E-A-T naslovi idealni za Google Discover i intervjue.
+- Fokus na Izvoru i Autoritetu. OBAVEZNO stavi Ime i Prezime najistaknutijeg sagovornika na početak, praćeno njegovom udarnom tvrdnjom/citatom ili poentom.
+- Primer: "Dejan Gavrilović: Najveći rizik za kupce nije nov zakon, već njegova primena"
+
+**STROGA PRAVILA ZA IZLAZ:**
+- ❌ SVI naslovi MORAJU biti kraći od 65 karaktera (uključujući razmake)!
+- ❌ ZABRANJENE su clickbait reči (šokantno, neverovatno, haos). Zadrži objektivan novinarski ton.
 - ❌ Engleska imena u srpskom tekstu — koristi srpsku transkripciju kako je u tekstu!
-- ❌ Emotivne ocene: "dirljivo", "inspirativno", "tužno"
-- ✅ Puno ime + prezime (ne samo prezime!)
-- ✅ Pozicija/funkcija kada relevantno (centar, premijer, trener...)
+- ✅ Puno ime + prezime (ne samo prezime!) u discover_hook naslovima
 - ✅ Završena rečenica (ne prekidati na pola!)
 
 **KONTEKST:**
@@ -103,25 +101,43 @@ Ako novinar bira detaljne naslove - dodaj kontekst i specifičnosti!
 **TEKST (KOMPLETAN ČLANAK):**
 ${articleText}
 
-**VRATI SAMO JSON (bez markdown):**
+**FORMAT IZLAZA: Vrati isključivo validan JSON bez markdown formatiranja:**
 {
   "titles": [
     {
       "text": "...",
       "style": "informativni",
       "length": 56,
-      "reasoning": "Chain-of-thought: koji entitet, koji intent, zašto ovaj naslov"
+      "reasoning": "CoT: Subjekat je X, Izvor je Y, fokus na problemu..."
+    },
+    {
+      "text": "...",
+      "style": "informativni",
+      "length": 58,
+      "reasoning": "..."
     },
     {
       "text": "...",
       "style": "geo_pitanje",
-      "length": 58,
+      "length": 52,
+      "reasoning": "..."
+    },
+    {
+      "text": "...",
+      "style": "geo_pitanje",
+      "length": 54,
       "reasoning": "..."
     },
     {
       "text": "...",
       "style": "discover_hook",
       "length": 60,
+      "reasoning": "..."
+    },
+    {
+      "text": "...",
+      "style": "discover_hook",
+      "length": 62,
       "reasoning": "..."
     }
   ]
@@ -135,7 +151,7 @@ ${articleText}
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
 
-    console.log('📄 Raw Gemini response:', responseText.substring(0, 200));
+    console.log('📄 Raw Gemini response:', responseText.substring(0, 300));
 
     // Parse JSON response
     let parsedResponse;
@@ -152,19 +168,19 @@ ${articleText}
     const titles: TitleOption[] = parsedResponse.titles;
 
     // Validate titles
-    if (!Array.isArray(titles) || titles.length !== 3) {
-      throw new Error('Expected 3 titles from Gemini');
+    if (!Array.isArray(titles) || titles.length < 3) {
+      throw new Error(`Expected 6 titles from Gemini, got ${titles?.length || 0}`);
     }
 
     // Fix: Recalculate length field to ensure accuracy (LLM sometimes miscounts)
     titles.forEach((title, idx) => {
       title.length = title.text.length; // Overwrite LLM's length with actual character count
-      if (!title.text || title.text.length > 70) {
-        console.warn(`⚠️ Title ${idx + 1} too long: ${title.text?.length || 0} chars (limit: 70)`);
+      if (!title.text || title.text.length > 65) {
+        console.warn(`⚠️ Title ${idx + 1} too long: ${title.text?.length || 0} chars (limit: 65)`);
       }
     });
 
-    console.log('✅ Generated 3 titles:', titles.map((t) => `${t.text} (${t.length} chars)`).join(' | '));
+    console.log('✅ Generated titles:', titles.map((t) => `[${t.style}] ${t.text} (${t.length}ch)`).join(' | '));
 
     return NextResponse.json({
       success: true,
