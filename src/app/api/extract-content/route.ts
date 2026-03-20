@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { JSDOM } from 'jsdom';
+import { parseHTML } from 'linkedom';
 import { Readability } from '@mozilla/readability';
 
 interface ExtractedContent {
@@ -110,7 +110,7 @@ function findLdDescription($: cheerio.CheerioAPI): string | undefined {
 // ─────────────────────────────────────────────────────────────
 function tryReadability(html: string, url: string): string {
   try {
-    // Pre-clean: strip script, style, svg, noscript tags BEFORE passing to JSDOM
+    // Pre-clean: strip script, style, svg, noscript tags BEFORE passing to linkedom
     // This prevents JS code and JSON-LD from leaking into Readability's textContent
     const cleanedHtml = html
       .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -118,8 +118,8 @@ function tryReadability(html: string, url: string): string {
       .replace(/<svg[\s\S]*?<\/svg>/gi, '')
       .replace(/<noscript[\s\S]*?<\/noscript>/gi, '');
 
-    const dom = new JSDOM(cleanedHtml, { url });
-    const reader = new Readability(dom.window.document);
+    const { document } = parseHTML(cleanedHtml);
+    const reader = new Readability(document as any);
     const article = reader.parse();
     if (article && article.textContent) {
       // Post-process: remove residual noise
