@@ -148,6 +148,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
             mainTopics,
             searchIntentType: searchIntent.type,
             textSample: text,
+            articleUrl,
             articleMetadata
           },
           { model, strictModel, skipTitleGeneration: true }
@@ -262,6 +263,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
             mainTopics,
             searchIntentType: searchIntent.type,
             textSample: text,
+            articleUrl,
             articleMetadata
           }
         );
@@ -301,6 +303,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
             mainTopics,
             searchIntentType: searchIntent.type,
             textSample: text,
+            articleUrl,
             articleMetadata
           },
           { model, strictModel }

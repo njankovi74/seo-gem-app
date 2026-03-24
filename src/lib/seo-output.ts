@@ -90,6 +90,7 @@ export async function buildSEOWithLLM(
     mainTopics: string[];
     searchIntentType: string;
     textSample?: string;
+    articleUrl?: string;
     articleMetadata?: {
       authorName?: string;
       publishedTime?: string;
@@ -168,18 +169,31 @@ Redosled i struktura niza MORAJU biti sledeći:
 - Izbegavaj generičke reči od jedne reči (vesti, srbija, novo, danas) ukoliko nisu deo šire fraze.
 - Vrati strogo jedan niz (array) stringova koji prati ovu hijerarhiju. Mala slova, bez duplikata.
 
-**3. Schema Markup (schema_markup) — JSON-LD:**
+**C. Schema Markup (Ključ: schema_markup)**
 Generiši validan JSON-LD string za NewsArticle schemu.
-Pored @context, @type, headline, publisher ({"@type": "Organization", "name": "Nacionalni Informativni Portal"}) i articleBody (izvuci sažetak do max 150 reči iz teksta), SADA MORAŠ OBAVEZNO DA UKLJUČIŠ I SLEDEĆE PODATKE (koje ti prosleđujem kao poznate varijable sa originalnog linka):
-- "image": Iskoristi prosleđeni image_url. Ako nije prosleđen, izostavi ovo polje.
-- "datePublished": Iskoristi prosleđeni published_time. Ako nije prosleđen, izostavi ovo polje.
-- "author": Kao {"@type": "Person", "name": "..."}, iskoristi prosleđeni author_name. Ako nije prosleđen, pokušaj da nađeš ime novinara u samom tekstu. Ako ga nema, izostavi.
-- Vrati schema_markup kao STRING (escaped JSON), NE kao ugnežden JSON objekat!
+Sledeća polja su OBAVEZNA i ne smeju biti izostavljena:
+
+- **@context**: "https://schema.org"
+- **@type**: "NewsArticle"
+- **headline**: Tvoj generisani SEO naslov.
+- **description**: OBAVEZNO mora biti apsolutno identična vrednost kao u polju meta_description (Answer Nugget).
+- **articleBody**: Kompresovani sažetak prepun entiteta (do 150 reči).
+- **mainEntityOfPage**: Formatiraj kao {"@type": "WebPage", "@id": "[url_clanka]"}. Iskoristi prosleđeni url_clanka. Ako nije prosleđen, koristi placeholder "https://example.com/article".
+- **inLanguage**: Samostalno detektuj jezik iz teksta i UVEK ga formatiraj po BCP-47 standardu (npr. "sr-RS", "hr-HR", "bs-BA", "en-US"). NIKADA nemoj ostaviti prazno.
+- **image**: Iskoristi prosleđeni [image_url]. Ako nema, izostavi samo ovo polje.
+- **datePublished**: Iskoristi prosleđeni [published_time]. Ako nema, izostavi.
+- **dateModified**: Iskoristi istu vrednost kao za datePublished (da osiguraš prolaznost signala svežine).
+- **author**: Formatiraj sa identifikatorom: {"@type": "Person", "@id": "#author", "name": "[Ime iz varijable author_name ili izvučeno iz teksta]"}. Ako ime nije dostupno, izostavi.
+- **publisher**: Formatiraj sa identifikatorom: {"@type": "Organization", "@id": "#organization", "name": "Nacionalni Informativni Portal"}.
+- **about** i **mentions** (Kritično za Entity Depth): Dodaj ova dva niza. U "about" stavi 1-2 glavna entiteta (koncepta) iz članka definisana kao {"@type": "Thing", "name": "..."}. U "mentions" stavi do 3 sporedna entiteta (ljudi, lokacije, organizacije), svaki kao {"@type": "Thing", "name": "..."}.
+
+⚠️ SINTAKSNA ZAŠTITA (Syntax Firewall): Vrati isključivo čistu, neobrađenu JSON strukturu objekta. STROGO ZABRANJENO je korišćenje Markdown code blokova (nemoj stavljati \`\`\`json na početak i \`\`\` na kraj stringa). Tekst mora biti validan JSON spreman za parsiranje.
 
 **Poznate varijable sa originalnog linka:**
 - image_url: ${context.articleMetadata?.imageUrl || '(nije pronađen)'}
 - published_time: ${context.articleMetadata?.publishedTime || '(nije pronađen)'}
 - author_name: ${context.articleMetadata?.authorName || '(nije pronađen)'}
+- url_clanka: ${context.articleUrl || '(nije pronađen)'}
 
 Ulaz (sažetak):
 - Primarna ključna reč: ${primaryKW}
@@ -471,6 +485,7 @@ export async function buildSEOWithDualLLM(
     mainTopics: string[];
     searchIntentType: string;
     textSample?: string;
+    articleUrl?: string;
     articleMetadata?: {
       authorName?: string;
       publishedTime?: string;
