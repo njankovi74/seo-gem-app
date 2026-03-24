@@ -36,6 +36,9 @@ function tryJsonLD($: cheerio.CheerioAPI): {
   headline: string;
   author: string;
   publishDate: string;
+  dateModified: string;
+  publisherName: string;
+  imageUrl: string;
   articleBody: string;
 } | null {
   try {
@@ -68,8 +71,15 @@ function tryJsonLD($: cheerio.CheerioAPI): {
         ? (article.author[0]?.name || '')
         : (article.author?.name || '');
     const publishDate = article.datePublished || article.dateCreated || '';
+    const dateModified = article.dateModified || '';
+    const publisherName = typeof article.publisher === 'string'
+      ? article.publisher
+      : (article.publisher?.name || '');
+    const imageUrl = typeof article.image === 'string'
+      ? article.image
+      : (article.image?.url || '');
     const articleBody = article.articleBody || '';
-    return { headline, author, publishDate, articleBody };
+    return { headline, author, publishDate, dateModified, publisherName, imageUrl, articleBody };
   } catch {
     return null;
   }
@@ -284,7 +294,12 @@ async function extractByUrl(url: string) {
     publishDate: $('meta[property="article:published_time"]').attr('content') ||
       $('meta[name="publish-date"]').attr('content') ||
       $('time').attr('datetime') || (ld?.publishDate || ''),
-    imageUrl: $('meta[property="og:image"]').attr('content') ||
+    dateModified: $('meta[property="article:modified_time"]').attr('content') ||
+      (ld?.dateModified || ''),
+    publisherName: (ld?.publisherName || '') ||
+      $('meta[property="og:site_name"]').attr('content') || '',
+    imageUrl: (ld?.imageUrl || '') ||
+      $('meta[property="og:image"]').attr('content') ||
       $('meta[name="twitter:image"]').attr('content') || '',
   };
 

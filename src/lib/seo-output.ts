@@ -94,7 +94,9 @@ export async function buildSEOWithLLM(
     articleMetadata?: {
       authorName?: string;
       publishedTime?: string;
+      dateModified?: string;
       imageUrl?: string;
+      publisherName?: string;
     };
   },
   options?: { model?: string; strictModel?: boolean; skipTitleGeneration?: boolean }
@@ -182,9 +184,9 @@ Sledeća polja su OBAVEZNA i ne smeju biti izostavljena:
 - **inLanguage**: Samostalno detektuj jezik iz teksta i UVEK ga formatiraj po BCP-47 standardu (npr. "sr-RS", "hr-HR", "bs-BA", "en-US"). NIKADA nemoj ostaviti prazno.
 - **image**: Iskoristi prosleđeni [image_url]. Ako nema, izostavi samo ovo polje.
 - **datePublished**: Iskoristi prosleđeni [published_time]. Ako nema, izostavi.
-- **dateModified**: Iskoristi istu vrednost kao za datePublished (da osiguraš prolaznost signala svežine).
-- **author**: Formatiraj sa identifikatorom: {"@type": "Person", "@id": "#author", "name": "[Ime iz varijable author_name ili izvučeno iz teksta]"}. Ako ime nije dostupno, izostavi.
-- **publisher**: Formatiraj sa identifikatorom: {"@type": "Organization", "@id": "#organization", "name": "Nacionalni Informativni Portal"}.
+- **dateModified**: Iskoristi prosleđeni [date_modified]. Ako nema, koristi istu vrednost kao datePublished.
+- **author**: Formatiraj sa identifikatorom: {"@type": "Person", "@id": "#author", "name": "[Ime iz varijable author_name ili izvučeno iz teksta]"}. Ako ime nije dostupno, izostavi. UPOZORENJE: publisher i author su RAZLIČITE osobe/entiteti — nikada ne mešaj ih!
+- **publisher**: Formatiraj sa identifikatorom: {"@type": "Organization", "@id": "#organization", "name": "[publisher_name]"}. Iskoristi prosleđenu varijablu publisher_name. Ako nije prosleđen, koristi "Nacionalni Informativni Portal".
 - **about** i **mentions** (Kritično za Entity Depth): Dodaj ova dva niza. U "about" stavi 1-2 glavna entiteta (koncepta) iz članka definisana kao {"@type": "Thing", "name": "..."}. U "mentions" stavi do 3 sporedna entiteta (ljudi, lokacije, organizacije), svaki kao {"@type": "Thing", "name": "..."}.
 
 ⚠️ SINTAKSNA ZAŠTITA (Syntax Firewall): Vrati isključivo čistu, neobrađenu JSON strukturu objekta. STROGO ZABRANJENO je korišćenje Markdown code blokova (nemoj stavljati \`\`\`json na početak i \`\`\` na kraj stringa). Tekst mora biti validan JSON spreman za parsiranje.
@@ -192,7 +194,9 @@ Sledeća polja su OBAVEZNA i ne smeju biti izostavljena:
 **Poznate varijable sa originalnog linka:**
 - image_url: ${context.articleMetadata?.imageUrl || '(nije pronađen)'}
 - published_time: ${context.articleMetadata?.publishedTime || '(nije pronađen)'}
+- date_modified: ${context.articleMetadata?.dateModified || '(nije pronađen)'}
 - author_name: ${context.articleMetadata?.authorName || '(nije pronađen)'}
+- publisher_name: ${context.articleMetadata?.publisherName || '(nije pronađen)'}
 - url_clanka: ${context.articleUrl || '(nije pronađen)'}
 
 Ulaz (sažetak):
@@ -489,7 +493,9 @@ export async function buildSEOWithDualLLM(
     articleMetadata?: {
       authorName?: string;
       publishedTime?: string;
+      dateModified?: string;
       imageUrl?: string;
+      publisherName?: string;
     };
   }
 ): Promise<DualSEOOutputs> {

@@ -21,7 +21,9 @@ interface AnalysisRequest {
   articleMetadata?: {
     authorName?: string;
     publishedTime?: string;
+    dateModified?: string;
     imageUrl?: string;
+    publisherName?: string;
   };
 }
 

@@ -219,7 +219,9 @@ export default function Home() {
           articleMetadata: {
             authorName: extractedContent.metadata?.author || '',
             publishedTime: extractedContent.metadata?.publishDate || '',
+            dateModified: extractedContent.metadata?.dateModified || '',
             imageUrl: extractedContent.metadata?.imageUrl || '',
+            publisherName: extractedContent.metadata?.publisherName || '',
           }
         }),
       });
