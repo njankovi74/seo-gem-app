@@ -18,6 +18,11 @@ interface AnalysisRequest {
   selectionType?: 'ai_option_1' | 'ai_option_2' | 'ai_option_3' | 'custom';
   offeredTitles?: Array<{ text: string; style: 'informativni' | 'geo_pitanje' | 'discover_hook'; length: number; reasoning: string }>;
   articleUrl?: string;
+  articleMetadata?: {
+    authorName?: string;
+    publishedTime?: string;
+    imageUrl?: string;
+  };
 }
 
 interface AnalysisResponse {
@@ -61,7 +66,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
     selectedTitle,
     selectionType,
     offeredTitles,
-    articleUrl
+    articleUrl,
+    articleMetadata
   }: AnalysisRequest = await request.json();
 
     if (!text || text.trim().length < 50) {
@@ -141,7 +147,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
             keyTerms: prioritized.map(p => p.term),
             mainTopics,
             searchIntentType: searchIntent.type,
-            textSample: text
+            textSample: text,
+            articleMetadata
           },
           { model, strictModel, skipTitleGeneration: true }
         );
@@ -254,7 +261,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
             keyTerms: prioritized.map(p => p.term),
             mainTopics,
             searchIntentType: searchIntent.type,
-            textSample: text
+            textSample: text,
+            articleMetadata
           }
         );
         
@@ -292,7 +300,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
             keyTerms: prioritized.map(p => p.term),
             mainTopics,
             searchIntentType: searchIntent.type,
-            textSample: text
+            textSample: text,
+            articleMetadata
           },
           { model, strictModel }
         );

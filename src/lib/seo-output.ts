@@ -90,6 +90,11 @@ export async function buildSEOWithLLM(
     mainTopics: string[];
     searchIntentType: string;
     textSample?: string;
+    articleMetadata?: {
+      authorName?: string;
+      publishedTime?: string;
+      imageUrl?: string;
+    };
   },
   options?: { model?: string; strictModel?: boolean; skipTitleGeneration?: boolean }
 ): Promise<SEOOutputs> {
@@ -164,15 +169,17 @@ Redosled i struktura niza MORAJU biti sledeći:
 - Vrati strogo jedan niz (array) stringova koji prati ovu hijerarhiju. Mala slova, bez duplikata.
 
 **3. Schema Markup (schema_markup) — JSON-LD:**
-- Generiši validan JSON-LD string za NewsArticle schemu.
-- Schema mora sadržati:
-  * "@context": "https://schema.org"
-  * "@type": "NewsArticle"
-  * "headline": izabran ili generisan SEO naslov
-  * "articleBody": sažetak teksta do 200 reči
-  * "author": kao {"@type": "Person", "name": "..."} ako je autor naveden u tekstu, inače izostavi
-  * "publisher": {"@type": "Organization", "name": "[Ime Portala]"}
+Generiši validan JSON-LD string za NewsArticle schemu.
+Pored @context, @type, headline, publisher ({"@type": "Organization", "name": "Nacionalni Informativni Portal"}) i articleBody (izvuci sažetak do max 150 reči iz teksta), SADA MORAŠ OBAVEZNO DA UKLJUČIŠ I SLEDEĆE PODATKE (koje ti prosleđujem kao poznate varijable sa originalnog linka):
+- "image": Iskoristi prosleđeni image_url. Ako nije prosleđen, izostavi ovo polje.
+- "datePublished": Iskoristi prosleđeni published_time. Ako nije prosleđen, izostavi ovo polje.
+- "author": Kao {"@type": "Person", "name": "..."}, iskoristi prosleđeni author_name. Ako nije prosleđen, pokušaj da nađeš ime novinara u samom tekstu. Ako ga nema, izostavi.
 - Vrati schema_markup kao STRING (escaped JSON), NE kao ugnežden JSON objekat!
+
+**Poznate varijable sa originalnog linka:**
+- image_url: ${context.articleMetadata?.imageUrl || '(nije pronađen)'}
+- published_time: ${context.articleMetadata?.publishedTime || '(nije pronađen)'}
+- author_name: ${context.articleMetadata?.authorName || '(nije pronađen)'}
 
 Ulaz (sažetak):
 - Primarna ključna reč: ${primaryKW}
@@ -464,6 +471,11 @@ export async function buildSEOWithDualLLM(
     mainTopics: string[];
     searchIntentType: string;
     textSample?: string;
+    articleMetadata?: {
+      authorName?: string;
+      publishedTime?: string;
+      imageUrl?: string;
+    };
   }
 ): Promise<DualSEOOutputs> {
   const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';

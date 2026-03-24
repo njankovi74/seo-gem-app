@@ -215,7 +215,12 @@ export default function Home() {
           selectedTitle,
           selectionType,
           offeredTitles: titleOptions,
-          articleUrl: url
+          articleUrl: url,
+          articleMetadata: {
+            authorName: extractedContent.metadata?.author || '',
+            publishedTime: extractedContent.metadata?.publishDate || '',
+            imageUrl: extractedContent.metadata?.imageUrl || '',
+          }
         }),
       });
 

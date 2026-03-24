@@ -284,6 +284,8 @@ async function extractByUrl(url: string) {
     publishDate: $('meta[property="article:published_time"]').attr('content') ||
       $('meta[name="publish-date"]').attr('content') ||
       $('time').attr('datetime') || (ld?.publishDate || ''),
+    imageUrl: $('meta[property="og:image"]').attr('content') ||
+      $('meta[name="twitter:image"]').attr('content') || '',
   };
 
   // ── Title ──
