@@ -97,6 +97,7 @@ export async function buildSEOWithLLM(
       dateModified?: string;
       imageUrl?: string;
       publisherName?: string;
+      articleSection?: string;
     };
   },
   options?: { model?: string; strictModel?: boolean; skipTitleGeneration?: boolean }
@@ -188,6 +189,8 @@ Sledeća polja su OBAVEZNA i ne smeju biti izostavljena:
 - **author**: Formatiraj sa identifikatorom: {"@type": "Person", "@id": "#author", "name": "[Ime iz varijable author_name ili izvučeno iz teksta]"}. Ako ime nije dostupno, izostavi. UPOZORENJE: publisher i author su RAZLIČITE osobe/entiteti — nikada ne mešaj ih!
 - **publisher**: Formatiraj sa identifikatorom: {"@type": "Organization", "@id": "#organization", "name": "[publisher_name]"}. Iskoristi prosleđenu varijablu publisher_name. Ako nije prosleđen, koristi "Nacionalni Informativni Portal".
 - **about** i **mentions** (Kritično za Entity Depth): Dodaj ova dva niza. U "about" stavi 1-2 glavna entiteta (koncepta) iz članka definisana kao {"@type": "Thing", "name": "..."}. U "mentions" stavi do 3 sporedna entiteta (ljudi, lokacije, organizacije), svaki kao {"@type": "Thing", "name": "..."}.
+- **keywords**: Iskoristi iste ključne reči koje si generisao u polju "keywords" izlaza. Formatiraj kao niz stringova.
+- **articleSection**: Iskoristi prosleđenu varijablu [article_section]. Ako nije prosleđena, izostavi ovo polje.
 
 ⚠️ SINTAKSNA ZAŠTITA (Syntax Firewall): Vrati isključivo čistu, neobrađenu JSON strukturu objekta. STROGO ZABRANJENO je korišćenje Markdown code blokova (nemoj stavljati \`\`\`json na početak i \`\`\` na kraj stringa). Tekst mora biti validan JSON spreman za parsiranje.
 
@@ -197,6 +200,7 @@ Sledeća polja su OBAVEZNA i ne smeju biti izostavljena:
 - date_modified: ${context.articleMetadata?.dateModified || '(nije pronađen)'}
 - author_name: ${context.articleMetadata?.authorName || '(nije pronađen)'}
 - publisher_name: ${context.articleMetadata?.publisherName || '(nije pronađen)'}
+- article_section: ${context.articleMetadata?.articleSection || '(nije pronađen)'}
 - url_clanka: ${context.articleUrl || '(nije pronađen)'}
 
 Ulaz (sažetak):
@@ -496,6 +500,7 @@ export async function buildSEOWithDualLLM(
       dateModified?: string;
       imageUrl?: string;
       publisherName?: string;
+      articleSection?: string;
     };
   }
 ): Promise<DualSEOOutputs> {

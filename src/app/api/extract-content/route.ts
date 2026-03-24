@@ -39,6 +39,7 @@ function tryJsonLD($: cheerio.CheerioAPI): {
   dateModified: string;
   publisherName: string;
   imageUrl: string;
+  articleSection: string;
   articleBody: string;
 } | null {
   try {
@@ -78,8 +79,9 @@ function tryJsonLD($: cheerio.CheerioAPI): {
     const imageUrl = typeof article.image === 'string'
       ? article.image
       : (article.image?.url || '');
+    const articleSection = article.articleSection || '';
     const articleBody = article.articleBody || '';
-    return { headline, author, publishDate, dateModified, publisherName, imageUrl, articleBody };
+    return { headline, author, publishDate, dateModified, publisherName, imageUrl, articleSection, articleBody };
   } catch {
     return null;
   }
@@ -302,6 +304,8 @@ async function extractByUrl(url: string) {
     imageUrl: (ld?.imageUrl || '') ||
       $('meta[property="og:image"]').attr('content') ||
       $('meta[name="twitter:image"]').attr('content') || '',
+    articleSection: (ld?.articleSection || '') ||
+      $('meta[property="article:section"]').attr('content') || '',
   };
 
   // ── Title ──

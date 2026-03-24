@@ -24,6 +24,7 @@ interface AnalysisRequest {
     dateModified?: string;
     imageUrl?: string;
     publisherName?: string;
+    articleSection?: string;
   };
 }
 

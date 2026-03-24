@@ -222,6 +222,7 @@ export default function Home() {
             dateModified: extractedContent.metadata?.dateModified || '',
             imageUrl: extractedContent.metadata?.imageUrl || '',
             publisherName: extractedContent.metadata?.publisherName || '',
+            articleSection: extractedContent.metadata?.articleSection || '',
           }
         }),
       });
