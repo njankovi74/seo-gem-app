@@ -289,8 +289,9 @@ async function extractByUrl(url: string) {
   const metadata = {
     description: leadText,
     keywords: $('meta[name="keywords"]').attr('content') || '',
-    author: $('meta[name="author"]').attr('content') ||
-      $('meta[property="article:author"]').attr('content') || (ld?.author || ''),
+    author: (ld?.author || '') ||
+      $('meta[name="author"]').attr('content') ||
+      $('meta[property="article:author"]').attr('content') || '',
     publishDate: $('meta[property="article:published_time"]').attr('content') ||
       $('meta[name="publish-date"]').attr('content') ||
       $('time').attr('datetime') || (ld?.publishDate || ''),
