@@ -69,16 +69,16 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
             {/* Intro */}
             <div>
               <p className="text-lg leading-8">
-                <strong className="text-gray-900">SEO GEM</strong> nije samo još jedan u nizu SEO alata – 
-                to je napredna <em className="text-emerald-700">Generative Engine Optimization (GEO)</em> infrastruktura 
+                <strong className="text-gray-900">SEO GEM</strong> nije samo još jedan u nizu SEO alata –
+                to je napredna <em className="text-emerald-700">Generative Engine Optimization (GEO)</em> infrastruktura
                 dizajnirana da osigura da vaš sadržaj ne bude samo indeksiran, već i{' '}
-                <strong className="text-gray-900">citiran</strong> od strane vodećih AI pretraživača 
+                <strong className="text-gray-900">citiran</strong> od strane vodećih AI pretraživača
                 i istaknut u <em>Google Discover</em> feed-u.
               </p>
               <p className="text-base mt-4 leading-7 text-gray-600">
-                U svetu gde tradicionalna pretraga ustupa mesto AI odgovorima (AI Overviews), SEO GEM 
-                omogućava vašoj redakciji da pređe put od pukog nizanja ključnih reči (&quot;strings&quot;) 
-                do strukturiranja stvarnih pojmova (&quot;entities&quot;) koje algoritmi tretiraju 
+                U svetu gde tradicionalna pretraga ustupa mesto AI odgovorima (AI Overviews), SEO GEM
+                omogućava vašoj redakciji da pređe put od pukog nizanja ključnih reči (&quot;strings&quot;)
+                do strukturiranja stvarnih pojmova (&quot;entities&quot;) koje algoritmi tretiraju
                 kao neosporne izvore istine.
               </p>
             </div>
@@ -106,7 +106,7 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
                     <div>
                       <h4 className="font-semibold text-gray-900 mb-1">Dominacija u AI odgovorima</h4>
                       <p className="text-sm text-gray-600 leading-6">
-                        Automatsko generisanje &quot;Answer Nugget&quot; meta opisa dizajniranih da postanu 
+                        Automatsko generisanje &quot;Answer Nugget&quot; meta opisa dizajniranih da postanu
                         primarni izvor informacija za ChatGPT, Perplexity i Google AI Overviews.
                       </p>
                     </div>
@@ -122,8 +122,8 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
                     <div>
                       <h4 className="font-semibold text-gray-900 mb-1">Matrica od 6 naslova (Urednička kontrola)</h4>
                       <p className="text-sm text-gray-600 leading-6">
-                        Alat ne preuzima vaš posao, već vam nudi &quot;švedski sto&quot; od 6 naslova prilagođenih 
-                        različitim algoritmima (Discover, AI, tradicionalni SEO). 
+                        Alat ne preuzima vaš posao, već vam nudi &quot;švedski sto&quot; od 6 naslova prilagođenih
+                        različitim algoritmima (Discover, AI, tradicionalni SEO).
                         <strong> Novinar uvek zadržava kontrolu i bira najbolji ugao</strong>.
                       </p>
                     </div>
@@ -139,7 +139,7 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
                     <div>
                       <h4 className="font-semibold text-gray-900 mb-1">Izgradnja tematskog autoriteta</h4>
                       <p className="text-sm text-gray-600 leading-6">
-                        Generisanje 100% validnog <em>Entity-first Schema Markup-a</em> (JSON-LD) u pozadini teksta, 
+                        Generisanje 100% validnog <em>Entity-first Schema Markup-a</em> (JSON-LD) u pozadini teksta,
                         čime se drastično jača E-E-A-T vašeg portala.
                       </p>
                     </div>
@@ -204,8 +204,8 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
                 <span>Kako da počnete?</span>
               </h3>
               <p className="text-base text-gray-600 leading-7">
-                Unesite link ili sirovi tekst vaše vesti u polje za ekstrakciju. SEO GEM će analizirati 
-                vaš sadržaj, prepoznati nameru pretrage i isporučiti vam SEO elemente koji vašu vest 
+                Unesite link ili sirovi tekst vaše vesti u polje za ekstrakciju. SEO GEM će analizirati
+                vaš sadržaj, prepoznati nameru pretrage i isporučiti vam SEO elemente koji vašu vest
                 lansiraju direktno u fokus modernih algoritama.
               </p>
             </div>
@@ -213,7 +213,7 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
             {/* Mission */}
             <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-5">
               <p className="text-sm text-emerald-800 italic leading-6 text-center">
-                ✨ Misija SEO GEM-a: Jednostavnost u korišćenju, superiornost u rezultatima 
+                ✨ Misija SEO GEM-a: Jednostavnost u korišćenju, superiornost u rezultatima
                 i maksimalna etika u primeni veštačke inteligencije u novinarstvu.
               </p>
             </div>
@@ -232,7 +232,8 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
       </div>
 
       {/* Animations - using plain style tag for Vercel compatibility */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes infoFadeIn {
           from { opacity: 0; }
           to { opacity: 1; }

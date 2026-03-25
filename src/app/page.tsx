@@ -282,7 +282,7 @@ export default function Home() {
         <span className="text-xs text-gray-500">{value.length} karaktera</span>
       </div>
       <div className="relative">
-        <pre className="mt-2 p-3 bg-gray-50 border rounded text-sm whitespace-pre-wrap pr-10">{value}</pre>
+        <pre className="mt-2 p-3 bg-gray-50 border rounded text-sm text-gray-900 whitespace-pre-wrap pr-10">{value}</pre>
         <button
           onClick={() => copyToClipboard(value, fieldKey)}
           className="absolute top-2 right-2 p-1 rounded hover:bg-gray-200 text-gray-600"
@@ -393,7 +393,7 @@ export default function Home() {
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="https://primer.rs/clanak-za-analizu"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900"
                     disabled={loading}
                   />
                 </div>
