@@ -308,6 +308,16 @@ async function extractByUrl(url: string) {
       $('meta[property="article:section"]').attr('content') || '',
   };
 
+  console.log('📋 [extract] Metadata extracted:', {
+    hasJsonLD: !!ld,
+    author: metadata.author || '(empty)',
+    publishDate: metadata.publishDate || '(empty)',
+    dateModified: metadata.dateModified || '(empty)',
+    publisherName: metadata.publisherName || '(empty)',
+    imageUrl: metadata.imageUrl ? metadata.imageUrl.substring(0, 80) + '...' : '(empty)',
+    articleSection: metadata.articleSection || '(empty)',
+  });
+
   // ── Title ──
   let title = $('meta[property="og:title"]').attr('content') ||
     $('meta[name="twitter:title"]').attr('content') ||

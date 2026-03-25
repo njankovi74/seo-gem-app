@@ -136,6 +136,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
     // Only generate Meta description and Keywords with LLM
     if (selectedTitle) {
       console.log('🎯 [analyze-text] Using selectedTitle:', selectedTitle);
+      console.log('📋 [analyze-text] articleMetadata received:', articleMetadata || '(undefined)');
       
       // Override deterministic title with selected title
       deterministicSEO.title = selectedTitle;
