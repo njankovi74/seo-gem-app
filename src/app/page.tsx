@@ -988,11 +988,11 @@ export default function Home() {
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Ekstrakcija sadržaja</h3>
                   <p className="text-gray-600 mb-2">
-                    Unesite URL vesti i kliknite <strong>"Ekstraktuj sadržaj"</strong>
+                    Unesite URL vesti i kliknite <strong>&quot;Ekstraktuj sadržaj&quot;</strong>
                   </p>
                   <div className="bg-blue-50 border-l-4 border-blue-600 p-3 rounded">
                     <p className="text-sm text-gray-700">
-                      <strong>💡 Tip:</strong> Sistem automatski izvlači naslov, lead i glavni tekst članka
+                      <strong>💡 Tip:</strong> Sistem automatski izvlači naslov, lead, tekst članka i tehničke metapodatke (autor, datum objave, izdavač, sliku) direktno iz JSON-LD i meta tagova.
                     </p>
                   </div>
                 </div>
@@ -1008,25 +1008,25 @@ export default function Home() {
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Izbor SEO naslova</h3>
                   <p className="text-gray-600 mb-2">
-                    AI generiše <strong>3 različita stila naslova</strong>:
+                    AI generiše <strong>6 naslova u 3 kategorije</strong> (po 2 naslova):
                   </p>
                   <ul className="space-y-2 mb-3">
                     <li className="flex items-start space-x-2">
                       <span className="text-blue-600 font-bold">•</span>
-                      <span className="text-gray-700"><strong>Faktografski:</strong> Direktan, bez emotivnosti</span>
+                      <span className="text-gray-700"><strong>Informativni:</strong> Faktografski, neutralan ton za hard news</span>
                     </li>
                     <li className="flex items-start space-x-2">
                       <span className="text-green-600 font-bold">•</span>
-                      <span className="text-gray-700"><strong>Kontekstualni:</strong> Sa dodatnim kontekstom</span>
+                      <span className="text-gray-700"><strong>GEO Pitanje:</strong> Optimizovan za AI odgovore (Gemini, ChatGPT)</span>
                     </li>
                     <li className="flex items-start space-x-2">
                       <span className="text-purple-600 font-bold">•</span>
-                      <span className="text-gray-700"><strong>Detaljni:</strong> Optimizovan za Google</span>
+                      <span className="text-gray-700"><strong>Discover Hook:</strong> Stvara radoznalost za Google Discover</span>
                     </li>
                   </ul>
                   <div className="bg-green-50 border-l-4 border-green-600 p-3 rounded">
                     <p className="text-sm text-gray-700">
-                      <strong>🎯 Važno:</strong> Odabir naslova pomaže sistemu da "nauči" vaš stil!
+                      <strong>🎯 Važno:</strong> Svi naslovi poštuju limit od 70 karaktera. Odabir pomaže sistemu da nauči vaš stil!
                     </p>
                   </div>
                 </div>
@@ -1042,24 +1042,32 @@ export default function Home() {
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">SEO analiza i preporuke</h3>
                   <p className="text-gray-600 mb-2">
-                    Nakon izbora naslova, kliknite <strong>"Pokreni SEO Analizu"</strong>
+                    Nakon izbora naslova, kliknite <strong>&quot;Generiši Meta opis + Ključne reči&quot;</strong>
                   </p>
                   <p className="text-gray-600 mb-3">
                     Dobijate kompletne SEO elemente:
                   </p>
                   <div className="grid grid-cols-2 gap-2 mb-3">
                     <div className="bg-gray-50 p-2 rounded">
-                      <span className="text-xs font-semibold text-gray-700">✓ SEO Naslov (optimizovan)</span>
+                      <span className="text-xs font-semibold text-gray-700">✓ SEO Naslov (do 70 karaktera)</span>
                     </div>
                     <div className="bg-gray-50 p-2 rounded">
-                      <span className="text-xs font-semibold text-gray-700">✓ Meta Opis</span>
+                      <span className="text-xs font-semibold text-gray-700">✓ Meta Opis (Answer Nugget)</span>
                     </div>
                     <div className="bg-gray-50 p-2 rounded">
-                      <span className="text-xs font-semibold text-gray-700">✓ Ključne reči</span>
+                      <span className="text-xs font-semibold text-gray-700">✓ Ključne reči (3 nivoa)</span>
                     </div>
                     <div className="bg-gray-50 p-2 rounded">
-                      <span className="text-xs font-semibold text-gray-700">✓ Analitika</span>
+                      <span className="text-xs font-semibold text-gray-700">✓ Schema Markup (JSON-LD)</span>
                     </div>
+                    <div className="bg-gray-50 p-2 rounded col-span-2">
+                      <span className="text-xs font-semibold text-gray-700">✓ Analitika (TF-IDF, LSA, Search Intent)</span>
+                    </div>
+                  </div>
+                  <div className="bg-purple-50 border-l-4 border-purple-600 p-3 rounded">
+                    <p className="text-sm text-gray-700">
+                      <strong>🔧 Schema Markup:</strong> Automatski popunjava 16+ polja (author, publisher, datePublished, image, about, mentions...) koristeći realne podatke sa originalnog linka.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1071,8 +1079,8 @@ export default function Home() {
                   <div>
                     <h4 className="font-semibold text-amber-900 mb-2">🧠 Sistem učenja (RAG)</h4>
                     <p className="text-sm text-amber-800">
-                      Svaki put kada odaberete naslov, sistem zapamti vašu preferenciju. 
-                      Nakon 5-10 odabira, AI će automatski generisati naslove u stilu koji PREFERIRATE!
+                      Svaki put kada odaberete naslov, sistem zapamti vašu preferenciju i koristi semantičku pretragu za personalizaciju. 
+                      Nakon 5-10 odabira, AI automatski generiše naslove prilagođene vašem stilu!
                     </p>
                   </div>
                 </div>
