@@ -314,7 +314,7 @@ export default function Home() {
                 <p className="text-sm text-gray-500">Inteligentni SEO Asistent</p>
               </div>
             </button>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center">
               <button
                 onClick={() => setShowHelp(true)}
                 className="flex items-center space-x-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -323,9 +323,6 @@ export default function Home() {
                 <HelpCircle className="w-5 h-5" />
                 <span className="text-sm font-medium">Uputstvo</span>
               </button>
-              <div className="text-sm text-gray-500">
-                v1.0 - Serbian Language Optimized
-              </div>
             </div>
           </div>
         </div>
@@ -384,7 +381,7 @@ export default function Home() {
                 Analiziraj Članak za SEO Optimizaciju
               </h2>
               <p className="text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed">
-                Inteligentni SEO Asistent: Pretvorite vaše vesti u primarni izvor za AI pretraživače i Google Discover.
+                Pretvorite vaše vesti u primarni izvor za AI pretraživače i Google Discover.
               </p>
             </div>
 
@@ -958,8 +955,8 @@ export default function Home() {
       <footer className="bg-white border-t mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center text-sm text-gray-500">
-            <p>SEO GEM v1.0 - Inteligentni SEO Asistent za srpsko tržište</p>
-            <p className="mt-1">Implementira "Long-Tail Prvo" strategiju sa TF-IDF i LSA analizom</p>
+            <p>SEO GEM  - Inteligentni SEO Asistent</p>
+            <p className="mt-1">TF-IDF i LSA analiza sadržaja</p>
           </div>
         </div>
       </footer>
