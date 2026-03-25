@@ -73,6 +73,21 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
     articleMetadata
   }: AnalysisRequest = await request.json();
 
+    console.log('📥 [analyze-text] Request body:', {
+      textLength: text?.length || 0,
+      title: title || '(none)',
+      selectedTitle: selectedTitle || '(none)',
+      articleUrl: articleUrl || '(none)',
+      articleMetadata: articleMetadata ? {
+        authorName: articleMetadata.authorName || '(empty)',
+        publishedTime: articleMetadata.publishedTime || '(empty)',
+        dateModified: articleMetadata.dateModified || '(empty)',
+        imageUrl: articleMetadata.imageUrl ? 'SET' : '(empty)',
+        publisherName: articleMetadata.publisherName || '(empty)',
+        articleSection: articleMetadata.articleSection || '(empty)',
+      } : '⚠️ UNDEFINED - metadata not passed!',
+    });
+
     if (!text || text.trim().length < 50) {
       return NextResponse.json({
         success: false,
