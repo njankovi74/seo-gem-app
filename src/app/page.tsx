@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, FileText, Brain, BarChart3, ExternalLink, Copy, Check, Info, HelpCircle, X, RefreshCw } from 'lucide-react';
+import { Search, FileText, Brain, BarChart3, ExternalLink, Copy, Check, Info, HelpCircle, X, RefreshCw, Sparkles } from 'lucide-react';
+import InfoModal from '@/components/InfoModal';
 
 interface AnalysisResult {
   tfidfAnalysis: any;
@@ -88,6 +89,7 @@ export default function Home() {
   const [step, setStep] = useState<'url' | 'content' | 'titleSelection' | 'analysis'>('url');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   
   // Title selection state
   const [titleOptions, setTitleOptions] = useState<TitleOption[]>([]);
@@ -378,12 +380,11 @@ export default function Home() {
         {step === 'url' && (
           <div className="bg-white rounded-xl shadow-sm border p-8">
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">
                 Analiziraj Članak za SEO Optimizaciju
               </h2>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Unesite URL novinarskog članka da biste dobili detaljnu SEO analizu 
-                optimizovanu za srpsko tržište prema "Long-Tail Prvo" strategiji.
+              <p className="text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed">
+                Inteligentni SEO Asistent: Pretvorite vaše vesti u primarni izvor za AI pretraživače i Google Discover.
               </p>
             </div>
 
@@ -395,14 +396,14 @@ export default function Home() {
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="https://primer.rs/clanak-za-analizu"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     disabled={loading}
                   />
                 </div>
                 <button
                   onClick={handleExtractContent}
                   disabled={loading || !url.trim()}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 font-semibold shadow-lg shadow-emerald-600/30 hover:shadow-emerald-600/50 transition-all duration-200"
                 >
                   {loading ? (
                     <>
@@ -411,15 +412,25 @@ export default function Home() {
                     </>
                   ) : (
                     <>
-                      <Search className="w-4 h-4" />
-                      <span>Analiziraj</span>
+                      <Sparkles className="w-4 h-4" />
+                      <span>[ Optimizuj vest ]</span>
                     </>
                   )}
                 </button>
               </div>
               
-              <div className="mt-4 text-sm text-gray-500">
-                <p>💡 <strong>Tip:</strong> URL treba da bude članak sa .rs domenom za najbolje rezultate</p>
+              <div className="mt-3 text-center">
+                <p className="text-sm text-gray-400 italic">(Rezultati gotovi za 3 sekunde)</p>
+              </div>
+
+              <div className="mt-6 flex items-center justify-center">
+                <button
+                  onClick={() => setShowInfo(true)}
+                  className="inline-flex items-center space-x-2 text-sm text-emerald-600 hover:text-emerald-700 font-medium hover:underline transition-colors"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Šta je SEO GEM? — Saznajte više</span>
+                </button>
               </div>
             </div>
           </div>
@@ -1107,6 +1118,9 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Info Modal */}
+      <InfoModal isOpen={showInfo} onClose={() => setShowInfo(false)} />
     </div>
   );
 }
