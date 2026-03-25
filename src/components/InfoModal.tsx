@@ -32,13 +32,13 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
-        style={{ animation: 'fadeIn 0.2s ease-out' }}
+        style={{ animation: 'infoFadeIn 0.2s ease-out' }}
       />
 
       {/* Modal */}
       <div
         className="relative w-full max-w-3xl max-h-[90vh] mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden"
-        style={{ animation: 'slideUp 0.3s ease-out' }}
+        style={{ animation: 'infoSlideUp 0.3s ease-out' }}
       >
         {/* Header */}
         <div className="sticky top-0 z-10 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 text-white px-8 py-6">
@@ -231,17 +231,17 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
         </div>
       </div>
 
-      {/* Animations */}
-      <style jsx>{`
-        @keyframes fadeIn {
+      {/* Animations - using plain style tag for Vercel compatibility */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes infoFadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        @keyframes slideUp {
+        @keyframes infoSlideUp {
           from { opacity: 0; transform: translateY(24px) scale(0.98); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
-      `}</style>
+      `}} />
     </div>
   );
 }
