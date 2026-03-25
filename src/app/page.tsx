@@ -180,6 +180,13 @@ export default function Home() {
   const handleGenerateMetaAndKeywords = async () => {
     if (!extractedContent) return;
 
+    // GUARD: Ensure extracted content has actual article text (not just a slug)
+    if (!extractedContent.content || extractedContent.content.trim().length < 50) {
+      console.warn('⚠️ [frontend] extractedContent.content is empty or too short:', extractedContent.content?.length || 0);
+      setError('Sadržaj članka nije učitan. Molimo pokušajte ponovo sa ekstrakcijom.');
+      return;
+    }
+
     // Determine selected title
     let selectedTitle = '';
     let selectionType: 'ai_option_1' | 'ai_option_2' | 'ai_option_3' | 'custom' = 'custom';
