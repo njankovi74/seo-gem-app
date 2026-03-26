@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, FileText, Brain, BarChart3, ExternalLink, Copy, Check, Info, HelpCircle, X, RefreshCw, Sparkles } from 'lucide-react';
+import { Search, FileText, Brain, BarChart3, ExternalLink, Copy, Check, Info, HelpCircle, X, RefreshCw, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import InfoModal from '@/components/InfoModal';
+import GemLogo from '@/components/GemLogo';
 
 interface AnalysisResult {
   tfidfAnalysis: any;
@@ -296,7 +297,7 @@ export default function Home() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50/50 via-white to-teal-50/30">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -306,9 +307,7 @@ export default function Home() {
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
               title="Povratak na početak"
             >
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Brain className="w-5 h-5 text-white" />
-              </div>
+              <GemLogo size={42} />
               <div className="text-left">
                 <h1 className="text-xl font-bold text-gray-900">SEO GEM</h1>
                 <p className="text-sm text-gray-500">Inteligentni SEO Asistent</p>
@@ -317,7 +316,7 @@ export default function Home() {
             <div className="flex items-center">
               <button
                 onClick={() => setShowHelp(true)}
-                className="flex items-center space-x-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                 title="Uputstvo za korišćenje"
               >
                 <HelpCircle className="w-5 h-5" />
@@ -332,29 +331,29 @@ export default function Home() {
         {/* Progress Steps */}
         <div className="mb-8">
           <div className="flex items-center justify-center space-x-4">
-            <div className={`flex items-center space-x-2 ${step === 'url' ? 'text-blue-600' : (step === 'content' || step === 'titleSelection' || step === 'analysis') ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'url' ? 'bg-blue-600 text-white' : (step === 'content' || step === 'titleSelection' || step === 'analysis') ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
+            <div className={`flex items-center space-x-2 ${step === 'url' ? 'text-emerald-600' : (step === 'content' || step === 'titleSelection' || step === 'analysis') ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'url' ? 'bg-emerald-600 text-white' : (step === 'content' || step === 'titleSelection' || step === 'analysis') ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
                 <Search className="w-4 h-4" />
               </div>
               <span className="font-medium text-sm">Ekstrakcija</span>
             </div>
             <div className={`w-12 h-0.5 ${(step === 'content' || step === 'titleSelection' || step === 'analysis') ? 'bg-green-600' : 'bg-gray-200'}`}></div>
-            <div className={`flex items-center space-x-2 ${step === 'content' ? 'text-blue-600' : (step === 'titleSelection' || step === 'analysis') ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'content' ? 'bg-blue-600 text-white' : (step === 'titleSelection' || step === 'analysis') ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
+            <div className={`flex items-center space-x-2 ${step === 'content' ? 'text-emerald-600' : (step === 'titleSelection' || step === 'analysis') ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'content' ? 'bg-emerald-600 text-white' : (step === 'titleSelection' || step === 'analysis') ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
                 <FileText className="w-4 h-4" />
               </div>
               <span className="font-medium text-sm">Pregled</span>
             </div>
             <div className={`w-12 h-0.5 ${(step === 'titleSelection' || step === 'analysis') ? 'bg-green-600' : 'bg-gray-200'}`}></div>
-            <div className={`flex items-center space-x-2 ${step === 'titleSelection' ? 'text-blue-600' : step === 'analysis' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'titleSelection' ? 'bg-blue-600 text-white' : step === 'analysis' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
+            <div className={`flex items-center space-x-2 ${step === 'titleSelection' ? 'text-emerald-600' : step === 'analysis' ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'titleSelection' ? 'bg-emerald-600 text-white' : step === 'analysis' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
                 <Brain className="w-4 h-4" />
               </div>
               <span className="font-medium text-sm">Izbor Naslova</span>
             </div>
             <div className={`w-12 h-0.5 ${step === 'analysis' ? 'bg-green-600' : 'bg-gray-200'}`}></div>
-            <div className={`flex items-center space-x-2 ${step === 'analysis' ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'analysis' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
+            <div className={`flex items-center space-x-2 ${step === 'analysis' ? 'text-emerald-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'analysis' ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`}>
                 <BarChart3 className="w-4 h-4" />
               </div>
               <span className="font-medium text-sm">SEO Analiza</span>
@@ -448,9 +447,9 @@ export default function Home() {
               </div>
 
               <div className="grid md:grid-cols-3 gap-6 mb-6">
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-blue-600">{extractedContent.wordCount}</div>
-                  <div className="text-sm text-blue-800">Broj reči</div>
+                <div className="bg-emerald-50 rounded-lg p-4">
+                  <div className="text-2xl font-bold text-emerald-600">{extractedContent.wordCount}</div>
+                  <div className="text-sm text-emerald-800">Broj reči</div>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4">
                   <div className="text-2xl font-bold text-green-600">{Math.round(extractedContent.wordCount / 200)}</div>
@@ -473,8 +472,8 @@ export default function Home() {
                 {extractedContent.metadata.description && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Lead / Meta opis</label>
-                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="text-sm font-medium text-blue-900">{extractedContent.metadata.description}</p>
+                    <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                      <p className="text-sm font-medium text-emerald-900">{extractedContent.metadata.description}</p>
                     </div>
                   </div>
                 )}
@@ -488,7 +487,7 @@ export default function Home() {
                   <div className="p-3 bg-gray-50 rounded-lg border max-h-96 overflow-y-auto">
                     <p className="text-sm text-gray-700 whitespace-pre-wrap">
                       {extractedContent.metadata.description && (
-                        <span className="font-semibold text-blue-900">
+                        <span className="font-semibold text-emerald-900">
                           {extractedContent.metadata.description}
                           {'\n\n'}
                         </span>
@@ -503,7 +502,7 @@ export default function Home() {
                 <button
                   onClick={handleAnalyzeContent}
                   disabled={loading}
-                  className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="px-8 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 font-semibold shadow-lg shadow-emerald-600/25 transition-all duration-200"
                 >
                   {loading ? (
                     <>
@@ -524,132 +523,95 @@ export default function Home() {
 
         {/* Step 2.5: Title Selection */}
         {step === 'titleSelection' && titleOptions.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Odaberi SEO Naslov</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  AI je generisao 3 Newsmax-style naslova. Odaberi jedan ili unesi sopstveni.
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleAnalyzeContent}
-                  disabled={loading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 border border-blue-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Generiši nove naslove"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                  Generiši ponovo
-                </button>
-                <button
-                  onClick={() => setStep('content')}
-                  className="text-sm text-gray-500 hover:text-gray-700"
-                >
-                  ← Nazad
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-3 mb-6">
-              {titleOptions.map((option, idx) => (
-                <label
-                  key={idx}
-                  className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                    selectedTitleIndex === idx
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="title"
-                    checked={selectedTitleIndex === idx}
-                    onChange={() => setSelectedTitleIndex(idx)}
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900 mb-1">{option.text}</div>
-                    <div className="flex items-center gap-3 text-xs text-gray-500 mb-1">
-                      <span>{option.text.length} karaktera</span>
-                      <span>•</span>
-                      <span className="capitalize">{option.style}</span>
-                    </div>
-                    <div className="text-xs text-gray-400 italic">{option.reasoning}</div>
-                  </div>
-                </label>
-              ))}
-
-              {/* Custom Title Option */}
-              <label
-                className={`flex items-start gap-3 p-4 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
-                  selectedTitleIndex === 'custom'
-                    ? 'border-purple-500 bg-purple-50'
-                    : 'border-gray-300 hover:border-purple-300 hover:bg-gray-50'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="title"
-                  checked={selectedTitleIndex === 'custom'}
-                  onChange={() => setSelectedTitleIndex('custom')}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900 mb-2">✏️ Sopstveni naslov</div>
-                  <input
-                    type="text"
-                    value={customTitle}
-                    onChange={(e) => {
-                      setCustomTitle(e.target.value);
-                      setSelectedTitleIndex('custom');
-                    }}
-                    maxLength={75}
-                    placeholder="Unesite sopstveni SEO naslov..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                  <div className={`text-xs mt-1 ${customTitle.length > 75 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
-                    {customTitle.length}/75 karaktera
-                    {customTitle.length > 75 && ' - PREDUGAČKO!'}
-                  </div>
+          <div className="bg-white rounded-xl shadow-sm border pb-20">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Odaberi SEO Naslov</h2>
+                  <p className="text-sm text-gray-500 mt-1">AI je generisao 6 naslova u 3 kategorije. Odaberi jedan ili unesi sopstveni.</p>
                 </div>
-              </label>
-            </div>
-
-            <div className="flex justify-center">
-              <button
-                onClick={handleGenerateMetaAndKeywords}
-                disabled={loading || (selectedTitleIndex === 'custom' && !customTitle.trim())}
-                className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Generišem Meta opis + Ključne reči...</span>
-                  </>
-                ) : (
-                  <>
-                    <BarChart3 className="w-4 h-4" />
-                    <span>Generiši Meta opis + Ključne reči</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {error && (
-              <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
-                <div className="text-sm text-red-700">{error}</div>
+                <div className="flex items-center gap-3">
+                  <button onClick={handleAnalyzeContent} disabled={loading} className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-emerald-600 hover:bg-emerald-50 border border-emerald-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Generiši nove naslove">
+                    <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />Generiši ponovo
+                  </button>
+                  <button onClick={() => setStep('content')} className="text-sm text-gray-500 hover:text-gray-700">← Nazad</button>
+                </div>
               </div>
-            )}
+
+              <div className="space-y-5">
+                {(() => {
+                  const catConfig: Record<string, { label: string; color: string; bg: string; border: string; activeBg: string; activeBorder: string }> = {
+                    'informativni': { label: '📰 Informativni', color: 'text-blue-700', bg: 'bg-blue-50/50', border: 'border-blue-100', activeBg: 'bg-blue-50', activeBorder: 'border-blue-500' },
+                    'geo_pitanje': { label: '🌍 GEO Pitanje', color: 'text-emerald-700', bg: 'bg-emerald-50/50', border: 'border-emerald-100', activeBg: 'bg-emerald-50', activeBorder: 'border-emerald-500' },
+                    'discover_hook': { label: '🔮 Discover Hook', color: 'text-purple-700', bg: 'bg-purple-50/50', border: 'border-purple-100', activeBg: 'bg-purple-50', activeBorder: 'border-purple-500' },
+                  };
+                  const categories = ['informativni', 'geo_pitanje', 'discover_hook'];
+                  return categories.map(cat => {
+                    const cfg = catConfig[cat];
+                    const catTitles = titleOptions.map((opt, idx) => ({ ...opt, originalIdx: idx })).filter(opt => opt.style === cat);
+                    if (catTitles.length === 0) return null;
+                    return (
+                      <div key={cat} className={`rounded-xl ${cfg.bg} ${cfg.border} border p-4`}>
+                        <h3 className={`text-sm font-bold ${cfg.color} mb-3 uppercase tracking-wide`}>{cfg.label}</h3>
+                        <div className="space-y-2">
+                          {catTitles.map((option) => (
+                            <label key={option.originalIdx} className={`flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all bg-white ${selectedTitleIndex === option.originalIdx ? `${cfg.activeBorder} ${cfg.activeBg}` : 'border-transparent hover:border-gray-200'}`}>
+                              <input type="radio" name="title" checked={selectedTitleIndex === option.originalIdx} onChange={() => setSelectedTitleIndex(option.originalIdx)} className="mt-1 accent-emerald-600" />
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-gray-900 text-base">{option.text}</div>
+                                <div className="flex items-center gap-2 mt-1"><span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{option.text.length} kar.</span></div>
+                                <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{option.reasoning}</p>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+
+                <div className={`rounded-xl border-2 border-dashed p-4 transition-all ${selectedTitleIndex === 'custom' ? 'border-purple-400 bg-purple-50/30' : 'border-gray-200'}`}>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input type="radio" name="title" checked={selectedTitleIndex === 'custom'} onChange={() => setSelectedTitleIndex('custom')} className="accent-emerald-600" />
+                    <span className="font-semibold text-gray-900 text-sm">✏️ Sopstveni naslov</span>
+                  </label>
+                  {selectedTitleIndex === 'custom' && (
+                    <div className="mt-3 ml-7">
+                      <input type="text" value={customTitle} onChange={(e) => { setCustomTitle(e.target.value); setSelectedTitleIndex('custom'); }} maxLength={75} placeholder="Unesite sopstveni SEO naslov..." className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-gray-900" />
+                      <div className={`text-xs mt-1 ${customTitle.length > 70 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>{customTitle.length}/75 karaktera</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t shadow-[0_-4px_12px_rgba(0,0,0,0.05)] p-4 z-40">
+              <div className="max-w-7xl mx-auto flex items-center justify-between">
+                <div className="text-sm text-gray-500">
+                  {selectedTitleIndex !== 'custom' && typeof selectedTitleIndex === 'number' && titleOptions[selectedTitleIndex]
+                    ? <span>Izabrano: <strong className="text-gray-900">{titleOptions[selectedTitleIndex].text.slice(0, 50)}...</strong></span>
+                    : selectedTitleIndex === 'custom' && customTitle
+                    ? <span>Sopstveni: <strong className="text-gray-900">{customTitle.slice(0, 50)}...</strong></span>
+                    : <span className="italic">Izaberite naslov iznad</span>
+                  }
+                </div>
+                <button onClick={handleGenerateMetaAndKeywords} disabled={loading || (selectedTitleIndex === 'custom' && !customTitle.trim())} className="px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 font-semibold shadow-lg shadow-emerald-600/25 transition-all duration-200">
+                  {loading ? (<><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div><span>Generišem...</span></>) : (<><Sparkles className="w-4 h-4" /><span>Generiši Meta opis + Ključne reči</span></>)}
+                </button>
+              </div>
+            </div>
+
+            {error && (<div className="mx-6 mb-4 bg-red-50 border border-red-200 rounded-lg p-3"><div className="text-sm text-red-700">{error}</div></div>)}
           </div>
         )}
+
 
         {/* Step 3: Analysis Results */}
         {step === 'analysis' && analysisResult && extractedContent && (
           <div className="space-y-6">
             {/* 1) SEO izlaz - Dual Mode or Single Mode */}
             {analysisResult.llm?.dualMode && (analysisResult.seoOutputsGemini || analysisResult.seoOutputsOpenAI) ? (
-              <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl shadow-sm border p-6">
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl shadow-sm border p-6">
                 <div className="mb-6">
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">🔬 A/B Test: Dual LLM Comparison</h3>
                   <p className="text-sm text-gray-600">Comparing outputs from both models side-by-side</p>
@@ -657,15 +619,15 @@ export default function Home() {
                 
                 <div className="grid md:grid-cols-2 gap-6">
                   {/* Gemini Output */}
-                  <div className="bg-white rounded-lg border-2 border-blue-200 p-4">
+                  <div className="bg-white rounded-lg border-2 border-emerald-200 p-4">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h4 className="text-lg font-bold text-blue-600">🔷 Gemini</h4>
-                        <p className="text-xs text-blue-500">{analysisResult.llm.geminiModel || 'gemini-2.5-flash'}</p>
+                        <h4 className="text-lg font-bold text-emerald-600">🔷 Gemini</h4>
+                        <p className="text-xs text-emerald-500">{analysisResult.llm.geminiModel || 'gemini-2.5-flash'}</p>
                       </div>
                       {analysisResult.seoOutputsGemini && (
                         <div className="flex gap-1">
-                          <button onClick={() => copyToClipboard(analysisResult.seoOutputsGemini!.markdown, 'gemini-md')} className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 rounded border border-blue-300">Copy MD</button>
+                          <button onClick={() => copyToClipboard(analysisResult.seoOutputsGemini!.markdown, 'gemini-md')} className="px-2 py-1 text-xs bg-emerald-100 hover:bg-emerald-200 rounded border border-emerald-300">Copy MD</button>
                         </div>
                       )}
                     </div>
@@ -683,7 +645,7 @@ export default function Home() {
                               {analysisResult.seoOutputsGemini.title.length} chars
                             </div>
                           </div>
-                          <div className="text-sm bg-blue-50 p-2 rounded border border-blue-100">{analysisResult.seoOutputsGemini.title}</div>
+                          <div className="text-sm bg-emerald-50 p-2 rounded border border-emerald-100">{analysisResult.seoOutputsGemini.title}</div>
                         </div>
                         <div>
                           <div className="flex items-center justify-between mb-1">
@@ -695,7 +657,7 @@ export default function Home() {
                               )}
                             </div>
                           </div>
-                          <div className="text-sm bg-blue-50 p-2 rounded border border-blue-100">{analysisResult.seoOutputsGemini.metaDescription}</div>
+                          <div className="text-sm bg-emerald-50 p-2 rounded border border-emerald-100">{analysisResult.seoOutputsGemini.metaDescription}</div>
                         </div>
                         <div>
                           <div className="flex items-center justify-between mb-1">
@@ -704,7 +666,7 @@ export default function Home() {
                               {analysisResult.seoOutputsGemini.keywordsLine.length} chars
                             </div>
                           </div>
-                          <div className="text-xs bg-blue-50 p-2 rounded border border-blue-100 font-mono">{analysisResult.seoOutputsGemini.keywordsLine}</div>
+                          <div className="text-xs bg-emerald-50 p-2 rounded border border-emerald-100 font-mono">{analysisResult.seoOutputsGemini.keywordsLine}</div>
                         </div>
                       </div>
                     ) : (
@@ -770,183 +732,158 @@ export default function Home() {
                 </div>
               </div>
             ) : analysisResult.seoOutputs ? (
-              <div className="bg-white rounded-xl shadow-sm border p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">SEO izlaz (Markdown za kopiranje)</h3>
-                  <div className="flex gap-2">
-                    <button onClick={() => copyToClipboard(analysisResult.seoOutputs!.title, 'seo-title-top')} className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border">Kopiraj Title</button>
-                    <button onClick={() => copyToClipboard(analysisResult.seoOutputs!.metaDescription, 'seo-meta-top')} className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border">Kopiraj Meta</button>
-                    <button onClick={() => copyToClipboard(analysisResult.seoOutputs!.keywordsLine, 'seo-kw-top')} className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border">Kopiraj Keywords</button>
-                    {analysisResult.seoOutputs!.schemaMarkup && (
-                      <button onClick={() => copyToClipboard(analysisResult.seoOutputs!.schemaMarkup, 'seo-schema-top')} className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border">Kopiraj Schema</button>
-                    )}
-                    <button onClick={() => copyToClipboard(analysisResult.seoOutputs!.markdown, 'seo-md-top')} className="px-3 py-1 text-xs bg-blue-600 text-white hover:bg-blue-700 rounded">Kopiraj ceo Markdown</button>
+              <div className="grid lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-gray-900">SEO izlaz</h3>
+                    <div className="flex gap-2 flex-wrap">
+                      <button onClick={() => copyToClipboard(analysisResult.seoOutputs!.title, 'seo-title-top')} className="px-2.5 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg border text-gray-700 font-medium">Title</button>
+                      <button onClick={() => copyToClipboard(analysisResult.seoOutputs!.metaDescription, 'seo-meta-top')} className="px-2.5 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg border text-gray-700 font-medium">Meta</button>
+                      <button onClick={() => copyToClipboard(analysisResult.seoOutputs!.keywordsLine, 'seo-kw-top')} className="px-2.5 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg border text-gray-700 font-medium">Keywords</button>
+                      {analysisResult.seoOutputs!.schemaMarkup && (<button onClick={() => copyToClipboard(analysisResult.seoOutputs!.schemaMarkup, 'seo-schema-top')} className="px-2.5 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg border text-gray-700 font-medium">Schema</button>)}
+                      <button onClick={() => copyToClipboard(analysisResult.seoOutputs!.markdown, 'seo-md-top')} className="px-2.5 py-1 text-xs bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium">Kopiraj sve</button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <CopyField label="1. SEO Naslov (Title Tag)" value={analysisResult.seoOutputs.title} fieldKey="seo-title-field" />
+                    <CopyField label="2. Meta Opis (Answer Nugget)" value={analysisResult.seoOutputs.metaDescription} fieldKey="seo-meta-field" />
+                    <CopyField label="3. Ključne reči (Long-Tail First)" value={analysisResult.seoOutputs.keywordsLine} fieldKey="seo-kw-field" />
+                    {analysisResult.seoOutputs.schemaMarkup && (<CopyField label="4. Schema Markup (JSON-LD)" value={analysisResult.seoOutputs.schemaMarkup} fieldKey="seo-schema-field" />)}
                   </div>
                 </div>
-                <div className="prose max-w-none">
-                  <CopyField label="1. SEO Naslov (Title Tag)" value={analysisResult.seoOutputs.title} fieldKey="seo-title-field" />
-                  <CopyField label="2. Meta Opis (Answer Nugget)" value={analysisResult.seoOutputs.metaDescription} fieldKey="seo-meta-field" />
-                  <CopyField label="3. Ključne reči (Long-Tail First)" value={analysisResult.seoOutputs.keywordsLine} fieldKey="seo-kw-field" />
-                  {analysisResult.seoOutputs.schemaMarkup && (
-                    <CopyField label="4. Schema Markup (JSON-LD)" value={analysisResult.seoOutputs.schemaMarkup} fieldKey="seo-schema-field" />
+
+                <div className="lg:col-span-1 space-y-3">
+                  {/* Quick Stats - compact 4-col */}
+                  <div className="bg-white rounded-xl shadow-sm border p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Pregled teksta</h4>
+                      <button onClick={resetAnalysis} className="text-xs text-gray-400 hover:text-gray-600">← Nova</button>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      <div className="bg-gray-50 rounded-lg p-2 text-center"><div className="text-base font-bold text-gray-900">{extractedContent.wordCount}</div><div className="text-[10px] text-gray-500">Reči</div></div>
+                      <div className="bg-gray-50 rounded-lg p-2 text-center"><div className="text-base font-bold text-gray-900">{(extractedContent.metadata.description?.length || 0) + extractedContent.content.length}</div><div className="text-[10px] text-gray-500">Karaktera</div></div>
+                      <div className="bg-gray-50 rounded-lg p-2 text-center"><div className="text-base font-bold text-gray-900">{analysisResult.authorMetrics ? analysisResult.authorMetrics.readingTimeMin : Math.round(extractedContent.wordCount/200)}</div><div className="text-[10px] text-gray-500">Min čitanja</div></div>
+                      <div className="bg-gray-50 rounded-lg p-2 text-center"><div className="text-sm font-bold text-gray-900 capitalize">{analysisResult.searchIntent.type === 'informational' ? 'Info' : analysisResult.searchIntent.type}</div><div className="text-[10px] text-gray-500">Intent</div></div>
+                    </div>
+                  </div>
+
+                  {/* Traffic Light Scorecard */}
+                  {analysisResult.authorMetrics && (() => {
+                    const m = analysisResult.authorMetrics;
+                    const gc = (v: number, t: number[]) => v <= t[0] ? 'red' : v <= t[1] ? 'amber' : v <= t[2] ? 'yellow' : v <= t[3] ? 'green' : 'emerald';
+                    const gi = (v: number, t: number[]) => v >= t[0] ? 'red' : v >= t[1] ? 'amber' : v >= t[2] ? 'yellow' : v >= t[3] ? 'green' : 'emerald';
+                    const cs: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+                      red: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', dot: 'bg-red-500' },
+                      amber: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500' },
+                      yellow: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200', dot: 'bg-yellow-500' },
+                      green: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', dot: 'bg-green-500' },
+                      emerald: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-600' },
+                    };
+                    const pd = m.primaryDensity * 100;
+                    const pdColor = (pd < 0.5 || pd > 3) ? 'red' : pd > 2.5 ? 'yellow' : pd >= 1 ? 'emerald' : 'amber';
+                    const metrics = [
+                      { label: 'Raznolikost reči', value: (m.typeTokenRatio*100).toFixed(0)+'%', color: gc(m.typeTokenRatio*100, [30, 40, 55, 70]), tip: 'Type-Token Ratio (TTR) — meri koliko različitih reči koristite u tekstu. Viši procenat znači bogatiji rečnik, što pozitivno utiče na SEO. Optimalno: 40–60%.' },
+                      { label: 'Ponavljanje reči', value: (m.repetitionScore*100).toFixed(0)+'%', color: gi(m.repetitionScore*100, [50, 30, 20, 10]), tip: 'Meri koliko često ponavljate iste reči. Visok procenat može ukazivati na keyword stuffing. Ciljajte ispod 10% za prirodan tekst.' },
+                      { label: 'Pokrivenost tema', value: (m.topicCoverage*100).toFixed(0)+'%', color: gc(m.topicCoverage*100, [10, 30, 50, 70]), tip: 'Koliko temeljno vaš tekst pokriva identifikovane teme. Viša pokrivenost poboljšava E-E-A-T signal za Google. Ciljajte >50%.' },
+                      { label: 'Ključne reči', value: (m.keywordCoverage*100).toFixed(0)+'%', color: gc(m.keywordCoverage*100, [40, 60, 75, 90]), tip: 'Procenat relevantnih ključnih reči prisutnih u tekstu. Pomaže pretraživačima da razumeju temu članka. Optimalno: >75%.' },
+                      { label: 'Gustina ključne reči', value: pd.toFixed(2)+'%', color: pdColor, tip: 'Frekvencija primarne ključne reči. Premalo (<0.5%) — Google ne prepoznaje temu. Previše (>3%) — keyword stuffing. Optimalno: 1–2.5%.' },
+                      { label: 'Long-tail fraze', value: (m.longTailUsage*100).toFixed(0)+'%', color: gc(m.longTailUsage*100, [20, 35, 50, 70]), tip: 'Korišćenje višerečnih fraza (2–4 reči). Ključne za Google Discover i AI pretraživače jer odgovaraju na specifična pitanja. Ciljajte >60%.' },
+                    ];
+
+                    const ttrScore = Math.min(100, Math.max(0, m.typeTokenRatio*100 >= 40 && m.typeTokenRatio*100 <= 60 ? 100 : m.typeTokenRatio*100 < 40 ? m.typeTokenRatio*100/40*100 : Math.max(0, 100 - (m.typeTokenRatio*100 - 60)*2)));
+                    const repScore = Math.min(100, Math.max(0, m.repetitionScore*100 <= 10 ? 100 : m.repetitionScore*100 >= 50 ? 0 : (50 - m.repetitionScore*100)/40*100));
+                    const topicScore = Math.min(100, m.topicCoverage*100/70*100);
+                    const kwScore = Math.min(100, m.keywordCoverage*100/90*100);
+                    const pdScore = pd >= 1 && pd <= 2.5 ? 100 : pd < 0.5 || pd > 3 ? 20 : pd < 1 ? (pd/1)*100 : Math.max(20, 100 - (pd - 2.5)*160);
+                    const ltScore = Math.min(100, m.longTailUsage*100/70*100);
+                    const composite = parseFloat((ttrScore * 0.15 + repScore * 0.10 + topicScore * 0.20 + kwScore * 0.20 + pdScore * 0.15 + ltScore * 0.20).toFixed(1));
+                    const scoreColor = composite >= 80 ? 'emerald' : composite >= 60 ? 'green' : composite >= 40 ? 'yellow' : composite >= 20 ? 'amber' : 'red';
+                    const scoreLabel = composite >= 80 ? 'Odlično' : composite >= 60 ? 'Dobro' : composite >= 40 ? 'Prosečan' : composite >= 20 ? 'Slabo' : 'Kritično';
+
+                    return (
+                      <div className="bg-white rounded-xl shadow-sm border p-4">
+                        <div className="mb-2.5">
+                          <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide">SEO Scorecard</h4>
+                          <p className="text-[11px] text-gray-500 mt-0.5">Trenutna optimizovanost vašeg teksta</p>
+                        </div>
+                        <div className="space-y-1.5">
+                          {metrics.map((met, i) => {
+                            const c = cs[met.color];
+                            return (
+                              <div key={i} className={`flex items-center justify-between p-2 rounded-lg border ${c.bg} ${c.border} group relative`}>
+                                <div className="flex items-center gap-1.5">
+                                  <div className={`w-2 h-2 rounded-full ${c.dot}`}></div>
+                                  <span className="text-xs font-medium text-gray-700">{met.label}</span>
+                                  <div className="relative">
+                                    <Info className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+                                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-64 bg-gray-900 text-white text-[11px] leading-relaxed rounded-lg p-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-20 shadow-xl">{met.tip}</div>
+                                  </div>
+                                </div>
+                                <span className={`text-sm font-bold ${c.text}`}>{met.value}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Composite Score */}
+                        <div className={`mt-3 p-3 rounded-xl border-2 ${cs[scoreColor].border} ${cs[scoreColor].bg} flex items-center justify-between`}>
+                          <div>
+                            <div className="text-xs font-bold text-gray-700 uppercase tracking-wide">Ukupni SEO Score</div>
+                            <div className={`text-xs font-medium ${cs[scoreColor].text} mt-0.5`}>{scoreLabel}</div>
+                          </div>
+                          <div className="relative w-[72px] h-[72px]">
+                            <svg className="w-[72px] h-[72px] -rotate-90" viewBox="0 0 72 72">
+                              <circle cx="36" cy="36" r="30" fill="none" stroke="currentColor" strokeWidth="5" className="text-gray-200" />
+                              <circle cx="36" cy="36" r="30" fill="none" stroke="currentColor" strokeWidth="5" strokeDasharray={`${composite * 1.885} 188.5`} strokeLinecap="round" className={cs[scoreColor].text} />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className={`text-sm font-black ${cs[scoreColor].text} text-center leading-none`}>{composite.toFixed(1)}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Topics */}
+                  {analysisResult.summary.mainTopics.length > 0 && (
+                    <div className="bg-white rounded-xl shadow-sm border p-3">
+                      <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-2">Teme</h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {analysisResult.summary.mainTopics.map((topic: string, index: number) => (
+                          <span key={index} className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[11px] font-medium border border-emerald-100">{topic}</span>
+                        ))}
+                      </div>
+                    </div>
                   )}
+
+                  {/* SEO Preporuke - integrated into sidebar */}
+                  <div className="bg-white rounded-xl shadow-sm border p-4">
+                    <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">🎯 SEO Preporuke</h4>
+                    {analysisResult.authorRecommendations ? (
+                      <div className="space-y-3">
+                        {analysisResult.authorRecommendations.categories.map((cat: { category: string; items: string[] }, idx: number) => (
+                          <div key={idx}>
+                            <div className="font-semibold text-xs mb-1.5 text-emerald-700">{cat.category}</div>
+                            <ul className="space-y-1">
+                              {cat.items.map((it: string, i: number) => (
+                                <li key={i} className="flex items-start gap-1.5 text-xs text-gray-700 leading-relaxed">
+                                  <span className="mt-0.5 text-emerald-500 text-[10px]">●</span>
+                                  <span>{it}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-600">
+                        <p><strong>Preporučeni fokus:</strong> {analysisResult.summary.recommendedFocus}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : null}
-
-            {/* 2) SEO analiza (fokus na autoru) */}
-            <div className="bg-white rounded-xl shadow-sm border p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">SEO Analiza</h2>
-                <button onClick={resetAnalysis} className="text-sm text-gray-500 hover:text-gray-700">← Nova analiza</button>
-              </div>
-
-              {/* Author-centric KPI kartice */}
-              <div className="grid md:grid-cols-5 gap-4 mb-8">
-                {/* Broj reči */}
-                <div className="bg-blue-50 rounded-lg p-4 relative group">
-                  <div className="absolute top-2 right-2 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-help">
-                    <Info className="w-4 h-4" />
-                  </div>
-                  <div className="absolute top-8 right-0 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
-                    <strong>Broj reči:</strong> Ukupan broj reči u članku (Lead + Body). Optimalno: 300-800 za vest, 800-2000 za feature članak.
-                  </div>
-                  <div className="text-2xl font-bold text-blue-600">{extractedContent.wordCount}</div>
-                  <div className="text-sm text-blue-800">Reči</div>
-                </div>
-
-                {/* Broj karaktera */}
-                <div className="bg-indigo-50 rounded-lg p-4 relative group">
-                  <div className="absolute top-2 right-2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-help">
-                    <Info className="w-4 h-4" />
-                  </div>
-                  <div className="absolute top-8 right-0 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
-                    <strong>Broj karaktera:</strong> Ukupan broj karaktera teksta (sa razmacima). Google indeksira na osnovu sadržaja, duži tekst = veća šansa za rangiranje.
-                  </div>
-                  <div className="text-2xl font-bold text-indigo-600">
-                    {(extractedContent.metadata.description?.length || 0) + extractedContent.content.length}
-                  </div>
-                  <div className="text-sm text-indigo-800">Karaktera</div>
-                </div>
-
-                {/* Vreme čitanja */}
-                <div className="bg-green-50 rounded-lg p-4 relative group">
-                  <div className="absolute top-2 right-2 text-green-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-help">
-                    <Info className="w-4 h-4" />
-                  </div>
-                  <div className="absolute top-8 right-0 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
-                    <strong>Vreme čitanja:</strong> Procenjeno vreme čitanja (200 reči/min). Korisnicima pokazuje investiciju vremena, utiče na bounce rate.
-                  </div>
-                  <div className="text-2xl font-bold text-green-600">
-                    {analysisResult.authorMetrics ? analysisResult.authorMetrics.readingTimeMin : Math.round(extractedContent.wordCount/200)}
-                  </div>
-                  <div className="text-sm text-green-800">Min čitanja</div>
-                </div>
-
-                {/* Prosečna dužina rečenice */}
-                <div className="bg-purple-50 rounded-lg p-4 relative group">
-                  <div className="absolute top-2 right-2 text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-help">
-                    <Info className="w-4 h-4" />
-                  </div>
-                  <div className="absolute top-8 right-0 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
-                    <strong>Prosečna rečenica:</strong> Broj reči po rečenici. Optimalno: 15-20 reči (čitljivost). Previše kratke ili duge rečenice umanjuju kvalitet.
-                  </div>
-                  <div className="text-2xl font-bold text-purple-600">
-                    {analysisResult.authorMetrics ? analysisResult.authorMetrics.avgSentenceLength.toFixed(1) : '-'}
-                  </div>
-                  <div className="text-sm text-purple-800">Reči/rečenica</div>
-                </div>
-
-                {/* Search Intent */}
-                <div className="bg-orange-50 rounded-lg p-4 relative group">
-                  <div className="absolute top-2 right-2 text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-help">
-                    <Info className="w-4 h-4" />
-                  </div>
-                  <div className="absolute top-8 right-0 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg">
-                    <strong>Search Intent:</strong> Tip pretrage (Informational, Commercial, Navigational). Informational = user traži znanje, optimizuj sa detaljima.
-                  </div>
-                  <div className="text-xl font-bold text-orange-600 capitalize">
-                    {analysisResult.searchIntent.type}
-                  </div>
-                  <div className="text-sm text-orange-800">Search intent</div>
-                </div>
-              </div>
-
-              {/* Dodatne metrike za vrednost teksta */}
-              {analysisResult.authorMetrics && (
-                <div className="grid md:grid-cols-3 gap-4 mb-6">
-                  <Metric 
-                    label="TTR (raznolikost)" 
-                    value={(analysisResult.authorMetrics.typeTokenRatio*100).toFixed(0) + '%'} 
-                    tone="blue"
-                    tooltip="Type-Token Ratio: Odnos jedinstvenih reči prema ukupnom broju reči. Visok TTR (>50%) = bogat vokabular, nizak (<30%) = repetitivno. Optimalno: 40-60%."
-                  />
-                  <Metric 
-                    label="Repetitivnost" 
-                    value={(analysisResult.authorMetrics.repetitionScore*100).toFixed(0) + '%'} 
-                    tone="rose"
-                    tooltip="Stopa ponavljanja istih reči. Visoka repetitivnost (>50%) smanjuje kvalitet i čitljivost. Ciljaj <30% za profesionalan tekst."
-                  />
-                  <Metric 
-                    label="Pokrivenost tema" 
-                    value={(analysisResult.authorMetrics.topicCoverage*100).toFixed(0) + '%'} 
-                    tone="indigo"
-                    tooltip="Koliko detaljno tekst pokriva identifikovane teme. Visoka pokrivenost (>70%) = sveobuhvatan članak, Google rangira bolje."
-                  />
-                  <Metric 
-                    label="Pokrivenost ključnih reči" 
-                    value={(analysisResult.authorMetrics.keywordCoverage*100).toFixed(0) + '%'} 
-                    tone="emerald"
-                    tooltip="Koliko prirodno tekst koristi relevantne ključne reči. Optimalno: 60-80%. Ispod 40% = slaba SEO optimizacija, iznad 90% = keyword stuffing."
-                  />
-                  <Metric 
-                    label="Primarna gustina" 
-                    value={(analysisResult.authorMetrics.primaryDensity*100).toFixed(2) + '%'} 
-                    tone="amber"
-                    tooltip="Frekvencija primarne ključne reči u tekstu. Optimalno: 1-3%. Ispod 1% = premalo, iznad 3% = preopterećeno (Google penalizuje)."
-                  />
-                  <Metric 
-                    label="Long-tail prisustvo" 
-                    value={(analysisResult.authorMetrics.longTailUsage*100).toFixed(0) + '%'} 
-                    tone="teal"
-                    tooltip="Upotreba long-tail fraza (2-4 reči). Long-tail ključne reči imaju bolju konverziju i manju konkurenciju. Ciljaj >60%."
-                  />
-                </div>
-              )}
-
-              {/* Identifikovane Teme (ostavljamo), ostale analitičke sekcije sklónjene */}
-              {analysisResult.summary.mainTopics.length > 0 && (
-                <div className="mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Identifikovane Teme</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {analysisResult.summary.mainTopics.map((topic, index) => (
-                      <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">{topic}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 3) SEO preporuke (akcije za autora) */}
-            <div className="bg-blue-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-blue-900 mb-3">🎯 SEO Preporuke</h3>
-              {analysisResult.authorRecommendations ? (
-                <div className="grid md:grid-cols-2 gap-4">
-                  {analysisResult.authorRecommendations.categories.map((cat, idx) => (
-                    <div key={idx} className="bg-white border rounded p-4">
-                      <div className="font-semibold mb-2 text-gray-900">{cat.category}</div>
-                      <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
-                        {cat.items.map((it, i) => (<li key={i}>{it}</li>))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-sm text-blue-800">
-                  <p><strong>Preporučeni fokus:</strong> {analysisResult.summary.recommendedFocus}</p>
-                </div>
-              )}
-            </div>
           </div>
         )}
       </main>
@@ -966,13 +903,13 @@ export default function Home() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             {/* Header */}
-            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-lg">
+            <div className="sticky top-0 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white p-6 rounded-t-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <Brain className="w-8 h-8" />
                   <div>
                     <h2 className="text-2xl font-bold">Uputstvo za korišćenje</h2>
-                    <p className="text-blue-100 text-sm">SEO GEM - Inteligentni SEO Asistent</p>
+                    <p className="text-emerald-100 text-sm">SEO GEM - Inteligentni SEO Asistent</p>
                   </div>
                 </div>
                 <button
@@ -989,7 +926,7 @@ export default function Home() {
               {/* Step 1 */}
               <div className="flex space-x-4">
                 <div className="flex-shrink-0">
-                  <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
+                  <div className="w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
                     1
                   </div>
                 </div>
@@ -998,7 +935,7 @@ export default function Home() {
                   <p className="text-gray-600 mb-2">
                     Unesite URL vesti i kliknite <strong>&quot;Ekstraktuj sadržaj&quot;</strong>
                   </p>
-                  <div className="bg-blue-50 border-l-4 border-blue-600 p-3 rounded">
+                  <div className="bg-emerald-50 border-l-4 border-emerald-600 p-3 rounded">
                     <p className="text-sm text-gray-700">
                       <strong>💡 Tip:</strong> Sistem automatski izvlači naslov, lead, tekst članka i tehničke metapodatke (autor, datum objave, izdavač, sliku) direktno iz JSON-LD i meta tagova.
                     </p>
@@ -1020,7 +957,7 @@ export default function Home() {
                   </p>
                   <ul className="space-y-2 mb-3">
                     <li className="flex items-start space-x-2">
-                      <span className="text-blue-600 font-bold">•</span>
+                      <span className="text-emerald-600 font-bold">•</span>
                       <span className="text-gray-700"><strong>Informativni:</strong> Faktografski, neutralan ton za hard news</span>
                     </li>
                     <li className="flex items-start space-x-2">
@@ -1107,7 +1044,7 @@ export default function Home() {
             <div className="bg-gray-50 p-4 rounded-b-lg border-t">
               <button
                 onClick={() => setShowHelp(false)}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
               >
                 Razumem, idemo!
               </button>
@@ -1124,7 +1061,7 @@ export default function Home() {
 
 function Metric({ label, value, tone = 'gray', tooltip }: { label: string; value: string; tone?: string; tooltip?: string }) {
   const toneMap: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-800',
+    blue: 'bg-emerald-50 text-emerald-800',
     rose: 'bg-rose-50 text-rose-800',
     indigo: 'bg-indigo-50 text-indigo-800',
     emerald: 'bg-emerald-50 text-emerald-800',
@@ -1133,7 +1070,7 @@ function Metric({ label, value, tone = 'gray', tooltip }: { label: string; value
     gray: 'bg-gray-50 text-gray-800',
   };
   const iconToneMap: Record<string, string> = {
-    blue: 'text-blue-400',
+    blue: 'text-emerald-400',
     rose: 'text-rose-400',
     indigo: 'text-indigo-400',
     emerald: 'text-emerald-400',
