@@ -216,8 +216,14 @@ ${cleanedText}`;
 // Lead extraction (kept from original — works well)
 // ─────────────────────────────────────────────────────────────
 function extractLead($: cheerio.CheerioAPI, ldDescription?: string): string {
-  // Serbian news sites often have dedicated Lead paragraph classes
-  const leadSelectors = [
+  // Priority 1: JSON-LD description (cleanest source, no risk of related articles)
+  if (ldDescription && ldDescription.length > 30 && !ldDescription.includes('var ')) {
+    console.log(`📰 [extract] Lead from JSON-LD description: ${ldDescription.length} chars`);
+    return ldDescription;
+  }
+
+  // Priority 2: Specific lead selectors (high confidence, exact class names)
+  const specificSelectors = [
     '.single-news-short-description',  // Newsmax Balkans
     '.article-lead',
     '.lead',
@@ -228,11 +234,9 @@ function extractLead($: cheerio.CheerioAPI, ldDescription?: string): string {
     '.story-lead',
     'p.lead',
     'p.intro',
-    '[class*="lead"]',
-    '[class*="intro"]'
   ];
 
-  for (const selector of leadSelectors) {
+  for (const selector of specificSelectors) {
     const leadElement = $(selector).first();
     if (leadElement.length) {
       const text = leadElement.text().trim();
@@ -243,19 +247,32 @@ function extractLead($: cheerio.CheerioAPI, ldDescription?: string): string {
     }
   }
 
-  // Try JSON-LD description (very clean source)
-  if (ldDescription && ldDescription.length > 30 && !ldDescription.includes('var ')) {
-    console.log(`📰 [extract] Lead from JSON-LD description: ${ldDescription.length} chars`);
-    return ldDescription;
-  }
-
-  // Fall back to meta description (validate it's not JS code)
+  // Priority 3: Meta description fallback
   const metaDesc = $('meta[name="description"]').attr('content') ||
     $('meta[property="og:description"]').attr('content') || '';
   if (metaDesc && metaDesc.length > 30 && !metaDesc.includes('var ') && !metaDesc.includes('function(')) {
     console.log(`📰 [extract] Lead from meta tag: ${metaDesc.length} chars`);
     return metaDesc;
   }
+
+  // Priority 4: Wildcard selectors scoped to article body only (risky — can catch related)
+  const articleScope = $('article, [role="main"], .article-body, .article-content, .post-content, main').first();
+  const wildSelectors = ['[class*="lead"]', '[class*="intro"]'];
+  for (const selector of wildSelectors) {
+    const scope = articleScope.length ? articleScope : $('body');
+    const el = scope.find(selector).first();
+    if (el.length) {
+      // Ensure it's not inside a related-articles block
+      const isRelated = el.closest('.related, .related-posts, .related-articles, [class*="related"], [class*="povezan"]').length > 0;
+      if (isRelated) continue;
+      const text = el.text().trim();
+      if (text.length > 50 && text.length < 500 && !text.includes('var ') && !text.includes('function(')) {
+        console.log(`📰 [extract] Lead found via wildcard "${selector}": ${text.length} chars`);
+        return text;
+      }
+    }
+  }
+
   return '';
 }
 
@@ -286,7 +303,7 @@ async function extractByUrl(url: string) {
   // ── Metadata ──
   const ld = tryJsonLD($);
 
-  const leadText = extractLead($, ld?.articleBody ? undefined : findLdDescription($));
+  const leadText = extractLead($, findLdDescription($));
 
   const metadata = {
     description: leadText,
