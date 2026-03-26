@@ -213,9 +213,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
 
       // Author-focused metrics and recommendations
       const prioritizedTerms = prioritized.map(p => p.term);
+      // Use LLM subtopics for topic coverage if available, else fall back to mainTopics
+      const topicsForMetrics = (seoOutputs?.subtopics && seoOutputs.subtopics.length > 0)
+        ? seoOutputs.subtopics
+        : mainTopics;
       const authorMetrics = computeAuthorMetrics({
         text,
-        topics: mainTopics,
+        topics: topicsForMetrics,
         prioritizedKeywords: prioritizedTerms
       });
 
@@ -369,9 +373,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
 
     // Author-focused metrics and recommendations
     const prioritizedTerms = prioritized.map(p => p.term);
+    // Use LLM subtopics for topic coverage if available, else fall back to mainTopics
+    const topicsForMetrics = (seoOutputs?.subtopics && seoOutputs.subtopics.length > 0)
+      ? seoOutputs.subtopics
+      : mainTopics;
     const authorMetrics = computeAuthorMetrics({
       text,
-      topics: mainTopics,
+      topics: topicsForMetrics,
       prioritizedKeywords: prioritizedTerms
     });
 

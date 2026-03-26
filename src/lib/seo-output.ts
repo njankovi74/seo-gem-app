@@ -4,6 +4,7 @@ export interface SEOOutputs {
   keywordsLine: string;
   schemaMarkup: string;
   markdown: string;
+  subtopics?: string[];  // LLM-generated thematic subtopics for topic coverage
 }
 
 export interface DualSEOOutputs {
@@ -119,12 +120,14 @@ export async function buildSEOWithLLM(
     ? `{
   "meta_description": string,  // Answer Nugget, max 160 karaktera, sa CTA na kraju
   "keywords": string[],        // 8–10 fraza: long-tail (3-4), mid-tail (3-4), core entiteti (2)
+  "subtopics": string[],       // 4–6 tematskih podtema/aspekata koje članak pokriva
   "schema_markup": string      // validan JSON-LD za NewsArticle schemu
 }`
     : `{
   "title": string,             // ≤ 70 karaktera SEO naslov
   "meta_description": string,  // Answer Nugget, max 160 karaktera, sa CTA na kraju
   "keywords": string[],        // 8–10 fraza: long-tail (3-4), mid-tail (3-4), core entiteti (2)
+  "subtopics": string[],       // 4–6 tematskih podtema/aspekata koje članak pokriva
   "schema_markup": string      // validan JSON-LD za NewsArticle schemu
 }`;
 
@@ -171,6 +174,13 @@ Redosled i struktura niza MORAJU biti sledeći:
 - NE SMEŠ da generišeš besmislene SEO permutacije istih reči (npr. ako staviš "evakuacija iz Katara", ne smeš dodati "Katar evakuacija" ili "evakuacija Katar"). Svaka fraza mora biti unikatna po nameri.
 - Izbegavaj generičke reči od jedne reči (vesti, srbija, novo, danas) ukoliko nisu deo šire fraze.
 - Vrati strogo jedan niz (array) stringova koji prati ovu hijerarhiju. Mala slova, bez duplikata.
+
+**3. Podteme / Tematski aspekti (subtopics):**
+Identifikuj 4 do 6 ključnih tematskih aspekata/podtema koje članak pokriva ili bi trebalo da pokriva.
+- Svaka podtema je kratka fraza od 2-5 reči u nominativu (npr. "Otkupna cena mleka", "Stav proizvođača", "Ilegalni uvoz mleka").
+- NE koristi pojedinačne reči — svaka podtema mora biti smislena tematska celina.
+- Podteme služe za merenje koliko temeljno članak pokriva sve aspekte teme.
+- Uključi i aspekte koji nedostaju u tekstu (ako ih ima), jer se koriste za SEO preporuke.
 
 **C. Schema Markup (Ključ: schema_markup)**
 Generiši validan JSON-LD string za NewsArticle schemu.
@@ -308,6 +318,7 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
     let meta = fallback.metaDescription;
     let kwLine = fallback.keywordsLine;
     let schemaMarkup = '';
+    let subtopics: string[] = [];
     try {
       // Pokušaj da parsiraš kao JSON direktno
       const firstBrace = out.indexOf('{');
@@ -325,6 +336,13 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
           secondaryKWs
         );
         kwLine = joinWithCharLimit(cleaned, 300, ', ');
+      }
+      // Parse subtopics
+      if (Array.isArray(obj?.subtopics)) {
+        subtopics = obj.subtopics
+          .map((x: any) => (x?.toString?.() || '').trim())
+          .filter((s: string) => s.length > 3);
+        console.log(`📋 [LLM] Subtopics parsed: ${subtopics.length} items:`, subtopics);
       }
       // Parse schema_markup — could be a string or an object
       if (obj?.schema_markup) {
@@ -353,7 +371,7 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
     title = title.trim().replace(/\.$/, '');
 
     const markdown = ['1. SEO Naslov (Title Tag)', '', '```', title, '```', '', '2. Meta Opis (Meta Description)', '', '```', meta, '```', '', '3. Ključne reči / Tagovi (Named Entities)', '', '```', kwLine, '```', '', '4. Schema Markup (JSON-LD)', '', '```json', schemaMarkup || '(nije generisan)', '```'].join('\n');
-    return { title, metaDescription: meta, keywordsLine: kwLine, schemaMarkup, markdown };
+    return { title, metaDescription: meta, keywordsLine: kwLine, schemaMarkup, markdown, subtopics };
   }
 
   try {

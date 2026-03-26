@@ -22,6 +22,7 @@ interface AnalysisResult {
     keywordsLine: string;
     schemaMarkup: string;
     markdown: string;
+    subtopics?: string[];
   };
   seoOutputsGemini?: {
     title: string;
@@ -844,17 +845,23 @@ export default function Home() {
                     );
                   })()}
 
-                  {/* Topics */}
-                  {analysisResult.summary.mainTopics.length > 0 && (
-                    <div className="bg-white rounded-xl shadow-sm border p-3">
-                      <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-2">Teme</h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {analysisResult.summary.mainTopics.map((topic: string, index: number) => (
-                          <span key={index} className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[11px] font-medium border border-emerald-100">{topic}</span>
-                        ))}
+                  {/* Topics / Subtopics */}
+                  {(() => {
+                    const subtopics = analysisResult.seoOutputs?.subtopics;
+                    const topics = (subtopics && subtopics.length > 0) ? subtopics : analysisResult.summary.mainTopics;
+                    const label = (subtopics && subtopics.length > 0) ? 'Podteme' : 'Teme';
+                    if (!topics || topics.length === 0) return null;
+                    return (
+                      <div className="bg-white rounded-xl shadow-sm border p-3">
+                        <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-2">{label}</h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {topics.map((topic: string, index: number) => (
+                            <span key={index} className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[11px] font-medium border border-emerald-100">{topic}</span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* SEO Preporuke - integrated into sidebar */}
                   <div className="bg-white rounded-xl shadow-sm border p-4">
