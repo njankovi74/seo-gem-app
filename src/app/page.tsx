@@ -861,19 +861,27 @@ export default function Home() {
                     <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">🎯 SEO Preporuke</h4>
                     {analysisResult.authorRecommendations ? (
                       <div className="space-y-3">
-                        {analysisResult.authorRecommendations.categories.map((cat: { category: string; items: string[] }, idx: number) => (
-                          <div key={idx}>
-                            <div className="font-semibold text-xs mb-1.5 text-emerald-700">{cat.category}</div>
-                            <ul className="space-y-1">
-                              {cat.items.map((it: string, i: number) => (
-                                <li key={i} className="flex items-start gap-1.5 text-xs text-gray-700 leading-relaxed">
-                                  <span className="mt-0.5 text-emerald-500 text-[10px]">●</span>
-                                  <span>{it}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
+                        {analysisResult.authorRecommendations.categories.map((cat: { category: string; items: string[]; type?: string }, idx: number) => {
+                          const typeColors: Record<string, { header: string; dot: string; bg: string }> = {
+                            critical: { header: 'text-red-700', dot: 'text-red-500', bg: 'bg-red-50/50' },
+                            missing: { header: 'text-amber-700', dot: 'text-amber-500', bg: 'bg-amber-50/30' },
+                            positive: { header: 'text-emerald-700', dot: 'text-emerald-500', bg: 'bg-emerald-50/30' },
+                          };
+                          const colors = typeColors[cat.type || 'missing'] || typeColors.missing;
+                          return (
+                            <div key={idx} className={`rounded-lg p-2.5 ${colors.bg}`}>
+                              <div className={`font-semibold text-xs mb-1.5 ${colors.header}`}>{cat.category}</div>
+                              <ul className="space-y-1">
+                                {cat.items.map((it: string, i: number) => (
+                                  <li key={i} className="flex items-start gap-1.5 text-xs text-gray-700 leading-relaxed">
+                                    <span className={`mt-0.5 text-[10px] ${colors.dot}`}>●</span>
+                                    <span>{it}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="text-xs text-gray-600">

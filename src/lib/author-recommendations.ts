@@ -1,7 +1,7 @@
 import type { AuthorMetrics } from './author-metrics';
 
 export interface AuthorRecommendations {
-  categories: Array<{ category: string; items: string[] }>
+  categories: Array<{ category: string; items: string[]; type: 'critical' | 'missing' | 'positive' }>
 }
 
 export function buildAuthorRecommendations(params: {
@@ -12,55 +12,135 @@ export function buildAuthorRecommendations(params: {
   seoMeta?: string;
 }): AuthorRecommendations {
   const { metrics, mainTopics, prioritizedKeywords, seoTitle, seoMeta } = params;
-  const cats: Array<{ category: string; items: string[] }> = [];
+  const cats: Array<{ category: string; items: string[]; type: 'critical' | 'missing' | 'positive' }> = [];
 
-  // Struktura i pokrivenost
-  const missingTopics = mainTopics.filter(t => t && t.trim()).filter(t => {
-    return !(t.toLowerCase() && (seoMeta || '').toLowerCase().includes(t.toLowerCase()));
-  }).slice(0, 3);
+  // ============================================================
+  // 🔴 CRITICAL — Red scorecard items need immediate attention
+  // ============================================================
+  const critical: string[] = [];
 
-  const structure: string[] = [];
-  if (missingTopics.length > 0 || metrics.topicCoverage < 0.7) {
-    structure.push(`Dodaj H2/H3 sekcije za nedostajuće teme: ${missingTopics.join(', ') || mainTopics.slice(0,2).join(', ')}`);
+  // Topic coverage issues
+  if (metrics.topicCoverage < 0.5) {
+    const missing = metrics.missingTopics?.slice(0, 3) || mainTopics.slice(0, 3);
+    if (missing.length) {
+      critical.push(`Pokrivenost tema je ${(metrics.topicCoverage*100).toFixed(0)}%. Dodajte H2/H3 sekcije za: ${missing.join(', ')}.`);
+    }
   }
+
+  // Long-tail issues
+  if (metrics.longTailUsage < 0.3) {
+    const longs = metrics.detectedLongTails?.slice(0, 3) ||
+      prioritizedKeywords.filter(k => k.trim().split(/\s+/).length >= 2).slice(0, 3);
+    if (longs.length > 0) {
+      critical.push(`Long-tail fraze su slabo zastupljene (${(metrics.longTailUsage*100).toFixed(0)}%). Pojačajte upotrebu fraza poput: "${longs.join('", "')}".`);
+    } else {
+      critical.push(`Long-tail fraze su slabo zastupljene. Ubacite višerečne fraze (npr. "kako rešiti X", "zašto je Y važno") za bolji rang na long-tail pretrage.`);
+    }
+  }
+
+  // Primary keyword density
+  const pd = metrics.primaryDensity * 100;
+  if (pd < 0.5) {
+    const primary = prioritizedKeywords[0] || 'primarna ključna reč';
+    critical.push(`Gustina primarne ključne reči "${primary}" je samo ${pd.toFixed(2)}%. Ciljajte 1-2.5% za optimalan SEO.`);
+  } else if (pd > 3) {
+    critical.push(`Gustina primarne ključne reči je ${pd.toFixed(2)}% — rizik od keyword stuffing-a. Smanjite na 1-2.5%.`);
+  }
+
+  // Repetition
+  if (metrics.repetitionScore > 0.15) {
+    critical.push(`Visok nivo ponavljanja (${(metrics.repetitionScore*100).toFixed(0)}%). Koristite sinonime i varijacije fraza za prirodniji tekst.`);
+  }
+
+  // Readability
   if (metrics.avgSentenceLength > 24) {
-    structure.push('Skrati preduge rečenice (>24 reči) i razbij pasuse radi veće čitljivosti.');
+    critical.push(`Prosečna rečenica ima ${metrics.avgSentenceLength.toFixed(0)} reči. Skratite na 15-20 reči za bolju čitljivost i Discover.`);
   }
-  if (structure.length) cats.push({ category: 'Struktura i pokrivenost', items: structure });
 
-  // Ključne reči i long-tail
-  const kw: string[] = [];
-  if (metrics.primaryDensity < 0.008) kw.push('Pojačaj prisustvo primarne ključne reči (prirodno, ~0.8–1.5%).');
-  if (metrics.secondaryDensity < 0.02) kw.push('Uvedi 2–3 sekundarne fraze u relevantne pasuse (0.3–0.8%).');
-  if (metrics.longTailUsage < 0.6) {
-    const longs = prioritizedKeywords.filter(k => k.trim().split(/\s+/).length >= 2).slice(0,3);
-    if (longs.length) kw.push(`Ubaci 2–3 long-tail varijante: ${longs.join(', ')}`);
+  if (critical.length) cats.push({ category: '🔴 Kritične popravke', items: critical, type: 'critical' });
+
+  // ============================================================
+  // 🟡 MISSING — Elements that would improve SEO but are absent
+  // ============================================================
+  const missing: string[] = [];
+
+  // Secondary keyword usage
+  if (metrics.secondaryDensity < 0.02) {
+    const secs = prioritizedKeywords.slice(1, 4);
+    if (secs.length) {
+      missing.push(`Uvedi sekundarne ključne reči u tekst: ${secs.join(', ')} (ciljajte 0.3-0.8% gustine).`);
+    }
   }
-  if (kw.length) cats.push({ category: 'Ključne reči (long-tail first)', items: kw });
+
+  // Keyword coverage
+  if (metrics.keywordCoverage < 0.75) {
+    const kw = prioritizedKeywords.slice(0, 12);
+    const lower = ''; // We don't have access to text here, just flag it
+    missing.push(`Pokrivenost ključnih reči je ${(metrics.keywordCoverage*100).toFixed(0)}%. Probajte da prirodno ubacite više relevantnih pojmova.`);
+  }
+
+  // TTR / vocabulary diversity
+  if (metrics.typeTokenRatio < 0.35) {
+    missing.push(`Raznolikost rečnika je niska (${(metrics.typeTokenRatio*100).toFixed(0)}%). Dodajte primere, konkretne pojmove i stručnu terminologiju.`);
+  }
+
+  // FAQ suggestion
+  const firstLongs = metrics.detectedLongTails?.slice(0, 2) ||
+    prioritizedKeywords.filter(k => k.trim().split(/\s+/).length >= 2).slice(0, 2);
+  if (firstLongs.length) {
+    missing.push(`Dodajte FAQ sekciju sa 2-3 pitanja (npr: "Šta je ${firstLongs[0]}?", "Kako funkcioniše ${firstLongs[1] || firstLongs[0]}?") za featured snippets.`);
+  } else {
+    missing.push(`Dodajte FAQ sekciju na kraju teksta sa 2-3 pitanja vezana za temu — ovo poboljšava šanse za featured snippets.`);
+  }
 
   // Naslov i meta
-  const nm: string[] = [];
   if (seoTitle) {
-    if (seoTitle.length > 75) nm.push('Skrati SEO naslov na ≤ 75 karaktera.');
-    if (seoTitle.length < 40) nm.push('Pojačaj SEO naslov (40–75 karaktera, uključujući primarnu).');
+    if (seoTitle.length > 75) missing.push(`SEO naslov ima ${seoTitle.length} karaktera — skratite na ≤75 za prikaz u rezultatima.`);
+    if (seoTitle.length < 40) missing.push(`SEO naslov je kratak (${seoTitle.length} karaktera) — proširite na 40-75 za bolji CTR.`);
   }
   if (seoMeta) {
-    if (seoMeta.length > 160) nm.push('Skrati meta opis na 150–160 karaktera.');
-    if (seoMeta.length < 140) nm.push('Produbi meta opis (150–160 karaktera, informativno, bez CTA).');
+    if (seoMeta.length > 160) missing.push(`Meta opis ima ${seoMeta.length} karaktera — skratite na 150-160.`);
+    if (seoMeta.length < 140) missing.push(`Meta opis je kratak (${seoMeta.length} karaktera) — proširite na 150-160 za bolju vidljivost.`);
   }
-  if (nm.length) cats.push({ category: 'Naslov i meta', items: nm });
 
-  // Stil i jasnoća
-  const style: string[] = [];
-  if (metrics.repetitionScore > 0.1) style.push('Smanji ponavljanja isto-slednih fraza; koristi sinonime.');
-  if (metrics.typeTokenRatio < 0.35) style.push('Povećaj raznolikost reči (TTR), dodaj primere i konkretne pojmove.');
-  if (style.length) cats.push({ category: 'Stil i jasnoća', items: style });
+  if (missing.length) cats.push({ category: '🟡 Nedostajući elementi', items: missing, type: 'missing' });
 
-  // FAQ
-  const faq: string[] = [];
-  const firstLongs = prioritizedKeywords.filter(k => k.trim().split(/\s+/).length >= 2).slice(0,2);
-  if (firstLongs.length) faq.push(`Dodaj FAQ sa 2–3 pitanja na kraju (npr: "Šta je ${firstLongs[0]}?", "Kako rešiti ${firstLongs[1] || firstLongs[0]}?")`);
-  if (faq.length) cats.push({ category: 'FAQ (featured snippets)', items: faq });
+  // ============================================================
+  // 🟢 POSITIVE — What's working well
+  // ============================================================
+  const positive: string[] = [];
+
+  if (metrics.typeTokenRatio >= 0.5) {
+    positive.push(`Odlična raznolikost rečnika (${(metrics.typeTokenRatio*100).toFixed(0)}%) — tekst je bogat i informativan.`);
+  } else if (metrics.typeTokenRatio >= 0.4) {
+    positive.push(`Dobra raznolikost rečnika (${(metrics.typeTokenRatio*100).toFixed(0)}%).`);
+  }
+
+  if (metrics.repetitionScore <= 0.08) {
+    positive.push(`Nisko ponavljanje (${(metrics.repetitionScore*100).toFixed(0)}%) — tekst je prirodan i čitljiv.`);
+  }
+
+  if (metrics.keywordCoverage >= 0.75) {
+    positive.push(`Visoka pokrivenost ključnih reči (${(metrics.keywordCoverage*100).toFixed(0)}%) — algoritmi jasno prepoznaju temu.`);
+  }
+
+  if (pd >= 1 && pd <= 2.5) {
+    positive.push(`Optimalna gustina primarne ključne reči (${pd.toFixed(2)}%).`);
+  }
+
+  if (metrics.topicCoverage >= 0.7) {
+    positive.push(`Odlična pokrivenost tema (${(metrics.topicCoverage*100).toFixed(0)}%) — tekst temeljno pokriva sve aspekte.`);
+  }
+
+  if (metrics.longTailUsage >= 0.5) {
+    positive.push(`Dobra upotreba long-tail fraza (${(metrics.longTailUsage*100).toFixed(0)}%) — pogodno za AI pretraživače.`);
+  }
+
+  if (metrics.avgSentenceLength >= 10 && metrics.avgSentenceLength <= 20) {
+    positive.push(`Optimalna dužina rečenica (${metrics.avgSentenceLength.toFixed(0)} reči) — lako čitljivo.`);
+  }
+
+  if (positive.length) cats.push({ category: '🟢 Dobro urađeno', items: positive, type: 'positive' });
 
   return { categories: cats };
 }

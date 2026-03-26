@@ -115,8 +115,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
     const searchIntent = lsaAnalyzer.classifySearchIntent(fullText, tfidfAnalysis.semanticCore);
 
     // Generate summary and recommendations
-    const mainTopics = lsaAnalysis.topicClusters.map(cluster => cluster.name);
+    let mainTopics = lsaAnalysis.topicClusters.map(cluster => cluster.name);
     const keyTerms = tfidfAnalysis.semanticCore.slice(0, 10).map(term => term.word);
+    
+    // Fallback: if LSA returns no topic clusters, use top TF-IDF terms as proxy topics
+    if (mainTopics.length === 0 && tfidfAnalysis.semanticCore.length > 0) {
+      mainTopics = tfidfAnalysis.semanticCore
+        .slice(0, 5)
+        .map(term => term.word)
+        .filter(w => w.length > 3); // Only meaningful words
+      console.log('ℹ️ [analyze-text] LSA returned 0 clusters, using TF-IDF fallback topics:', mainTopics);
+    }
     
     // Determine recommended focus based on analysis
     let recommendedFocus = 'informativni sadržaj';

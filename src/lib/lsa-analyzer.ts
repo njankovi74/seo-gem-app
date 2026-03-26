@@ -223,46 +223,63 @@ export class LSAAnalyzer {
     const topicPatterns = [
       {
         name: 'Politika',
-        keywords: ['politika', 'vlada', 'ministar', 'parlament', 'izbori', 'stranka', 'predsednik'],
-        threshold: 0.3
+        keywords: ['politika', 'vlada', 'ministar', 'parlament', 'izbori', 'stranka', 'predsednik', 'zakon', 'skupština'],
+        threshold: 0.08
       },
       {
         name: 'Ekonomija',
-        keywords: ['ekonomija', 'privreda', 'inflacija', 'banka', 'investicije', 'tržište', 'BDP'],
-        threshold: 0.3
+        keywords: ['ekonomija', 'privreda', 'inflacija', 'banka', 'investicije', 'tržište', 'BDP', 'cena', 'finansije'],
+        threshold: 0.08
       },
       {
         name: 'Sport',
-        keywords: ['sport', 'fudbal', 'košarka', 'utakmica', 'liga', 'reprezentacija', 'turnir'],
-        threshold: 0.25
+        keywords: ['sport', 'fudbal', 'košarka', 'utakmica', 'liga', 'reprezentacija', 'turnir', 'igrač', 'trener'],
+        threshold: 0.08
       },
       {
         name: 'Zdravlje',
-        keywords: ['zdravlje', 'medicina', 'bolnica', 'lečenje', 'terapija', 'dijagnoza'],
-        threshold: 0.25
+        keywords: ['zdravlje', 'medicina', 'bolnica', 'lečenje', 'terapija', 'dijagnoza', 'hidrira', 'hidracija', 'organizam', 'voda', 'minerali', 'vitamin', 'unos', 'ishrana', 'prehrana', 'lekar', 'preporuk'],
+        threshold: 0.05
       },
       {
         name: 'Tehnologija',
-        keywords: ['tehnologija', 'internet', 'AI', 'digitalno', 'inovacije', 'automatizacija'],
-        threshold: 0.25
+        keywords: ['tehnologija', 'internet', 'AI', 'digitalno', 'inovacije', 'automatizacija', 'softver', 'aplikacija'],
+        threshold: 0.08
       },
       {
         name: 'Kultura',
-        keywords: ['kultura', 'umetnost', 'festival', 'pozorište', 'muzika', 'nasleđe'],
-        threshold: 0.2
+        keywords: ['kultura', 'umetnost', 'festival', 'pozorište', 'muzika', 'nasleđe', 'film'],
+        threshold: 0.08
+      },
+      {
+        name: 'Nauka',
+        keywords: ['nauka', 'istraživanje', 'studija', 'rezultati', 'analiza', 'eksperiment', 'doktor', 'univerzitet'],
+        threshold: 0.08
+      },
+      {
+        name: 'Životna sredina',
+        keywords: ['ekologija', 'klima', 'zagađenje', 'životna', 'sredina', 'zaštita', 'priroda', 'održiv'],
+        threshold: 0.08
       }
     ];
 
     topicPatterns.forEach(pattern => {
       const matchingConcepts = conceptVectors.filter(cv => 
-        pattern.keywords.some(keyword => 
-          cv.concept.includes(keyword) || cv.relatedTerms.includes(keyword)
-        ) && !usedConcepts.has(cv.concept)
+        pattern.keywords.some(keyword => {
+          const concept = cv.concept.toLowerCase();
+          const kwLower = keyword.toLowerCase();
+          // Exact match, partial match (stem), or in related terms
+          return concept === kwLower || 
+                 concept.includes(kwLower) || 
+                 kwLower.includes(concept) ||
+                 (concept.length > 4 && kwLower.startsWith(concept.substring(0, concept.length - 2))) ||
+                 cv.relatedTerms.some(rt => rt.toLowerCase() === kwLower || rt.toLowerCase().includes(kwLower));
+        }) && !usedConcepts.has(cv.concept)
       );
 
       if (matchingConcepts.length > 0) {
         const totalWeight = matchingConcepts.reduce((sum, cv) => sum + cv.weight, 0);
-        const strength = totalWeight / conceptVectors.length;
+        const strength = totalWeight / Math.max(1, conceptVectors.length);
 
         if (strength >= pattern.threshold) {
           clusters.push({
