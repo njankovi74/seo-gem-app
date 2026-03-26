@@ -54,7 +54,7 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
             </div>
             <button
               onClick={onClose}
-              className="hover:bg-white/20 rounded-lg p-2 transition-colors"
+              className="hover:bg-white/20 rounded-xl p-2 transition-colors"
               aria-label="Zatvori"
             >
               <X className="w-6 h-6" />
@@ -98,9 +98,9 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
 
               <div className="space-y-4">
                 {/* Feature 1 */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
+                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-5 border border-emerald-100">
                   <div className="flex items-start space-x-3">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
                       <Zap className="w-4 h-4 text-white" />
                     </div>
                     <div>

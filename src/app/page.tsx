@@ -901,9 +901,9 @@ export default function Home() {
       {/* Help Modal */}
       {showHelp && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             {/* Header */}
-            <div className="sticky top-0 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white p-6 rounded-t-lg">
+            <div className="sticky top-0 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 text-white px-8 py-6 rounded-t-2xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <Brain className="w-8 h-8" />
@@ -946,7 +946,7 @@ export default function Home() {
               {/* Step 2 */}
               <div className="flex space-x-4">
                 <div className="flex-shrink-0">
-                  <div className="w-10 h-10 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
+                  <div className="w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
                     2
                   </div>
                 </div>
@@ -961,7 +961,7 @@ export default function Home() {
                       <span className="text-gray-700"><strong>Informativni:</strong> Faktografski, neutralan ton za hard news</span>
                     </li>
                     <li className="flex items-start space-x-2">
-                      <span className="text-green-600 font-bold">•</span>
+                      <span className="text-emerald-600 font-bold">•</span>
                       <span className="text-gray-700"><strong>GEO Pitanje:</strong> Optimizovan za AI odgovore (Gemini, ChatGPT)</span>
                     </li>
                     <li className="flex items-start space-x-2">
@@ -969,7 +969,7 @@ export default function Home() {
                       <span className="text-gray-700"><strong>Discover Hook:</strong> Stvara radoznalost za Google Discover</span>
                     </li>
                   </ul>
-                  <div className="bg-green-50 border-l-4 border-green-600 p-3 rounded">
+                  <div className="bg-emerald-50 border-l-4 border-emerald-600 p-3 rounded">
                     <p className="text-sm text-gray-700">
                       <strong>🎯 Važno:</strong> Svi naslovi poštuju limit od 70 karaktera. Odabir pomaže sistemu da nauči vaš stil!
                     </p>
@@ -1009,7 +1009,7 @@ export default function Home() {
                       <span className="text-xs font-semibold text-gray-700">✓ Analitika (TF-IDF, LSA, Search Intent)</span>
                     </div>
                   </div>
-                  <div className="bg-purple-50 border-l-4 border-purple-600 p-3 rounded">
+                  <div className="bg-emerald-50 border-l-4 border-emerald-600 p-3 rounded">
                     <p className="text-sm text-gray-700">
                       <strong>🔧 Schema Markup:</strong> Automatski popunjava 16+ polja (author, publisher, datePublished, image, about, mentions...) koristeći realne podatke sa originalnog linka.
                     </p>
@@ -1041,10 +1041,10 @@ export default function Home() {
             </div>
 
             {/* Footer */}
-            <div className="bg-gray-50 p-4 rounded-b-lg border-t">
+            <div className="bg-gray-50 px-6 py-4 rounded-b-2xl border-t">
               <button
                 onClick={() => setShowHelp(false)}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 hover:shadow-lg"
               >
                 Razumem, idemo!
               </button>
