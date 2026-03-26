@@ -804,7 +804,7 @@ export default function Home() {
                     return (
                       <div className="bg-white rounded-xl shadow-sm border p-4">
                         <div className="mb-2.5">
-                          <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide">SEO Scorecard</h4>
+                          <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide">SEO (On-Page) Scorecard</h4>
                           <p className="text-[11px] text-gray-500 mt-0.5">Trenutna optimizovanost vašeg teksta</p>
                         </div>
                         <div className="space-y-1.5">

@@ -227,6 +227,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
         metrics: authorMetrics,
         mainTopics,
         prioritizedKeywords: prioritizedTerms,
+        subtopics: seoOutputs?.subtopics,
         seoTitle: seoOutputs?.title,
         seoMeta: seoOutputs?.metaDescription
       });
@@ -387,6 +388,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
       metrics: authorMetrics,
       mainTopics,
       prioritizedKeywords: prioritizedTerms,
+      subtopics: seoOutputs?.subtopics,
       seoTitle: seoOutputs?.title,
       seoMeta: seoOutputs?.metaDescription
     });

@@ -8,10 +8,11 @@ export function buildAuthorRecommendations(params: {
   metrics: AuthorMetrics;
   mainTopics: string[];
   prioritizedKeywords: string[];
+  subtopics?: string[];  // LLM-generated subtopics for better FAQ suggestions
   seoTitle?: string;
   seoMeta?: string;
 }): AuthorRecommendations {
-  const { metrics, mainTopics, prioritizedKeywords, seoTitle, seoMeta } = params;
+  const { metrics, mainTopics, prioritizedKeywords, subtopics, seoTitle, seoMeta } = params;
   const cats: Array<{ category: string; items: string[]; type: 'critical' | 'missing' | 'positive' }> = [];
 
   // ============================================================
@@ -29,10 +30,11 @@ export function buildAuthorRecommendations(params: {
 
   // Long-tail issues
   if (metrics.longTailUsage < 0.3) {
-    const longs = metrics.detectedLongTails?.slice(0, 3) ||
+    // Use subtopics for better long-tail suggestions
+    const suggestions = subtopics?.slice(0, 3) ||
       prioritizedKeywords.filter(k => k.trim().split(/\s+/).length >= 2).slice(0, 3);
-    if (longs.length > 0) {
-      critical.push(`Long-tail fraze su slabo zastupljene (${(metrics.longTailUsage*100).toFixed(0)}%). Pojačajte upotrebu fraza poput: "${longs.join('", "')}".`);
+    if (suggestions.length > 0) {
+      critical.push(`Long-tail fraze su slabo zastupljene (${(metrics.longTailUsage*100).toFixed(0)}%). Pojačajte upotrebu fraza poput: "${suggestions.join('", "')}".`);
     } else {
       critical.push(`Long-tail fraze su slabo zastupljene. Ubacite višerečne fraze (npr. "kako rešiti X", "zašto je Y važno") za bolji rang na long-tail pretrage.`);
     }
@@ -74,8 +76,6 @@ export function buildAuthorRecommendations(params: {
 
   // Keyword coverage
   if (metrics.keywordCoverage < 0.75) {
-    const kw = prioritizedKeywords.slice(0, 12);
-    const lower = ''; // We don't have access to text here, just flag it
     missing.push(`Pokrivenost ključnih reči je ${(metrics.keywordCoverage*100).toFixed(0)}%. Probajte da prirodno ubacite više relevantnih pojmova.`);
   }
 
@@ -84,11 +84,11 @@ export function buildAuthorRecommendations(params: {
     missing.push(`Raznolikost rečnika je niska (${(metrics.typeTokenRatio*100).toFixed(0)}%). Dodajte primere, konkretne pojmove i stručnu terminologiju.`);
   }
 
-  // FAQ suggestion
-  const firstLongs = metrics.detectedLongTails?.slice(0, 2) ||
-    prioritizedKeywords.filter(k => k.trim().split(/\s+/).length >= 2).slice(0, 2);
-  if (firstLongs.length) {
-    missing.push(`Dodajte FAQ sekciju sa 2-3 pitanja (npr: "Šta je ${firstLongs[0]}?", "Kako funkcioniše ${firstLongs[1] || firstLongs[0]}?") za featured snippets.`);
+  // FAQ suggestion — use LLM subtopics for meaningful questions
+  if (subtopics && subtopics.length >= 2) {
+    missing.push(`Dodajte FAQ sekciju sa 2-3 pitanja (npr: "Šta znači ${subtopics[0].toLowerCase()}?", "Kako utiče ${subtopics[1].toLowerCase()}?") za featured snippets.`);
+  } else if (mainTopics.length >= 2) {
+    missing.push(`Dodajte FAQ sekciju sa 2-3 pitanja o temama: ${mainTopics.slice(0, 2).join(', ')} — ovo poboljšava šanse za featured snippets.`);
   } else {
     missing.push(`Dodajte FAQ sekciju na kraju teksta sa 2-3 pitanja vezana za temu — ovo poboljšava šanse za featured snippets.`);
   }
