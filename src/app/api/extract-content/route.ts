@@ -15,6 +15,14 @@ interface ExtractedContent {
   };
   wordCount: number;
   cleanText: string;
+  htmlStructure?: {
+    h2Count: number;
+    h3Count: number;
+    listCount: number;
+    bulletCount: number;
+    hasFAQ: boolean;
+    paragraphCount: number;
+  };
 }
 
 // Ensure Node.js runtime on Vercel and avoid any accidental static optimization
@@ -399,12 +407,38 @@ async function extractByUrl(url: string) {
   const fullArticleText = (metadata.description ? metadata.description + ' ' : '') + cleanText;
   const wordCount = fullArticleText.split(/\s+/).filter(word => word.length > 0).length;
 
+  // ── HTML Structure Analysis ──
+  const articleContainer = $('article, [role="main"], .article-body, .article-content, .post-content, main').first();
+  const structureScope = articleContainer.length ? articleContainer : $('body');
+  
+  const h2Count = structureScope.find('h2').length;
+  const h3Count = structureScope.find('h3').length;
+  const ulCount = structureScope.find('ul').length;
+  const olCount = structureScope.find('ol').length;
+  const listCount = ulCount + olCount;
+  const bulletCount = structureScope.find('li').length;
+  const paragraphCount = structureScope.find('p').filter((_, el) => {
+    const text = $(el).text().trim();
+    return text.length > 30; // Only meaningful paragraphs
+  }).length;
+  
+  // Check for FAQ section (common patterns)
+  const hasFAQ = structureScope.find('[class*="faq"], [class*="FAQ"], [id*="faq"], [id*="FAQ"]').length > 0 ||
+    structureScope.find('h2, h3').filter((_, el) => {
+      const text = $(el).text().toLowerCase();
+      return text.includes('faq') || text.includes('pitanja') || text.includes('najčešća') || text.includes('česta pitanja');
+    }).length > 0;
+
+  const htmlStructure = { h2Count, h3Count, listCount, bulletCount, hasFAQ, paragraphCount };
+  console.log('🏗️ [extract] HTML structure:', htmlStructure);
+
   const extractedContent: ExtractedContent = {
     title: title || 'Bez naslova',
     content,
     metadata,
     wordCount,
     cleanText,
+    htmlStructure,
   };
   return NextResponse.json(extractedContent);
 }
