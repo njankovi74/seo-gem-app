@@ -20,6 +20,7 @@ export interface TitleChoice {
   selectionType: 'ai_option_1' | 'ai_option_2' | 'ai_option_3' | 'custom';
   metaDescription: string;
   keywords: string;
+  portalId?: string; // Multi-tenant: 'newsmax', 'web_app', etc.
 }
 
 export interface SimilarExample {
@@ -69,6 +70,7 @@ export async function saveTitleChoice(choice: TitleChoice): Promise<void> {
       selection_type: choice.selectionType,
       meta_description: choice.metaDescription,
       keywords: choice.keywords,
+      portal_id: choice.portalId || 'web_app',
     });
 
     if (error) {
