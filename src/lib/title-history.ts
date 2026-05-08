@@ -91,12 +91,14 @@ export async function saveTitleChoice(choice: TitleChoice): Promise<void> {
  */
 export async function getSimilarTitleExamples(
   articleText: string,
-  limit: number = 5
+  limit: number = 5,
+  portalId?: string
 ): Promise<SimilarExample[]> {
   try {
     console.log('🔍 Searching for similar articles in Supabase...', {
       textLength: articleText.length,
-      limit
+      limit,
+      portalId: portalId || '(all portals)'
     });
 
     // Generate embedding for query
@@ -104,11 +106,18 @@ export async function getSimilarTitleExamples(
     console.log('🧮 Query embedding generated:', queryEmbedding.length, 'dimensions');
 
     // Call Supabase RPC function for semantic search
-    const { data, error } = await supabase.rpc('match_title_examples', {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rpcParams: any = {
       query_embedding: queryEmbedding,
       match_threshold: 0.7, // 70% similarity threshold
       match_count: limit,
-    });
+    };
+    // Filter by portal_id if provided (multi-tenant RAG isolation)
+    if (portalId) {
+      rpcParams.filter_portal_id = portalId;
+    }
+
+    const { data, error } = await supabase.rpc('match_title_examples', rpcParams);
 
     if (error) {
       console.error('❌ Failed to get similar examples:', error);

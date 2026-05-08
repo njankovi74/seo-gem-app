@@ -57,8 +57,8 @@ export async function POST(request: NextRequest) {
     const primaryKW = prioritized[0]?.term || '';
     const secondaryKWs = prioritized.slice(1, 6).map(p => p.term);
 
-    // Get RAG examples
-    const similarExamples = await getSimilarTitleExamples(text, 3);
+    // Get RAG examples (filtered by portal for multi-tenant isolation)
+    const similarExamples = await getSimilarTitleExamples(text, 3, auth.portalId);
     const preferredPattern = analyzePattern(similarExamples);
 
     // Build few-shot examples
