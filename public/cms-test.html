@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8">
+  <title>CMS Simulator — SEO GEM Embed Test</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #1e3a5f; color: #333; padding: 20px; }
+    .cms-header { background: #2c4a6e; color: #fff; padding: 10px 20px; margin: -20px -20px 20px; font-size: 14px; }
+    .cms-header span { font-weight: bold; font-size: 16px; }
+    .cms-container { max-width: 900px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    h2 { color: #1e3a5f; margin-bottom: 16px; font-size: 18px; }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 4px; }
+    .field input, .field textarea {
+      width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px;
+      font-size: 14px; font-family: inherit;
+    }
+    .field textarea { resize: vertical; }
+    .field .char-count { font-size: 11px; color: #999; text-align: right; margin-top: 2px; }
+    .field-separator { border-top: 1px solid #eee; margin: 20px 0; }
+    .section-title { font-size: 14px; font-weight: 700; color: #1e3a5f; margin: 16px 0 8px; text-transform: uppercase; }
+    #body-editor { min-height: 200px; border: 1px solid #ccc; border-radius: 4px; padding: 12px; font-size: 14px; line-height: 1.6; }
+    .note { background: #fff3cd; padding: 10px 14px; border-radius: 6px; border: 1px solid #ffc107; font-size: 12px; color: #856404; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+
+<div class="cms-header">
+  <span>🧪 Cubes CMS Simulator</span> — Test stranica za SEO GEM embed
+</div>
+
+<div class="cms-container">
+  <div class="note">
+    ⚠️ Ovo je simulacija Cubes CMS-a sa istim field name atributima. Unesite tekst u body editor i kliknite zeleno SEO GEM dugme.
+  </div>
+
+  <h2>Uređivanje članka</h2>
+
+  <div class="field">
+    <label>Title — maximum 120 characters</label>
+    <input type="text" name="heading" maxlength="120"
+      value="Ministar poljoprivrede tvrdi da se tržište mleka oporavlja, proizvođači poručuju da problemi ostaju">
+    <div class="char-count">97/120</div>
+  </div>
+
+  <div class="field">
+    <label>Lead — maximum 300 characters</label>
+    <textarea name="lead" maxlength="300" rows="2">Ministar poljoprivrede Aleksandar Glamočić izjavio je da se tržište mleka stabilizuje, ali proizvođači kažu da se suočavaju sa niskim otkupnim cenama i sivim tržištem.</textarea>
+    <div class="char-count">168/300</div>
+  </div>
+
+  <div class="field">
+    <label>Body (tekst članka)</label>
+    <textarea id="body-editor" rows="10">Otkupna cena mleka u Srbiji ponovo je u fokusu javnosti nakon što je ministar poljoprivrede Aleksandar Glamočić na sednici Vlade izjavio da se tržište postepeno oporavlja. Prema njegovim rečima, prosečna otkupna cena mleka porasla je za 5 odsto u odnosu na prethodni kvartal.
+
+Međutim, udruženja proizvođača mleka imaju potpuno drugačiju sliku. Predrag Veljković, predsednik Udruženja proizvođača mleka Srbije, tvrdi da je situacija na terenu daleko teža nego što to brojke pokazuju.
+
+"Mi na terenu ne vidimo nikakav oporavak. Otkupna cena i dalje ne pokriva troškove proizvodnje, a mnogi mali proizvođači su već prestali da rade," rekao je Veljković za naš portal.
+
+Problem sivog tržišta mlečnih proizvoda ostaje nerešen. Prema procenama stručnjaka, do 30 odsto mleka koje se plasira na domaće tržište prolazi neregistrovane kanale, bez adekvatne kontrole kvaliteta.
+
+Profesor Ekonomskog fakulteta dr Mirjana Nikolić ističe da bez sistemskog rešenja problema otkupnih cena, srpsko mlekarstvo rizikuje dalju devastaciju. "Potrebne su subvencije koje će biti dovoljne da pokriju razliku između troškova i tržišne cene," navela je Nikolić.
+
+Vlada je najavila novi paket mera podrške koji bi trebalo da bude usvojen do kraja meseca, ali konkretni iznosi još uvek nisu poznati.</textarea>
+  </div>
+
+  <div class="field-separator"></div>
+
+  <!-- SEO GEM button will be inserted here by the embed script -->
+
+  <div class="section-title">SEO polja</div>
+
+  <div class="field">
+    <label>Keywords — maximum 300 characters</label>
+    <input type="text" name="keywords" maxlength="300" class="select-keywords" placeholder="ključne reči...">
+    <div class="char-count">0/300</div>
+  </div>
+
+  <div class="field">
+    <label>Meta description — maximum 160 characters</label>
+    <input type="text" name="meta_description" maxlength="160" class="select-meta-description" placeholder="meta opis...">
+    <div class="char-count">0/160</div>
+  </div>
+
+  <div class="field">
+    <label>SEO Title — maximum 75 characters</label>
+    <input type="text" name="og_title" maxlength="75" placeholder="SEO naslov...">
+    <div class="char-count">0/75</div>
+  </div>
+</div>
+
+<!-- SEO GEM Embed Script -->
+<script
+  src="/cms-embed.js"
+  data-api-key="sk_cms_newsmax_7f3a9e2b1c4d5f6a8b9c0d1e2f3a4b5c"
+  data-field-seo-title='[name="og_title"]'
+  data-field-meta-desc='[name="meta_description"]'
+  data-field-keywords='[name="keywords"]'
+  data-field-title='[name="heading"]'
+  data-field-lead='[name="lead"]'
+  data-editor-type="textarea"
+></script>
+
+<script>
+  // Update character counts on input
+  document.querySelectorAll('input, textarea').forEach(el => {
+    el.addEventListener('input', () => {
+      const counter = el.parentElement.querySelector('.char-count');
+      if (counter && el.maxLength > 0) {
+        counter.textContent = el.value.length + '/' + el.maxLength;
+      }
+    });
+    // Also listen for changes triggered by embed
+    el.addEventListener('change', () => {
+      const counter = el.parentElement.querySelector('.char-count');
+      if (counter && el.maxLength > 0) {
+        counter.textContent = el.value.length + '/' + el.maxLength;
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

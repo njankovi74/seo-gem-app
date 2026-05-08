@@ -29,7 +29,7 @@
       seoTitle: scriptTag.getAttribute('data-field-seo-title') || '[name="og_title"]',
       metaDesc: scriptTag.getAttribute('data-field-meta-desc') || '[name="meta_description"]',
       keywords: scriptTag.getAttribute('data-field-keywords') || '[name="keywords"]',
-      schema: scriptTag.getAttribute('data-field-schema') || '[name="schema_markup"]',
+      schema: scriptTag.getAttribute('data-field-schema') || '[name="schema_org"]',
       title: scriptTag.getAttribute('data-field-title') || '[name="heading"]',
       lead: scriptTag.getAttribute('data-field-lead') || '[name="lead"]',
     },
