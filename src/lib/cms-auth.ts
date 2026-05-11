@@ -56,6 +56,8 @@ export function corsHeaders(origin?: string | null): Record<string, string> {
   const allowed = [
     'https://backoffice.newsmaxbalkans.com',
     'http://backoffice.newsmaxbalkans.com',
+    'https://backoffice-newsmax.cubesdev.rs',
+    'http://backoffice-newsmax.cubesdev.rs',
     // Add more portals here as they onboard
   ];
 
