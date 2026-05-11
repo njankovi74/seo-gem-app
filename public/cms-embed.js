@@ -409,7 +409,14 @@
       };
       customInput.onfocus = () => {
         state.selectedIndex = 'custom';
-        render();
+        // Select the custom radio without full re-render (avoids scroll jump)
+        const customRadio = panelEl.querySelector('input[name="seo-gem-title"][value="custom"]');
+        if (customRadio) customRadio.checked = true;
+        // Deselect other title options visually
+        panelEl.querySelectorAll('.seo-gem-title-option').forEach(el => el.classList.remove('selected'));
+        // Enable confirm button
+        const confirmBtn = panelEl.querySelector('#seo-gem-confirm');
+        if (confirmBtn) confirmBtn.disabled = state.customTitle.trim().length <= 5;
       };
     }
 
