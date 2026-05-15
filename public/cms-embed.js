@@ -6,7 +6,7 @@
  * <script
  *   src="https://seo-gem-app.vercel.app/cms-embed.js"
  *   data-api-key="sk_cms_newsmax_xxx"
- *   data-language="sr"  /* sr|en|pl|sq (default: sr) */
+ *   data-language="sr"  (sr|en|pl|sq, default: sr)
  *   data-field-seo-title='[name="og_title"]'
  *   data-field-meta-desc='[name="meta_description"]'
  *   data-field-keywords='[name="keywords"]'
