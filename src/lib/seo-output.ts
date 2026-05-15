@@ -114,7 +114,11 @@ export async function buildSEOWithLLM(
 
   // Guardrails za kvalitet i usklađenost sa smernicama (sažeto iz dokumenta):
   const bannedTokens = [
-    'kliknite ovde', 'odmah', 'besplatno', 'najbolje ikad', 'šokantno', 'neverovatno', 'viralno', 'ekskluzivno', '!!!'
+    'kliknite ovde', 'odmah', 'besplatno', 'najbolje ikad', 'šokantno', 'neverovatno', 'viralno', 'ekskluzivno', '!!!',
+    // Publisher brand names — never a keyword
+    'newsmax', 'newsmax balkans', 'newsmax polska', 'newsmaxbalkans',
+    // Common stop words that slip through TF-IDF
+    'nije', 'biti', 'prema', 'takođe', 'može', 'samo', 'zbog', 'nakon', 'kroz',
   ];
 
   const primaryKW = context.keyTerms?.[0] || context.mainTopics?.[0] || (context.documentTitle || '').split(' ').slice(0, 3).join(' ');

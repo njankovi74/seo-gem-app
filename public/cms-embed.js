@@ -47,6 +47,8 @@
       loadingTitles: 'Analiziram tekst i generišem predloge naslova...',
       loadingGenerate: 'Generišem Meta Opis, Ključne reči i Schema Markup...',
       successMessage: '✅ SEO polja su uspešno popunjena! Možete ih pregledati i po potrebi izmeniti.',
+      llmFailedMessage: '⚠️ AI generisanje nije uspelo. Kliknite "Ponovi" za novi pokušaj.',
+      retryingMessage: '🔄 Automatski pokušavam ponovo...',
       errorMinLength: 'Tekst članka mora imati najmanje 100 karaktera. Popunite sadržaj pre generisanja.',
       errorSelectTitle: 'Odaberite ili unesite naslov.',
       errorGenerate: 'Greška pri generisanju SEO polja.',
@@ -55,6 +57,7 @@
       customLabel: '✏️ Sopstveni:',
       confirmButton: '✅ Potvrdi izbor',
       regenerateButton: '🔄 Novi predlozi',
+      retryButton: '🔄 Ponovi',
       closeButton: 'Zatvori',
       redoButton: '🔄 Ponovi generisanje',
     },
@@ -65,6 +68,8 @@
       loadingTitles: 'Analyzing text and generating title suggestions...',
       loadingGenerate: 'Generating Meta Description, Keywords and Schema Markup...',
       successMessage: '✅ SEO fields successfully populated! You can review and edit them as needed.',
+      llmFailedMessage: '⚠️ AI generation failed. Click "Retry" to try again.',
+      retryingMessage: '🔄 Automatically retrying...',
       errorMinLength: 'Article text must be at least 100 characters. Please fill in the content before generating.',
       errorSelectTitle: 'Please select or enter a title.',
       errorGenerate: 'Error generating SEO fields.',
@@ -73,6 +78,7 @@
       customLabel: '✏️ Custom:',
       confirmButton: '✅ Confirm Selection',
       regenerateButton: '🔄 New Suggestions',
+      retryButton: '🔄 Retry',
       closeButton: 'Close',
       redoButton: '🔄 Regenerate',
     },
@@ -83,6 +89,8 @@
       loadingTitles: 'Analizuję tekst i generuję propozycje tytułów...',
       loadingGenerate: 'Generuję Meta Opis, Słowa kluczowe i Schema Markup...',
       successMessage: '✅ Pola SEO zostały pomyślnie wypełnione! Możesz je przejrzeć i edytować.',
+      llmFailedMessage: '⚠️ Generowanie AI nie powiodło się. Kliknij "Ponów" aby spróbować ponownie.',
+      retryingMessage: '🔄 Automatycznie ponawiam próbę...',
       errorMinLength: 'Tekst artykułu musi mieć co najmniej 100 znaków. Wypełnij treść przed generowaniem.',
       errorSelectTitle: 'Wybierz lub wpisz tytuł.',
       errorGenerate: 'Błąd podczas generowania pól SEO.',
@@ -91,6 +99,7 @@
       customLabel: '✏️ Własny:',
       confirmButton: '✅ Potwierdź wybór',
       regenerateButton: '🔄 Nowe propozycje',
+      retryButton: '🔄 Ponów',
       closeButton: 'Zamknij',
       redoButton: '🔄 Generuj ponownie',
     },
@@ -98,17 +107,20 @@
       generateButton: '✨ Gjenero SEO me SEO GEM',
       generatedButton: '✅ SEO u gjenerua',
       workingButton: '⌛ SEO GEM po punon...',
-      loadingTitles: 'Po analizoj tekstin dhe po gjeneroj sugjerime për tituj...',
-      loadingGenerate: 'Po gjeneroj Meta Përshkrimin, Fjalët kyçe dhe Schema Markup...',
-      successMessage: '✅ Fushat SEO u plotësuan me sukses! Mund t’i rishikoni dhe editoni.',
-      errorMinLength: 'Teksti i artikullit duhet të ketë të paktën 100 karaktere.',
-      errorSelectTitle: 'Zgjidhni ose shkruani një titull.',
-      errorGenerate: 'Gabim gjatë gjenerimit të fushave SEO.',
-      errorTitles: 'Gabim gjatë gjenerimit të titujve.',
+      loadingTitles: 'Po analizoj tekstin dhe po gjeneroj sugjerime p\u00ebr tituj...',
+      loadingGenerate: 'Po gjeneroj Meta P\u00ebrshkrimin, Fjal\u00ebt ky\u00e7e dhe Schema Markup...',
+      successMessage: '✅ Fushat SEO u plot\u00ebsuan me sukses! Mund t\u2019i rishikoni dhe editoni.',
+      llmFailedMessage: '⚠️ Gjenerimi AI d\u00ebshtoi. Klikoni "Riprovo" p\u00ebr t\u00eb provuar p\u00ebrs\u00ebri.',
+      retryingMessage: '🔄 Po riprovohet automatikisht...',
+      errorMinLength: 'Teksti i artikullit duhet t\u00eb ket\u00eb t\u00eb pakt\u00ebn 100 karaktere.',
+      errorSelectTitle: 'Zgjidhni ose shkruani nj\u00eb titull.',
+      errorGenerate: 'Gabim gjat\u00eb gjenerimit t\u00eb fushave SEO.',
+      errorTitles: 'Gabim gjat\u00eb gjenerimit t\u00eb titujve.',
       categories: { informativni: '📘 INFORMATIV', geo_pitanje: '🌍 GEO PYETJE', discover_hook: '📱 DISCOVER HOOK' },
       customLabel: '✏️ I personalizuar:',
       confirmButton: '✅ Konfirmo zgjedhjen',
-      regenerateButton: '🔄 Sugjerime të reja',
+      regenerateButton: '🔄 Sugjerime t\u00eb reja',
+      retryButton: '🔄 Riprovo',
       closeButton: 'Mbyll',
       redoButton: '🔄 Rigjenero',
     },
@@ -323,7 +335,7 @@
 
   // ── State ──
   let state = {
-    phase: 'idle', // idle | loading-titles | titles | loading-generate | done
+    phase: 'idle', // idle | loading-titles | titles | loading-generate | done | llm-failed
     titles: [],
     selectedIndex: null,
     customTitle: '',
@@ -431,6 +443,13 @@
         </div>`;
     }
 
+    else if (state.phase === 'llm-failed') {
+      bodyHTML = `
+        <div class="seo-gem-error" style="background:#fef3cd;color:#856404;border:1px solid #ffc107;padding:12px;border-radius:6px;font-size:14px;line-height:1.5">
+          ${t.llmFailedMessage}
+        </div>`;
+    }
+
     if (state.error) {
       bodyHTML += `<div class="seo-gem-error">❌ ${escHtml(state.error)}</div>`;
     }
@@ -446,6 +465,10 @@
     } else if (state.phase === 'done') {
       actionsHTML = `
         <button class="seo-gem-btn seo-gem-btn--secondary" id="seo-gem-redo">${t.redoButton}</button>
+        <button class="seo-gem-btn seo-gem-btn--secondary seo-gem-close" id="seo-gem-close-done">${t.closeButton}</button>`;
+    } else if (state.phase === 'llm-failed') {
+      actionsHTML = `
+        <button class="seo-gem-btn" id="seo-gem-retry">${t.retryButton || '🔄 Ponovi'}</button>
         <button class="seo-gem-btn seo-gem-btn--secondary seo-gem-close" id="seo-gem-close-done">${t.closeButton}</button>`;
     }
 
@@ -511,6 +534,42 @@
     const redoBtn = panelEl.querySelector('#seo-gem-redo');
     if (redoBtn) redoBtn.onclick = handleGenerateTitles;
 
+    // Retry (after LLM failure — reuses stored title, skips title selection)
+    const retryBtn = panelEl.querySelector('#seo-gem-retry');
+    if (retryBtn) retryBtn.onclick = async function() {
+      state.phase = 'loading-generate';
+      state.error = null;
+      render();
+      try {
+        const data = await apiCall('/api/cms/generate', {
+          title: state.lastTitle || '',
+          selectedTitle: state.lastSelectedTitle || '',
+          body: state.lastBody || getBodyText(),
+          lead: state.lastLead || getFieldValue(CONFIG.fields.lead),
+          offeredTitles: state.titles,
+          language: CONFIG.language,
+        });
+        if (data.llmFailed) {
+          state.phase = 'llm-failed';
+          state.error = null;
+          render();
+          return;
+        }
+        setFieldValue(CONFIG.fields.seoTitle, data.seoTitle || '');
+        setFieldValue(CONFIG.fields.metaDesc, data.metaDescription || '');
+        setFieldValue(CONFIG.fields.keywords, data.keywords || '');
+        if (data.schemaMarkup) {
+          setFieldValue(CONFIG.fields.schema, data.schemaMarkup);
+        }
+        state.phase = 'done';
+        state.error = null;
+      } catch (err) {
+        state.error = err.message || t.errorGenerate;
+        state.phase = 'llm-failed';
+      }
+      render();
+    };
+
     // Click on title option label
     panelEl.querySelectorAll('.seo-gem-title-option').forEach(label => {
       label.onclick = (e) => {
@@ -571,7 +630,8 @@
     state.error = null;
     render();
 
-    try {
+    // Inner function for calling generate API (used for auto-retry)
+    async function callGenerate() {
       const data = await apiCall('/api/cms/generate', {
         title,
         selectedTitle,
@@ -580,8 +640,36 @@
         offeredTitles: state.titles,
         language: CONFIG.language,
       });
+      return data;
+    }
 
-      // Fill CMS fields
+    try {
+      let data = await callGenerate();
+
+      // If LLM failed, auto-retry once before showing error
+      if (data.llmFailed) {
+        console.warn('[SEO GEM] LLM failed, auto-retrying once...');
+        state.error = t.retryingMessage;
+        render();
+        await new Promise(function(r) { setTimeout(r, 2000); }); // wait 2s before retry
+        data = await callGenerate();
+      }
+
+      // If still failed after retry, show llm-failed phase
+      if (data.llmFailed) {
+        console.error('[SEO GEM] LLM failed after auto-retry');
+        state.phase = 'llm-failed';
+        state.error = null;
+        // Store the selected title so retry can reuse it
+        state.lastSelectedTitle = selectedTitle;
+        state.lastTitle = title;
+        state.lastBody = bodyText;
+        state.lastLead = lead;
+        render();
+        return;
+      }
+
+      // Fill CMS fields only with real AI-generated content
       setFieldValue(CONFIG.fields.seoTitle, data.seoTitle || '');
       setFieldValue(CONFIG.fields.metaDesc, data.metaDescription || '');
       setFieldValue(CONFIG.fields.keywords, data.keywords || '');

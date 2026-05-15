@@ -74,7 +74,8 @@ export async function POST(request: NextRequest) {
     const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     const strictModel = (process.env.SEO_LLM_STRICT_MODEL || '').toLowerCase() === 'true';
 
-    let seoOutputs = deterministicSEO;
+    let seoOutputs: typeof deterministicSEO | null = null;
+    let llmFailed = false;
     try {
       const llmResult = await buildSEOWithLLM(
         deterministicSEO,
@@ -91,39 +92,52 @@ export async function POST(request: NextRequest) {
         language
       );
 
-      if (llmResult) {
+      // Check if LLM actually generated content or just returned the deterministic fallback
+      if (llmResult && llmResult.metaDescription && llmResult.metaDescription !== deterministicSEO.metaDescription) {
         llmResult.title = selectedTitle; // Preserve selected title
         seoOutputs = llmResult;
+      } else {
+        // LLM returned but output is the same as fallback template — treat as failure
+        console.warn('⚠️ [CMS/generate] LLM returned deterministic fallback content, treating as failure');
+        llmFailed = true;
       }
     } catch (llmError: any) {
-      console.error('⚠️ [CMS/generate] LLM failed, using deterministic:', llmError?.message);
+      console.error('⚠️ [CMS/generate] LLM failed:', llmError?.message);
+      llmFailed = true;
     }
 
-    // Save to Supabase for RAG (non-blocking)
-    try {
-      await saveTitleChoice({
-        articleUrl: articleUrl || '',
-        articleText: text.substring(0, 5000),
-        offeredTitles: offeredTitles || [],
-        selectedTitle,
-        selectionType: 'custom',
-        metaDescription: seoOutputs.metaDescription,
-        keywords: seoOutputs.keywordsLine,
-        portalId: auth.portalId,
-      });
-      console.log(`✅ [CMS/generate] Saved to Supabase for portal: ${auth.portalId}`);
-    } catch (saveError) {
-      console.error('⚠️ [CMS/generate] Supabase save failed (non-blocking):', saveError);
+    // Only save to Supabase when LLM succeeded (don't pollute DB with empty/bad data)
+    if (seoOutputs && !llmFailed) {
+      try {
+        await saveTitleChoice({
+          articleUrl: articleUrl || '',
+          articleText: text.substring(0, 5000),
+          offeredTitles: offeredTitles || [],
+          selectedTitle,
+          selectionType: 'custom',
+          metaDescription: seoOutputs.metaDescription,
+          keywords: seoOutputs.keywordsLine,
+          portalId: auth.portalId,
+        });
+        console.log(`✅ [CMS/generate] Saved to Supabase for portal: ${auth.portalId}`);
+      } catch (saveError) {
+        console.error('⚠️ [CMS/generate] Supabase save failed (non-blocking):', saveError);
+      }
     }
 
-    console.log(`✅ [CMS/generate] Done for ${auth.portalId}`);
+    if (llmFailed) {
+      console.warn(`⚠️ [CMS/generate] LLM failed for ${auth.portalId}, returning empty fields`);
+    } else {
+      console.log(`✅ [CMS/generate] Done for ${auth.portalId}`);
+    }
 
     return NextResponse.json({
       success: true,
-      seoTitle: seoOutputs.title,
-      metaDescription: seoOutputs.metaDescription,
-      keywords: seoOutputs.keywordsLine,
-      schemaMarkup: seoOutputs.schemaMarkup || '',
+      llmFailed,
+      seoTitle: selectedTitle,
+      metaDescription: llmFailed ? '' : (seoOutputs?.metaDescription || ''),
+      keywords: llmFailed ? '' : (seoOutputs?.keywordsLine || ''),
+      schemaMarkup: llmFailed ? '' : (seoOutputs?.schemaMarkup || ''),
     }, { headers });
 
   } catch (error) {
