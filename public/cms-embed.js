@@ -1,15 +1,16 @@
 /**
- * SEO GEM — CMS Embed Script
+ * SEO GEM — CMS Embed Script (Multi-Language)
  * Embeds SEO title generation and meta/keywords/schema auto-fill into any CMS.
  *
  * Usage:
  * <script
  *   src="https://seo-gem-app.vercel.app/cms-embed.js"
  *   data-api-key="sk_cms_newsmax_xxx"
+ *   data-language="sr"  /* sr|en|pl|sq (default: sr) */
  *   data-field-seo-title='[name="og_title"]'
  *   data-field-meta-desc='[name="meta_description"]'
  *   data-field-keywords='[name="keywords"]'
- *   data-field-schema='[name="schema_markup"]'
+ *   data-field-schema='[name="schema_org"]'
  *   data-field-title='[name="heading"]'
  *   data-field-lead='[name="lead"]'
  *   data-editor-type="ckeditor"
@@ -34,7 +35,85 @@
       lead: scriptTag.getAttribute('data-field-lead') || '[name="lead"]',
     },
     editorType: (scriptTag.getAttribute('data-editor-type') || 'ckeditor').toLowerCase(),
+    language: (scriptTag.getAttribute('data-language') || 'sr').toLowerCase(),
   };
+
+  // ── i18n UI text per language ──
+  const UI_STRINGS = {
+    sr: {
+      generateButton: '✨ Generiši SEO sa SEO GEM',
+      generatedButton: '✅ SEO generisan',
+      workingButton: '⌛ SEO GEM radi...',
+      loadingTitles: 'Analiziram tekst i generišem predloge naslova...',
+      loadingGenerate: 'Generišem Meta Opis, Ključne reči i Schema Markup...',
+      successMessage: '✅ SEO polja su uspešno popunjena! Možete ih pregledati i po potrebi izmeniti.',
+      errorMinLength: 'Tekst članka mora imati najmanje 100 karaktera. Popunite sadržaj pre generisanja.',
+      errorSelectTitle: 'Odaberite ili unesite naslov.',
+      errorGenerate: 'Greška pri generisanju SEO polja.',
+      errorTitles: 'Greška pri generisanju naslova.',
+      categories: { informativni: '📘 INFORMATIVNI', geo_pitanje: '🌍 GEO PITANJE', discover_hook: '📱 DISCOVER HOOK' },
+      customLabel: '✏️ Sopstveni:',
+      confirmButton: '✅ Potvrdi izbor',
+      regenerateButton: '🔄 Novi predlozi',
+      closeButton: 'Zatvori',
+      redoButton: '🔄 Ponovi generisanje',
+    },
+    en: {
+      generateButton: '✨ Generate SEO with SEO GEM',
+      generatedButton: '✅ SEO Generated',
+      workingButton: '⌛ SEO GEM working...',
+      loadingTitles: 'Analyzing text and generating title suggestions...',
+      loadingGenerate: 'Generating Meta Description, Keywords and Schema Markup...',
+      successMessage: '✅ SEO fields successfully populated! You can review and edit them as needed.',
+      errorMinLength: 'Article text must be at least 100 characters. Please fill in the content before generating.',
+      errorSelectTitle: 'Please select or enter a title.',
+      errorGenerate: 'Error generating SEO fields.',
+      errorTitles: 'Error generating titles.',
+      categories: { informativni: '📘 INFORMATIVE', geo_pitanje: '🌍 GEO QUESTION', discover_hook: '📱 DISCOVER HOOK' },
+      customLabel: '✏️ Custom:',
+      confirmButton: '✅ Confirm Selection',
+      regenerateButton: '🔄 New Suggestions',
+      closeButton: 'Close',
+      redoButton: '🔄 Regenerate',
+    },
+    pl: {
+      generateButton: '✨ Generuj SEO z SEO GEM',
+      generatedButton: '✅ SEO wygenerowane',
+      workingButton: '⌛ SEO GEM pracuje...',
+      loadingTitles: 'Analizuję tekst i generuję propozycje tytułów...',
+      loadingGenerate: 'Generuję Meta Opis, Słowa kluczowe i Schema Markup...',
+      successMessage: '✅ Pola SEO zostały pomyślnie wypełnione! Możesz je przejrzeć i edytować.',
+      errorMinLength: 'Tekst artykułu musi mieć co najmniej 100 znaków. Wypełnij treść przed generowaniem.',
+      errorSelectTitle: 'Wybierz lub wpisz tytuł.',
+      errorGenerate: 'Błąd podczas generowania pól SEO.',
+      errorTitles: 'Błąd podczas generowania tytułów.',
+      categories: { informativni: '📘 INFORMACYJNY', geo_pitanje: '🌍 GEO PYTANIE', discover_hook: '📱 DISCOVER HOOK' },
+      customLabel: '✏️ Własny:',
+      confirmButton: '✅ Potwierdź wybór',
+      regenerateButton: '🔄 Nowe propozycje',
+      closeButton: 'Zamknij',
+      redoButton: '🔄 Generuj ponownie',
+    },
+    sq: {
+      generateButton: '✨ Gjenero SEO me SEO GEM',
+      generatedButton: '✅ SEO u gjenerua',
+      workingButton: '⌛ SEO GEM po punon...',
+      loadingTitles: 'Po analizoj tekstin dhe po gjeneroj sugjerime për tituj...',
+      loadingGenerate: 'Po gjeneroj Meta Përshkrimin, Fjalët kyçe dhe Schema Markup...',
+      successMessage: '✅ Fushat SEO u plotësuan me sukses! Mund t’i rishikoni dhe editoni.',
+      errorMinLength: 'Teksti i artikullit duhet të ketë të paktën 100 karaktere.',
+      errorSelectTitle: 'Zgjidhni ose shkruani një titull.',
+      errorGenerate: 'Gabim gjatë gjenerimit të fushave SEO.',
+      errorTitles: 'Gabim gjatë gjenerimit të titujve.',
+      categories: { informativni: '📘 INFORMATIV', geo_pitanje: '🌍 GEO PYETJE', discover_hook: '📱 DISCOVER HOOK' },
+      customLabel: '✏️ I personalizuar:',
+      confirmButton: '✅ Konfirmo zgjedhjen',
+      regenerateButton: '🔄 Sugjerime të reja',
+      closeButton: 'Mbyll',
+      redoButton: '🔄 Rigjenero',
+    },
+  };
+  const t = UI_STRINGS[CONFIG.language] || UI_STRINGS.sr;
 
   if (!CONFIG.apiKey) { console.error('[SEO GEM] data-api-key is required'); return; }
 
@@ -262,15 +341,15 @@
 
     // Update button text
     if (state.phase === 'done') {
-      buttonEl.innerHTML = '✅ SEO generisan';
+      buttonEl.innerHTML = t.generatedButton;
       buttonEl.className = 'seo-gem-btn seo-gem-btn--done';
       buttonEl.disabled = false;
     } else if (state.phase === 'idle') {
-      buttonEl.innerHTML = '✨ Generiši SEO sa SEO GEM';
+      buttonEl.innerHTML = t.generateButton;
       buttonEl.className = 'seo-gem-btn';
       buttonEl.disabled = false;
     } else {
-      buttonEl.innerHTML = '⏳ SEO GEM radi...';
+      buttonEl.innerHTML = t.workingButton;
       buttonEl.disabled = true;
     }
 
@@ -281,15 +360,15 @@
       bodyHTML = `
         <div class="seo-gem-loading">
           <div class="seo-gem-spinner"></div>
-          <div class="seo-gem-loading-text">Analiziram tekst i generišem predloge naslova...</div>
+          <div class="seo-gem-loading-text">${t.loadingTitles}</div>
         </div>`;
     }
 
     else if (state.phase === 'titles') {
       const cats = {
-        informativni: { label: '🔵 INFORMATIVNI', cls: 'seo-gem-cat-info' },
-        geo_pitanje: { label: '🟢 GEO PITANJE', cls: 'seo-gem-cat-geo' },
-        discover_hook: { label: '🟣 DISCOVER HOOK', cls: 'seo-gem-cat-discover' },
+        informativni: { label: t.categories.informativni, cls: 'seo-gem-cat-info' },
+        geo_pitanje: { label: t.categories.geo_pitanje, cls: 'seo-gem-cat-geo' },
+        discover_hook: { label: t.categories.discover_hook, cls: 'seo-gem-cat-discover' },
       };
 
       // Group titles by style
@@ -323,9 +402,9 @@
       bodyHTML += `
         <div class="seo-gem-custom">
           <input type="radio" name="seo-gem-title" value="custom" ${state.selectedIndex === 'custom' ? 'checked' : ''}>
-          <span style="font-size:13px;white-space:nowrap">✏️ Sopstveni:</span>
+          <span style="font-size:13px;white-space:nowrap">${t.customLabel}</span>
           <input type="text" id="seo-gem-custom-input" maxlength="75"
-            placeholder="Unesite sopstveni naslov..."
+            placeholder="..."
             value="${escHtml(state.customTitle)}">
           <span class="seo-gem-custom-count">${state.customTitle.length}/75</span>
         </div>`;
@@ -339,7 +418,7 @@
         <div class="seo-gem-loading">
           <div class="seo-gem-spinner"></div>
           <div class="seo-gem-loading-text">
-            Generišem Meta Opis, Ključne reči i Schema Markup...<br>
+            ${t.loadingGenerate}<br>
             <small style="color:#059669">"${escHtml(selTitle.substring(0, 60))}..."</small>
           </div>
         </div>`;
@@ -348,7 +427,7 @@
     else if (state.phase === 'done') {
       bodyHTML = `
         <div class="seo-gem-success">
-          ✅ SEO polja su uspešno popunjena! Možete ih pregledati i po potrebi izmeniti.
+          ${t.successMessage}
         </div>`;
     }
 
@@ -362,12 +441,12 @@
       const canConfirm = state.selectedIndex !== null &&
         (state.selectedIndex !== 'custom' || state.customTitle.trim().length > 5);
       actionsHTML = `
-        <button class="seo-gem-btn seo-gem-btn--secondary" id="seo-gem-regenerate">🔄 Novi predlozi</button>
-        <button class="seo-gem-btn" id="seo-gem-confirm" ${canConfirm ? '' : 'disabled'}>✅ Potvrdi izbor</button>`;
+        <button class="seo-gem-btn seo-gem-btn--secondary" id="seo-gem-regenerate">${t.regenerateButton}</button>
+        <button class="seo-gem-btn" id="seo-gem-confirm" ${canConfirm ? '' : 'disabled'}>${t.confirmButton}</button>`;
     } else if (state.phase === 'done') {
       actionsHTML = `
-        <button class="seo-gem-btn seo-gem-btn--secondary" id="seo-gem-redo">🔄 Ponovi generisanje</button>
-        <button class="seo-gem-btn seo-gem-btn--secondary seo-gem-close" id="seo-gem-close-done">Zatvori</button>`;
+        <button class="seo-gem-btn seo-gem-btn--secondary" id="seo-gem-redo">${t.redoButton}</button>
+        <button class="seo-gem-btn seo-gem-btn--secondary seo-gem-close" id="seo-gem-close-done">${t.closeButton}</button>`;
     }
 
     panelEl.innerHTML = `
@@ -446,7 +525,7 @@
   async function handleGenerateTitles() {
     const bodyText = getBodyText();
     if (!bodyText || bodyText.trim().length < 100) {
-      state.error = 'Tekst članka mora imati najmanje 100 karaktera. Popunite sadržaj pre generisanja.';
+      state.error = t.errorMinLength;
       state.phase = state.phase === 'idle' ? 'idle' : state.phase;
       render();
       return;
@@ -462,11 +541,11 @@
     render();
 
     try {
-      const data = await apiCall('/api/cms/titles', { title, body: bodyText, lead });
+      const data = await apiCall('/api/cms/titles', { title, body: bodyText, lead, language: CONFIG.language });
       state.titles = data.titles || [];
       state.phase = 'titles';
     } catch (err) {
-      state.error = err.message || 'Greška pri generisanju naslova.';
+      state.error = err.message || t.errorTitles;
       state.phase = 'titles';
       state.titles = [];
     }
@@ -479,7 +558,7 @@
       : (state.titles[state.selectedIndex]?.text || '');
 
     if (!selectedTitle || selectedTitle.length < 5) {
-      state.error = 'Odaberite ili unesite naslov.';
+      state.error = t.errorSelectTitle;
       render();
       return;
     }
@@ -499,6 +578,7 @@
         body: bodyText,
         lead,
         offeredTitles: state.titles,
+        language: CONFIG.language,
       });
 
       // Fill CMS fields
@@ -512,7 +592,7 @@
       state.phase = 'done';
       state.error = null;
     } catch (err) {
-      state.error = err.message || 'Greška pri generisanju SEO polja.';
+      state.error = err.message || t.errorGenerate;
       state.phase = 'titles'; // Go back to title selection
     }
     render();
@@ -529,7 +609,7 @@
     // Create button
     buttonEl = document.createElement('button');
     buttonEl.className = 'seo-gem-btn';
-    buttonEl.innerHTML = '✨ Generiši SEO sa SEO GEM';
+    buttonEl.innerHTML = t.generateButton;
     buttonEl.type = 'button';
     buttonEl.onclick = () => {
       if (state.phase === 'idle' || state.phase === 'done') {
@@ -556,7 +636,7 @@
       document.body.appendChild(panelEl);
     }
 
-    console.log('[SEO GEM] Initialized. Editor:', CONFIG.editorType, '| API:', CONFIG.apiBase);
+    console.log('[SEO GEM] Initialized. Editor:', CONFIG.editorType, '| API:', CONFIG.apiBase, '| Language:', CONFIG.language);
   }
 
   // Wait for DOM ready

@@ -1,4 +1,5 @@
 import { TFIDFAnalyzer, TFIDFResult } from './tfidf-analyzer';
+import { getLanguageConfig, type SupportedLanguage } from './i18n';
 
 interface LSAResult {
   conceptVectors: ConceptVector[];
@@ -34,55 +35,18 @@ interface SearchIntent {
 export class LSAAnalyzer {
   private tfidfAnalyzer: TFIDFAnalyzer;
   private conceptDatabase: Map<string, string[]> = new Map();
+  private language: SupportedLanguage;
   
-  constructor() {
-    this.tfidfAnalyzer = new TFIDFAnalyzer();
+  constructor(language: SupportedLanguage = 'sr') {
+    this.language = language;
+    this.tfidfAnalyzer = new TFIDFAnalyzer(language);
     this.initializeConceptDatabase();
   }
 
   private initializeConceptDatabase() {
-    // Serbian concept associations for LSA
-    this.conceptDatabase = new Map([
-      // Politics
-      ['politika', ['vlada', 'ministar', 'parlament', 'skupština', 'predsednik', 'izbori', 'stranka', 'koalicija', 'opozicija', 'referendum']],
-      ['vlada', ['ministar', 'premijer', 'kabinet', 'sednica', 'odluka', 'uredba', 'zakon', 'politika', 'reforma']],
-      ['izbori', ['glasanje', 'kandidat', 'stranka', 'lista', 'kampanja', 'birači', 'parlament', 'referendum', 'demokratija']],
-      
-      // Economy
-      ['ekonomija', ['privreda', 'BDP', 'inflacija', 'devize', 'investicije', 'tržište', 'trgovina', 'finansije', 'banka']],
-      ['privreda', ['proizvodnja', 'industrija', 'poljoprivreda', 'turizam', 'izvoz', 'uvoz', 'preduzeća', 'zaposleni']],
-      ['inflacija', ['cene', 'poskupljenje', 'ekonomija', 'dinar', 'evro', 'kupovna', 'moć', 'troškovi']],
-      
-      // Sports
-      ['sport', ['fudbal', 'košarka', 'tenis', 'vaterpolo', 'olimpijada', 'prvenstvo', 'liga', 'utakmica', 'turnir']],
-      ['fudbal', ['reprezentacija', 'liga', 'utakmica', 'golovi', 'igrači', 'trener', 'stadion', 'navijači', 'transfer']],
-      ['košarka', ['NBA', 'ABA', 'liga', 'utakmica', 'poeni', 'koševi', 'igrači', 'trener', 'finale']],
-      
-      // Health
-      ['zdravlje', ['medicina', 'bolest', 'terapija', 'lečenje', 'dijagnoza', 'simptomi', 'lekar', 'bolnica', 'zdravstvo']],
-      ['medicina', ['lečenje', 'terapija', 'dijagnoza', 'simptomi', 'zdravlje', 'bolest', 'lekar', 'medicinski']],
-      ['bolnica', ['pacijenti', 'lečenje', 'operacija', 'zdravstvo', 'medicinski', 'osoblje', 'oprema']],
-      
-      // Technology
-      ['tehnologija', ['digitalno', 'internet', 'kompjuter', 'softver', 'aplikacija', 'inovacije', 'AI', 'automatizacija']],
-      ['internet', ['web', 'sajt', 'online', 'digitalno', 'mreža', 'povezanost', 'tehnologija']],
-      ['AI', ['veštačka', 'inteligencija', 'mašinsko', 'učenje', 'algoritmi', 'automatizacija', 'robotika']],
-      
-      // Culture
-      ['kultura', ['umetnost', 'pozorište', 'muzika', 'film', 'festival', 'nasleđe', 'tradicija', 'kreativnost']],
-      ['umetnost', ['slika', 'skulptura', 'galerija', 'muzej', 'umetnik', 'kreativnost', 'kultura']],
-      ['festival', ['kultura', 'umetnost', 'muzika', 'film', 'pozorište', 'manifestacija', 'događaj']],
-      
-      // Education
-      ['obrazovanje', ['škola', 'univerzitet', 'student', 'profesor', 'nauka', 'istraživanje', 'studije', 'diploma']],
-      ['univerzitet', ['fakultet', 'student', 'profesor', 'studije', 'istraživanje', 'diploma', 'akademski']],
-      ['nauka', ['istraživanje', 'studija', 'rezultati', 'analiza', 'teorija', 'eksperiment', 'univerzitet']],
-      
-      // Environment
-      ['životna', ['sredina', 'ekologija', 'priroda', 'zagađenje', 'klima', 'očuvanje', 'zaštita', 'održivost']],
-      ['klima', ['promena', 'globalno', 'zagrevanje', 'temperature', 'vremenske', 'prilike', 'ekologija']],
-      ['zagađenje', ['životna', 'sredina', 'vazduh', 'voda', 'otpad', 'ekologija', 'zaštita']]
-    ]);
+    const config = getLanguageConfig(this.language);
+    const entries: [string, string[]][] = Object.entries(config.conceptAssociations);
+    this.conceptDatabase = new Map(entries);
   }
 
   analyzeSemantics(text: string): LSAResult {
@@ -307,12 +271,8 @@ export class LSAAnalyzer {
   }
 
   classifySearchIntent(text: string, semanticCore: TFIDFResult[]): SearchIntent {
-    const indicators = {
-      informational: ['kako', 'šta', 'gde', 'kada', 'zašto', 'vodič', 'objašnjenje', 'definicija', 'lista', 'saveti'],
-      commercial: ['najbolji', 'recenzija', 'poređenje', 'iskustva', 'alternativa', 'preporuke', 'izbor', 'opcije'],
-      transactional: ['kupi', 'cena', 'popust', 'prodaja', 'naruči', 'rezerviši', 'preuzmi', 'instaliraj'],
-      navigational: ['sajt', 'portal', 'homepage', 'kontakt', 'adresa', 'lokacija', 'oficijalni']
-    };
+    const config = getLanguageConfig(this.language);
+    const indicators = config.intentIndicators;
 
     const scores = {
       informational: 0,
@@ -334,11 +294,12 @@ export class LSAAnalyzer {
     });
 
     // Additional heuristics based on semantic core
+    const intentHints = indicators;
     semanticCore.forEach(term => {
       const word = term.word.toLowerCase();
-      if (word.includes('kako') || word.includes('vodič')) scores.informational += 2;
-      if (word.includes('najbolji') || word.includes('recenzija')) scores.commercial += 2;
-      if (word.includes('cena') || word.includes('kupi')) scores.transactional += 2;
+      if (intentHints.informational.some(h => word.includes(h))) scores.informational += 2;
+      if (intentHints.commercial.some(h => word.includes(h))) scores.commercial += 2;
+      if (intentHints.transactional.some(h => word.includes(h))) scores.transactional += 2;
     });
 
     const maxScore = Math.max(...Object.values(scores));

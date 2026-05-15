@@ -1,3 +1,6 @@
+import { getLanguageConfig, type SupportedLanguage } from './i18n';
+import { getSEOPrompt } from './prompts/seo-prompt';
+
 export interface SEOOutputs {
   title: string;
   metaDescription: string;
@@ -101,7 +104,8 @@ export async function buildSEOWithLLM(
       articleSection?: string;
     };
   },
-  options?: { model?: string; strictModel?: boolean; skipTitleGeneration?: boolean }
+  options?: { model?: string; strictModel?: boolean; skipTitleGeneration?: boolean },
+  language?: SupportedLanguage
 ): Promise<SEOOutputs> {
   // Allow per-request override; fallback to env
   const requireLLM = (process.env.SEO_LLM_REQUIRED || '').toLowerCase() === 'true';
@@ -136,92 +140,20 @@ export async function buildSEOWithLLM(
 **TVOJ ZADATAK:** Generiši Meta opis (Answer Nugget), Keywords (Long-Tail First hijerarhija) i Schema Markup na osnovu ovog naslova i teksta.`
     : `**Generiši SEO naslov:** ≤ 70 karaktera, uključi primarnu ključnu reč, bez clickbaita, koristi srpsku transkripciju imena kako je u tekstu.`;
 
-  const prompt = `Ti si Senior Urednik nacionalnog informativnog portala i GEO (Generative Engine Optimization) ekspert. Na osnovu ulaza generiši striktno JSON sa sledećim poljima:
-${jsonSchema}
-
-${titleInstructions}
-
-**1. Meta Opis (meta_description) — Answer Nugget format:**
-- Formuliši kao DIREKTAN, INFORMATIVAN ODGOVOR na glavno pitanje ili temu članka.
-- Aktivan ton, bez okolišanja. Kreni ODMAH sa činjenicama.
-- STROGO ograničenje: maksimalno 160 karaktera.
-- Na samom kraju dodaj kratak, prirodan CTA, npr. "Saznajte više." ili "Pročitajte analizu."
-- ZABRANJENO: Ne započinji opis frazama poput "Ovaj članak govori o..." ili "Saznajte kako...". Kreni odmah sa činjenicama.
-- UVEK koristi PUNO IME I PREZIME na prvom pomenu osobe.
-- Meta opis MORA biti završena rečenica.
-  * ❌ NEDOZVOLJENO: "...ukoliko se obaveze ne" (presečeno!)
-  * ✅ ISPRAVNO: "Milan Janković osvojio zlato na EP u paraatletici. Saznajte više."
-
-**2. Ključne reči / Tagovi (keywords) — Long-Tail First hijerarhija:**
-Tvoj zadatak je da generišeš hijerarhijsku listu od tačno 8 do 10 ključnih reči i fraza koje korisnici ZAISTA ukucavaju u pretraživač.
-Redosled i struktura niza MORAJU biti sledeći:
-
-**Nivo 1: Long-tail fraze (Prioritet! Generiši 3 do 4 fraze):**
-- Ove fraze moraju imati između 3 i 6 reči.
-- Formuliši ih kao prirodna korisnička pitanja ili visoko specifične konverzacijske upite (Voice Search stil) na koje ovaj članak daje odgovor.
-- Primer: "kako se bezbedno evakuisati iz inostranstva", "najbolji načini za zaštitu dece na internetu"
-- Ovo je ključno za AI Overviews.
-
-**Nivo 2: Mid-tail fraze (Generiši 3 do 4 fraze):**
-- Ove fraze imaju 2 do 3 reči.
-- Spajaju glavni entitet sa akcijom ili problemom.
-- Primer: "evakuacija državljana Srbije", "vrbovanje maloletnika online"
-
-**Nivo 3: Core Entiteti (Generiši 2 fraze):**
-- Najviše 2 glavna entiteta (1 do 2 reči, npr. ime specifične lokacije, institucije ili osobe od javnog značaja) radi mapiranja u Knowledge Graph.
-
-❌ STROGO ZABRANJENO (Negative Prompting):
-- NE SMEŠ da generišeš besmislene SEO permutacije istih reči (npr. ako staviš "evakuacija iz Katara", ne smeš dodati "Katar evakuacija" ili "evakuacija Katar"). Svaka fraza mora biti unikatna po nameri.
-- Izbegavaj generičke reči od jedne reči (vesti, srbija, novo, danas) ukoliko nisu deo šire fraze.
-- Vrati strogo jedan niz (array) stringova koji prati ovu hijerarhiju. Mala slova, bez duplikata.
-
-**3. Podteme / Tematski aspekti (subtopics):**
-Identifikuj 4 do 6 ključnih tematskih aspekata/podtema koje članak pokriva ili bi trebalo da pokriva.
-- Svaka podtema je kratka fraza od 2-5 reči u nominativu (npr. "Otkupna cena mleka", "Stav proizvođača", "Ilegalni uvoz mleka").
-- NE koristi pojedinačne reči — svaka podtema mora biti smislena tematska celina.
-- Podteme služe za merenje koliko temeljno članak pokriva sve aspekte teme.
-- Uključi i aspekte koji nedostaju u tekstu (ako ih ima), jer se koriste za SEO preporuke.
-
-**C. Schema Markup (Ključ: schema_markup)**
-Generiši validan JSON-LD string za NewsArticle schemu.
-Sledeća polja su OBAVEZNA i ne smeju biti izostavljena:
-
-- **@context**: "https://schema.org"
-- **@type**: "NewsArticle"
-- **headline**: Tvoj generisani SEO naslov.
-- **description**: OBAVEZNO mora biti apsolutno identična vrednost kao u polju meta_description (Answer Nugget).
-- **articleBody**: Kompresovani sažetak prepun entiteta (do 150 reči).
-- **mainEntityOfPage**: Formatiraj kao {"@type": "WebPage", "@id": "[url_clanka]"}. Iskoristi prosleđeni url_clanka. Ako nije prosleđen, koristi placeholder "https://example.com/article".
-- **inLanguage**: Samostalno detektuj jezik iz teksta i UVEK ga formatiraj po BCP-47 standardu (npr. "sr-RS", "hr-HR", "bs-BA", "en-US"). NIKADA nemoj ostaviti prazno.
-- **image**: Iskoristi prosleđeni [image_url]. Ako nema, izostavi samo ovo polje.
-- **datePublished**: Iskoristi prosleđeni [published_time]. Ako nema, izostavi.
-- **dateModified**: Iskoristi prosleđeni [date_modified]. Ako nema, koristi istu vrednost kao datePublished.
-- **author**: Formatiraj sa identifikatorom: {"@type": "Person", "@id": "#author", "name": "[Ime iz varijable author_name ili izvučeno iz teksta]"}. Ako ime nije dostupno, izostavi. UPOZORENJE: publisher i author su RAZLIČITE osobe/entiteti — nikada ne mešaj ih!
-- **publisher**: Formatiraj sa identifikatorom: {"@type": "Organization", "@id": "#organization", "name": "[publisher_name]"}. Iskoristi prosleđenu varijablu publisher_name. Ako nije prosleđen, koristi "Nacionalni Informativni Portal".
-- **about** i **mentions** (Kritično za Entity Depth): Dodaj ova dva niza. U "about" stavi 1-2 glavna entiteta (koncepta) iz članka definisana kao {"@type": "Thing", "name": "..."}. U "mentions" stavi do 3 sporedna entiteta (ljudi, lokacije, organizacije), svaki kao {"@type": "Thing", "name": "..."}.
-- **keywords**: Iskoristi iste ključne reči koje si generisao u polju "keywords" izlaza. Formatiraj kao niz stringova.
-- **articleSection**: Iskoristi prosleđenu varijablu [article_section]. Ako nije prosleđena, izostavi ovo polje.
-
-⚠️ SINTAKSNA ZAŠTITA (Syntax Firewall): Vrati isključivo čistu, neobrađenu JSON strukturu objekta. STROGO ZABRANJENO je korišćenje Markdown code blokova (nemoj stavljati \`\`\`json na početak i \`\`\` na kraj stringa). Tekst mora biti validan JSON spreman za parsiranje.
-
-**Poznate varijable sa originalnog linka:**
-- image_url: ${context.articleMetadata?.imageUrl || '(nije pronađen)'}
-- published_time: ${context.articleMetadata?.publishedTime || '(nije pronađen)'}
-- date_modified: ${context.articleMetadata?.dateModified || '(nije pronađen)'}
-- author_name: ${context.articleMetadata?.authorName || '(nije pronađen)'}
-- publisher_name: ${context.articleMetadata?.publisherName || '(nije pronađen)'}
-- article_section: ${context.articleMetadata?.articleSection || '(nije pronađen)'}
-- url_clanka: ${context.articleUrl || '(nije pronađen)'}
-
-Ulaz (sažetak):
-- Primarna ključna reč: ${primaryKW}
-- Sekundarne: ${secondaryKWs.join(', ')}
-- Glavne teme: ${context.mainTopics.join(', ')}
-- Intent: ${context.searchIntentType}
-- Naslov dokumenta: ${context.documentTitle || '(nema)'}
-- Uzorak teksta: ${(context.textSample || '').slice(0, 10000)}
-
-Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
+  // Build prompt using i18n-aware prompt builder
+  const effectiveLang = language || 'sr';
+  const { systemPrompt: seoSystemPrompt, userPrompt } = getSEOPrompt(effectiveLang, {
+    primaryKW,
+    secondaryKWs,
+    mainTopics: context.mainTopics,
+    searchIntentType: context.searchIntentType,
+    documentTitle: context.documentTitle,
+    textSample: context.textSample,
+    articleUrl: context.articleUrl,
+    skipTitleGeneration,
+    articleMetadata: context.articleMetadata,
+  });
+  const prompt = userPrompt;
 
   // Normalize any unknown SDK result/value into a plain string for safe parsing
   function ensureText(val: any): string {
@@ -297,7 +229,8 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
   }
 
   function sanitizeKeywords(arr: string[], _primary: string, _secondaries: string[]): string[] {
-    const stop = new Set(['je', 'za', 'u', 'na', 'i', 'od', 'do', 'se', 'da', 'koji', 'kako', 'što', 'sto', 'ili', 'ali', 'pa', 'su', 'sa', 'o', 'autor', 'društvo', 'hronika', 'video', 'foto', 'komentar', 'najnovije', 'vesti', 'srbija', 'novo', 'danas']);
+    const langConfig = getLanguageConfig(effectiveLang);
+    const stop = new Set([...langConfig.stopWords.filter(w => w.length <= 5), ...langConfig.bannedTokens]);
     const out: string[] = [];
     for (const k of arr || []) {
       const t = (k || '').toString().trim().toLowerCase();
@@ -400,7 +333,7 @@ Vrati SAMO JSON, bez objašnjenja i bez code fences.`;
         const res = await client.chat.completions.create({
           model: requestedModel,
           messages: [
-            { role: 'system', content: 'Ti si Senior Urednik nacionalnog informativnog portala i GEO (Generative Engine Optimization) ekspert.' },
+            { role: 'system', content: seoSystemPrompt },
             { role: 'user', content: prompt }
           ],
           ...(isGPT5 ? {} : { temperature: 0.6 }),

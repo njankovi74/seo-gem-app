@@ -1,0 +1,71 @@
+{
+  "code": "sr",
+  "bcp47": "sr-RS",
+  "name": "Serbian",
+  "nativeName": "Srpski",
+  "flag": "🇷🇸",
+  "stopWords": [
+    "a","al","ali","bi","bio","bila","bile","bili","bilo","biće","bih","da","do","ga","god","će","čak","dr","dok","dom","dan","je","jer","jo","ka","ko","ku","li","ma","me","mi","mu","na","ne","ni","no","nu","od","oh","ok","pa","po","ra","re","se","si","so","su","ta","te","ti","to","tu","ve","vo","za","že",
+    "ja","on","ona","ono","vi","oni","one","ova","taj","ovo","ovaj","moj","tvoj","njegov","njen","naš","vaš","njihov","koja","koje","koji","koju","kome","čiji","čija","čije","samo","sve","sva","svak","neki","neka","neko","ništa","niko",
+    "bez","zbog","dok","duž","gdje","kako","kada","kroz","među","nad","oko","pod","pred","preko","prije","protiv","takođe","upravo","van","više","zašto","zato","odakle","dokle","kamo","kuda","otkad","koliko",
+    "biti","budem","budemo","budeš","budete","bude","budu","jesam","jesi","jeste","jest","jesmo","jesu","sam","smo","ste","hoću","hoćeš","hoće","hoćemo","hoćete","ću","ćeš","ćemo","ćete","mogu","možeš","može","možemo","možete","moramo","moraš","mora","morate","moraju","treba","trebam","trebaš","trebamo","trebate","trebaju","ima","imamo","imaš","imaju","nema","nemamo","nemaš","nemaju",
+    "ovo","ovde","onde","tamo","sada","sad","tada","pre","posle","uvek","nikad","nikada","već","još","tek","baš","prilično","vrlo","dosta","malo","mnogo","dobro","loše","jako",
+    "jedan","jedna","jedno","prvi","prva","prvo","drugi","druga","drugo","treći","treća","treće","oba","obe","oboje",
+    "ko","što","šta","gde","kad","zašto","koga","čiji",
+    "danas","sutra","juče","godina","godine","godinu","mesec","meseca","dan","dana","sat","sata","sati","minut","vreme","vremena",
+    "nov","nova","novo","novi","stari","stara","staro","veliki","velika","veliko","mali","mala","dobar","dobra","loš","loša",
+    "nula","dva","tri","četiri","pet","šest","sedam","osam","devet","deset","sto","hiljada","milion",
+    "dakle","inače","ipak","zapravo","naime","međutim","svega","najviše","najmanje","često","retko","ponekad"
+  ],
+  "intentIndicators": {
+    "informational": ["kako","šta","gde","kada","zašto","vodič","objašnjenje","definicija","lista","saveti"],
+    "commercial": ["najbolji","recenzija","poređenje","iskustva","alternativa","preporuke","izbor","opcije"],
+    "transactional": ["kupi","cena","popust","prodaja","naruči","rezerviši","preuzmi","instaliraj"],
+    "navigational": ["sajt","portal","homepage","kontakt","adresa","lokacija","oficijalni"]
+  },
+  "bannedTokens": ["kliknite ovde","odmah","besplatno","najbolje ikad","šokantno","neverovatno","viralno","ekskluzivno","!!!","nećete verovati","haos"],
+  "basicCorpus": [
+    "politika vlada srbija beograd novi sad niš kragujevac subotica",
+    "sport fudbal košarka tenis olimpijada utakmica turnir liga",
+    "ekonomija privreda inflacija banka kredit evro dinar",
+    "kultura pozorište film muzika umetnost festival koncert",
+    "zdravlje medicina lekar bolnica tretman terapija",
+    "tehnologija kompjuter internet digitalni inovacija",
+    "obrazovanje škola univerzitet student profesor nauka",
+    "životna sredina ekologija klima zagađenje priroda",
+    "turizam putovanje odmor destinacija hotel restoran",
+    "nauka istraživanje studija rezultat analiza podatak"
+  ],
+  "conceptAssociations": {
+    "politika": ["vlada","ministar","parlament","skupština","predsednik","izbori","stranka","koalicija","opozicija"],
+    "vlada": ["ministar","premijer","kabinet","sednica","odluka","uredba","zakon","reforma"],
+    "ekonomija": ["tržište","investicije","rast","razvoj","privreda","inflacija","banka"],
+    "sport": ["liga","utakmica","trener","igrač","fudbal","košarka","tenis"],
+    "kultura": ["umetnost","festival","tradicija","nasleđe","pozorište","film","muzika"],
+    "zdravlje": ["medicina","terapija","prevencija","dijagnoza","lekar","bolnica"],
+    "tehnologija": ["inovacije","digitalizacija","automatizacija","kompjuter","internet"]
+  },
+  "tokenizer": {
+    "allowedChars": "čćžšđČĆŽŠĐ"
+  },
+  "ui": {
+    "generateButton": "✨ Generiši SEO sa SEO GEM",
+    "generatedButton": "✅ SEO generisan",
+    "workingButton": "⏳ SEO GEM radi...",
+    "loadingTitles": "Analiziram tekst i generišem predloge naslova...",
+    "loadingGenerate": "Generišem Meta Opis, Ključne reči i Schema Markup...",
+    "successMessage": "✅ SEO polja su uspešno popunjena! Možete ih pregledati i po potrebi izmeniti.",
+    "errorMinLength": "Tekst članka mora imati najmanje 100 karaktera. Popunite sadržaj pre generisanja.",
+    "errorSelectTitle": "Odaberite ili unesite naslov.",
+    "categories": {
+      "informativni": "🔵 INFORMATIVNI",
+      "geo_pitanje": "🟢 GEO PITANJE",
+      "discover_hook": "🟣 DISCOVER HOOK"
+    },
+    "customLabel": "✏️ Sopstveni:",
+    "confirmButton": "✅ Potvrdi izbor",
+    "regenerateButton": "🔄 Novi predlozi",
+    "closeButton": "Zatvori",
+    "redoButton": "🔄 Ponovi generisanje"
+  }
+}

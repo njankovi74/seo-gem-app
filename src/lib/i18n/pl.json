@@ -1,0 +1,77 @@
+{
+  "code": "pl",
+  "bcp47": "pl-PL",
+  "name": "Polish",
+  "nativeName": "Polski",
+  "flag": "🇵🇱",
+  "stopWords": [
+    "a","aby","ach","acz","ale","ależ","ani","aż","bo","bowiem","by","bym","być","był","była","było","były","będzie","będą",
+    "co","coś","czy","czyli","czemu",
+    "dla","dlaczego","dlatego","do","dobrze","dokąd","dość","dużo","dwaj","dwie","dwoje",
+    "go","gdyby","gdzie","gdyż",
+    "i","ich","ile","im","inna","inne","inny","innych","iż",
+    "ja","jak","jakaś","jakiś","jakiż","jako","jakoś","je","jeden","jedna","jedno","jednak","jednakże","jej","jemu","jest","jestem","jeszcze","już",
+    "każdy","kiedy","kilka","kto","ktoś","która","które","którego","której","który","których","którym","którzy","ku",
+    "lecz","lub",
+    "ma","mają","mam","mi","mimo","między","mną","mnie","mogą","mogę","moją","moje","moim","mój","może","możliwe","można","mu","musi","my",
+    "na","nad","nam","nami","nas","nasi","nasz","nasza","nasze","naszego","naszych","natomiast","nawet","nic","nich","nie","niech","niego","niej","niemu","nigdy","nim","nimi","niż","no",
+    "o","ob","obok","od","około","on","ona","one","oni","ono","oprócz","oraz","oto","owszem",
+    "pan","pani","po","pod","podczas","pomimo","ponad","ponieważ","powinien","powinna","powinno","poza","prawie","przecież","przed","przede","przez","przy",
+    "sama","sami","sam","się","skąd","sobie","sobą","sposób","swój","są",
+    "ta","tak","taka","taką","taki","takie","także","tam","te","tego","tej","ten","też","to","tob","tobie","toteż","tu","tutaj","twój","twoja","twoje","ty","tych","tylko","tym","tymi",
+    "u",
+    "w","wam","wami","was","wasz","wasza","wasze","we","według","wie","wiele","więc","więcej","właśnie","wszyscy","wszystkich","wszystkie","wszystko","wy","właśnie",
+    "z","za","zamiast","zapewne","zawsze","ze","zeznaje","znowu","znów","został","żaden","żadna","żadne","że","żeby"
+  ],
+  "intentIndicators": {
+    "informational": ["jak","co","dlaczego","kiedy","gdzie","poradnik","wyjaśnienie","definicja","lista","porady","tutorial"],
+    "commercial": ["najlepszy","recenzja","porównanie","ranking","opinie","alternatywa","polecany","warto"],
+    "transactional": ["kup","cena","zniżka","wyprzedaż","zamów","promocja","pobierz","zarezerwuj","koszt"],
+    "navigational": ["strona","oficjalny","kontakt","adres","logowanie","rejestracja","witryna"]
+  },
+  "bannedTokens": ["kliknij tutaj","za darmo","najlepsze ever","szokujące","niewiarygodne","viralowy","ekskluzywnie","!!!","nie uwierzysz","sensacja","szok"],
+  "basicCorpus": [
+    "polityka rząd polska warszawa kraków wybory sejm senat prezydent",
+    "sport piłka nożna koszykówka liga mistrzostwa mecz turniej trener",
+    "gospodarka ekonomia inflacja bank kredyt złoty inwestycja rynek",
+    "kultura teatr film muzyka sztuka festiwal koncert literatura",
+    "zdrowie medycyna lekarz szpital leczenie terapia diagnoza",
+    "technologia komputer internet cyfrowy innowacja sztuczna inteligencja",
+    "edukacja szkoła uniwersytet student profesor nauka badania",
+    "środowisko ekologia klimat zanieczyszczenie energia odnawialna",
+    "turystyka podróż wakacje hotel restauracja lot rezerwacja",
+    "nauka badanie wyniki analiza dane eksperyment odkrycie"
+  ],
+  "conceptAssociations": {
+    "polityka": ["rząd","minister","parlament","sejm","prezydent","wybory","partia","koalicja","opozycja"],
+    "rząd": ["minister","premier","gabinet","posiedzenie","decyzja","ustawa","prawo","reforma"],
+    "gospodarka": ["rynek","inwestycja","wzrost","rozwój","biznes","inflacja","bank"],
+    "sport": ["liga","mecz","trener","zawodnik","piłka","koszykówka","mistrzostwa"],
+    "kultura": ["sztuka","festiwal","tradycja","dziedzictwo","teatr","film","muzyka"],
+    "zdrowie": ["medycyna","terapia","profilaktyka","diagnoza","lekarz","szpital"],
+    "technologia": ["innowacja","cyfryzacja","automatyzacja","komputer","internet"]
+  },
+  "tokenizer": {
+    "allowedChars": "ąćęłńóśźżĄĆĘŁŃÓŚŹŻ"
+  },
+  "ui": {
+    "generateButton": "✨ Generuj SEO z SEO GEM",
+    "generatedButton": "✅ SEO wygenerowane",
+    "workingButton": "⏳ SEO GEM pracuje...",
+    "loadingTitles": "Analizuję tekst i generuję propozycje tytułów...",
+    "loadingGenerate": "Generuję Meta Opis, Słowa kluczowe i Schema Markup...",
+    "successMessage": "✅ Pola SEO zostały pomyślnie wypełnione! Możesz je przejrzeć i w razie potrzeby edytować.",
+    "errorMinLength": "Tekst artykułu musi mieć co najmniej 100 znaków. Wypełnij treść przed generowaniem.",
+    "errorSelectTitle": "Wybierz lub wpisz tytuł.",
+    "categories": {
+      "informativni": "🔵 INFORMACYJNY",
+      "geo_pitanje": "🟢 GEO PYTANIE",
+      "discover_hook": "🟣 DISCOVER HOOK"
+    },
+    "customLabel": "✏️ Własny:",
+    "confirmButton": "✅ Potwierdź wybór",
+    "regenerateButton": "🔄 Nowe propozycje",
+    "closeButton": "Zamknij",
+    "redoButton": "🔄 Generuj ponownie"
+  }
+}

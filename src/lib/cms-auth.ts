@@ -54,10 +54,21 @@ export function authenticateCmsRequest(request: NextRequest): AuthResult {
 export function corsHeaders(origin?: string | null): Record<string, string> {
   // Allowed CMS domains
   const allowed = [
+    // Serbian (newsmaxbalkans.com)
     'https://backoffice.newsmaxbalkans.com',
     'http://backoffice.newsmaxbalkans.com',
     'https://backoffice-newsmax.cubesdev.rs',
     'http://backoffice-newsmax.cubesdev.rs',
+    // Albanian (newsmaxbalkans.al) — confirm exact URLs with Cubes
+    'https://backoffice.newsmaxbalkans.al',
+    'http://backoffice.newsmaxbalkans.al',
+    'https://backoffice-newsmaxal.cubesdev.rs',
+    'http://backoffice-newsmaxal.cubesdev.rs',
+    // Polish (newsmaxpolska.pl) — confirm exact URLs with Cubes
+    'https://backoffice.newsmaxpolska.pl',
+    'http://backoffice.newsmaxpolska.pl',
+    'https://backoffice-newsmaxpl.cubesdev.rs',
+    'http://backoffice-newsmaxpl.cubesdev.rs',
     // Add more portals here as they onboard
   ];
 

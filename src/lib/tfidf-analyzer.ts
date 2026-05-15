@@ -1,38 +1,7 @@
-// Serbian stop words list
-export const serbianStopWords = new Set([
-  // Common Serbian stop words
-  'a', 'al', 'ali', 'bi', 'bio', 'bila', 'bile', 'bili', 'bilo', 'biće', 'bih', 'bu', 'da', 'do', 'ga', 'god', 'će', 'čak', 'da', 'dr', 'dug', 'duh', 'dok', 'dom', 'dan', 'dat', 'duž', 'el', 'eq', 'et', 'fa', 'fe', 'gi', 'go', 'ha', 'ho', 'hr', 'hm', 'je', 'jer', 'ji', 'jo', 'ka', 'ko', 'ku', 'li', 'ma', 'me', 'mi', 'mu', 'na', 'ne', 'ni', 'no', 'nu', 'od', 'oh', 'ok', 'pa', 'po', 'pr', 'ra', 're', 'se', 'si', 'so', 'su', 'ta', 'te', 'ti', 'to', 'tu', 'tv', 'uv', 've', 'vo', 'za', 'že',
-  
-  // Pronouns
-  'ja', 'ti', 'on', 'ona', 'ono', 'mi', 'vi', 'oni', 'one', 'ova', 'taj', 'ova', 'ovo', 'ovaj', 'moj', 'tvoj', 'njegov', 'njen', 'naš', 'vaš', 'njihov', 'koja', 'koje', 'koji', 'koju', 'kome', 'čiji', 'čija', 'čije', 'samo', 'sve', 'sva', 'svak', 'neki', 'neka', 'neko', 'ništa', 'niko', 'nikoga', 'nikome', 'svima', 'svemu', 'svega',
-  
-  // Prepositions and conjunctions
-  'bez', 'bez', 'bilo', 'blizu', 'zbog', 'dok', 'duž', 'gdje', 'kako', 'kada', 'kroz', 'među', 'nad', 'oko', 'pod', 'pred', 'preko', 'prije', 'protiv', 'takođe', 'takođe', 'upravo', 'van', 'više', 'gdje', 'zašto', 'zato', 'gdje', 'gdje', 'odakle', 'dokle', 'kamo', 'kuda', 'kada', 'dokad', 'otkad', 'koliko', 'kako', 'zašto', 'zato',
-  
-  // Common verbs
-  'biti', 'bio', 'bila', 'bilo', 'biti', 'budem', 'budemo', 'budeš', 'budete', 'bude', 'budu', 'jesam', 'jesi', 'jeste', 'jest', 'jesmo', 'jeste', 'jesu', 'sam', 'si', 'smo', 'ste', 'su', 'želim', 'želiš', 'želi', 'želimo', 'želite', 'žele', 'hteo', 'htela', 'hteli', 'htele', 'htelo', 'hoću', 'hoćeš', 'hoće', 'hoćemo', 'hoćete', 'ću', 'ćeš', 'će', 'ćemo', 'ćete', 'mogu', 'možeš', 'može', 'možemo', 'možete', 'mogu', 'moramo', 'moraš', 'mora', 'moramo', 'morate', 'moraju', 'treba', 'trebam', 'trebaš', 'trebamo', 'trebate', 'trebaju', 'ima', 'imamo', 'imaš', 'imaju', 'imaju', 'nema', 'nemamo', 'nemaš', 'nemaju',
-  
-  // Auxiliary words
-  'ovo', 'ovde', 'ovdje', 'onde', 'tamo', 'sada', 'sad', 'tada', 'pre', 'prije', 'posle', 'poslije', 'uvek', 'uvijek', 'nikad', 'nikada', 'već', 'još', 'tek', 'već', 'baš', 'prilično', 'vrlo', 'dosta', 'malo', 'mnogo', 'najbolji', 'najbolja', 'najbolje', 'dobro', 'loše', 'jako', 'jako',
-  
-  // Articles and particles
-  'jedan', 'jedna', 'jedno', 'prvi', 'prva', 'prvo', 'drugi', 'druga', 'drugo', 'treći', 'treća', 'treće', 'poslednji', 'poslednja', 'poslednje', 'oba', 'obe', 'oboje',
-  
-  // Question words
-  'ko', 'što', 'šta', 'gdje', 'gde', 'kada', 'kad', 'kako', 'zašto', 'zbog', 'koga', 'kome', 'čiji', 'čija', 'čije', 'koliko', 'kojem', 'kojoj', 'kojim', 'kojima',
-  
-  // Time indicators
-  'danas', 'sutra', 'juče', 'jučer', 'prekjučer', 'prekosutra', 'noću', 'ujutru', 'popodne', 'uveče', 'uvečer', 'noćas', 'jutros', 'sinoć', 'godina', 'godine', 'godinu', 'mesec', 'meseca', 'mjesec', 'mjeseca', 'dan', 'dana', 'dani', 'sat', 'sata', 'sati', 'minut', 'minuta', 'sekund', 'sekunde', 'vreme', 'vrijeme', 'vremena',
-  
-  // Common adjectives
-  'nov', 'nova', 'novo', 'novi', 'nove', 'stari', 'stara', 'staro', 'veliki', 'velika', 'veliko', 'mali', 'mala', 'malo', 'dobro', 'dobar', 'dobra', 'loš', 'loša', 'loše', 'čist', 'čista', 'čisto', 'prost', 'prosta', 'prosto', 'mlad', 'mlada', 'mlado', 'staro', 'crn', 'crna', 'crno', 'beo', 'bela', 'belo', 'bijel', 'bijela', 'bijelo',
-  
-  // Numbers
-  'nula', 'jedan', 'dva', 'tri', 'četiri', 'pet', 'šest', 'sedam', 'osam', 'devet', 'deset', 'jedanaest', 'dvanaest', 'trinaest', 'četrnaest', 'petnaest', 'šesnaest', 'sedamnaest', 'osamnaest', 'devetnaest', 'dvadeset', 'trideset', 'četrdeset', 'pedeset', 'šezdeset', 'sedamdeset', 'osamdeset', 'devedeset', 'sto', 'hiljada', 'hiljade', 'tisuća', 'tisuće', 'milion', 'milijun', 'milijuna',
-  
-  // Common expressions
-  'dakle', 'inače', 'ipak', 'takođe', 'takође', 'zapravo', 'naime', 'međutim', 'međutim', 'prije', 'svega', 'najviše', 'najmanje', 'uvek', 'uvijek', 'često', 'retko', 'ponekad', 'katkad', 'nekad', 'nekada', 'uvek', 'baš', 'samo', 'tek', 'čak', 'još'
-]);
+import { getLanguageConfig, type SupportedLanguage } from './i18n';
+
+// Backward-compatible export: Serbian stopwords for any code still using `serbianStopWords` directly
+export const serbianStopWords = new Set(getLanguageConfig('sr').stopWords);
 
 interface WordFrequency {
   [word: string]: number;
@@ -59,28 +28,21 @@ export class TFIDFAnalyzer {
   private documents: string[] = [];
   private vocabulary: Set<string> = new Set();
   private documentFrequency: WordFrequency = {};
+  private language: SupportedLanguage;
+  private stopWords: Set<string>;
+  private allowedChars: string;
 
-  constructor() {
-    // Initialize with a base corpus for Serbian language
+  constructor(language: SupportedLanguage = 'sr') {
+    this.language = language;
+    const config = getLanguageConfig(language);
+    this.stopWords = new Set(config.stopWords);
+    this.allowedChars = config.tokenizer.allowedChars;
     this.initializeBasicCorpus();
   }
 
   private initializeBasicCorpus() {
-    // Basic Serbian corpus for IDF calculation
-    const basicCorpus = [
-      'politika vlada srbija beograd novi sad niš kragujevac subotica',
-      'sport fudbal košarka tenis olimpijada utakmica turnir liga',
-      'ekonomija privreda inflacija banka kredit evro dinar',
-      'kultura pozorište film muzika umetnost festival koncert',
-      'zdravlje medicina lekar bolnica tretman terapija',
-      'tehnologija kompjuter internet digitalni inovacija AI',
-      'obrazovanje škola univerzitet student profesor nauka',
-      'životna sredina ekologija klima zagađenje priroda',
-      'turizam putovanje odmor destinacija hotel restoran',
-      'nauka istraživanje studija rezultat analiza podatak'
-    ];
-
-    basicCorpus.forEach(doc => this.addDocument(doc));
+    const config = getLanguageConfig(this.language);
+    config.basicCorpus.forEach(doc => this.addDocument(doc));
   }
 
   addDocument(text: string) {
@@ -95,14 +57,17 @@ export class TFIDFAnalyzer {
   }
 
   private tokenize(text: string): string[] {
+    // Build regex with language-specific allowed characters
+    const extraChars = this.allowedChars || 'čćžšđČĆŽŠĐ';
+    const regex = new RegExp(`[^\\w\\s${extraChars.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&')}']`, 'g');
     return text
       .toLowerCase()
-      .replace(/[^\w\sčćžšđČĆŽŠĐ]/g, ' ')
+      .replace(regex, ' ')
       .split(/\s+/)
       .filter(word => 
         word.length > 2 && 
-        !serbianStopWords.has(word) &&
-        !/^\d+$/.test(word) // Remove pure numbers
+        !this.stopWords.has(word) &&
+        !/^\d+$/.test(word)
       );
   }
 
@@ -203,19 +168,18 @@ export class TFIDFAnalyzer {
   }
 
   private generateConceptCloud(semanticCore: TFIDFResult[]): string[] {
-    // Simple concept expansion based on semantic similarity
+    const config = getLanguageConfig(this.language);
+    const associations = config.conceptAssociations;
     const concepts: string[] = [];
     
     semanticCore.slice(0, 10).forEach(term => {
-      const word = term.word;
-      
-      // Add related concepts based on common Serbian word patterns and associations
-      if (word.includes('politik')) concepts.push('vlada', 'izbori', 'stranka', 'parlament');
-      if (word.includes('ekonom') || word.includes('privreda')) concepts.push('tržište', 'investicije', 'rast', 'razvoj');
-      if (word.includes('sport')) concepts.push('liga', 'utakmica', 'trener', 'igrač');
-      if (word.includes('kultur')) concepts.push('umetnost', 'festival', 'tradicija', 'nasleđe');
-      if (word.includes('zdravlj')) concepts.push('medicina', 'terapija', 'prevencija', 'dijagnoza');
-      if (word.includes('tehnolog')) concepts.push('inovacije', 'digitalizacija', 'automatizacija', 'AI');
+      const word = term.word.toLowerCase();
+      // Match against concept keys from i18n config
+      for (const [key, related] of Object.entries(associations)) {
+        if (word.includes(key.substring(0, Math.min(key.length, 5)))) {
+          concepts.push(...related);
+        }
+      }
     });
 
     return [...new Set(concepts)].slice(0, 20);

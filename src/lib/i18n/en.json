@@ -1,0 +1,67 @@
+{
+  "code": "en",
+  "bcp47": "en-US",
+  "name": "English",
+  "nativeName": "English",
+  "flag": "🇬🇧",
+  "stopWords": [
+    "a","an","the","and","or","but","in","on","at","to","for","of","with","by","from","as","is","was","are","were","be","been","being","have","has","had","do","does","did","will","would","shall","should","may","might","can","could","must",
+    "i","me","my","mine","myself","you","your","yours","yourself","he","him","his","himself","she","her","hers","herself","it","its","itself","we","us","our","ours","ourselves","they","them","their","theirs","themselves",
+    "this","that","these","those","which","who","whom","whose","what","where","when","why","how",
+    "not","no","nor","so","if","then","than","too","very","just","about","above","after","again","all","also","am","any","because","before","below","between","both","each","few","further","get","got","here","into","more","most","much","only","other","out","over","own","same","some","such","there","through","under","until","up","while",
+    "now","today","yesterday","tomorrow","year","years","month","months","day","days","time","times","week","weeks","hour","hours","new","old","big","small","good","bad","first","last","long","short","great","little","right","left",
+    "one","two","three","four","five","six","seven","eight","nine","ten","hundred","thousand","million",
+    "also","however","therefore","thus","hence","moreover","furthermore","nevertheless","although","though","still","yet","already","even","never","always","often","sometimes","usually","rather","quite","really","well","since","during","without","within","along","among","around","across","behind","before","after","upon","toward"
+  ],
+  "intentIndicators": {
+    "informational": ["how","what","why","when","where","guide","explain","definition","list","tips","tutorial","example","meaning"],
+    "commercial": ["best","review","comparison","top","vs","alternative","recommend","rating","worth"],
+    "transactional": ["buy","price","discount","sale","order","deal","cheap","cost","purchase","download","subscribe"],
+    "navigational": ["website","official","login","contact","address","homepage","sign up","register"]
+  },
+  "bannedTokens": ["click here","free","best ever","shocking","unbelievable","viral","exclusive","!!!","you won't believe","mind-blowing","insane","jaw-dropping"],
+  "basicCorpus": [
+    "politics government election president congress parliament democracy vote campaign",
+    "sports football basketball tennis soccer league championship tournament match",
+    "economy business inflation market investment stock trade finance banking",
+    "culture theater film music art festival concert literature heritage",
+    "health medicine doctor hospital treatment therapy prevention diagnosis",
+    "technology computer internet digital innovation artificial intelligence software",
+    "education school university student professor science research academic",
+    "environment ecology climate pollution sustainability renewable energy",
+    "travel tourism vacation destination hotel restaurant flight booking",
+    "science research study results analysis data experiment discovery"
+  ],
+  "conceptAssociations": {
+    "politics": ["government","minister","parliament","congress","president","election","party","coalition","opposition"],
+    "government": ["minister","prime minister","cabinet","session","decision","regulation","law","reform"],
+    "economy": ["market","investment","growth","development","business","inflation","banking"],
+    "sports": ["league","match","coach","player","football","basketball","championship"],
+    "culture": ["art","festival","tradition","heritage","theater","film","music"],
+    "health": ["medicine","therapy","prevention","diagnosis","doctor","hospital"],
+    "technology": ["innovation","digitalization","automation","computer","internet","software"]
+  },
+  "tokenizer": {
+    "allowedChars": ""
+  },
+  "ui": {
+    "generateButton": "✨ Generate SEO with SEO GEM",
+    "generatedButton": "✅ SEO Generated",
+    "workingButton": "⏳ SEO GEM working...",
+    "loadingTitles": "Analyzing text and generating title suggestions...",
+    "loadingGenerate": "Generating Meta Description, Keywords and Schema Markup...",
+    "successMessage": "✅ SEO fields successfully populated! You can review and edit them as needed.",
+    "errorMinLength": "Article text must be at least 100 characters. Please fill in the content before generating.",
+    "errorSelectTitle": "Please select or enter a title.",
+    "categories": {
+      "informativni": "🔵 INFORMATIVE",
+      "geo_pitanje": "🟢 GEO QUESTION",
+      "discover_hook": "🟣 DISCOVER HOOK"
+    },
+    "customLabel": "✏️ Custom:",
+    "confirmButton": "✅ Confirm Selection",
+    "regenerateButton": "🔄 New Suggestions",
+    "closeButton": "Close",
+    "redoButton": "🔄 Regenerate"
+  }
+}

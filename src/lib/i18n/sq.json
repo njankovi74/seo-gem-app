@@ -1,0 +1,79 @@
+{
+  "code": "sq",
+  "bcp47": "sq-AL",
+  "name": "Albanian",
+  "nativeName": "Shqip",
+  "flag": "🇦🇱",
+  "stopWords": [
+    "a","as","ai","aq","asaj","atë","asnjë",
+    "dhe","do","duke","deri","dikush","diçka","disa","dy",
+    "e","edhe","eshte","është",
+    "i","ish","ishin",
+    "ja","jam","janë","jap","jemi","jeni","jo","ju",
+    "ka","kam","kanë","kemi","keni","kjo","kështu","kur","ku","kush","kushdo","kudo",
+    "le","lart","largë",
+    "më","me","mirë","mos","mund","mua","mbi","midis","mund",
+    "na","ndi","ndër","ndonjë","ndoshta","nё","nga","nё","njё","njëri","njëra","nuk","nëse",
+    "o","ose",
+    "pa","pak","para","pas","pastaj","për","po","por","pra","prapa","prej","pse",
+    "qa","qe","qё","qenё","që",
+    "sa","se","shumë","si","sido","sipas","sot","sepse",
+    "ta","tё","tani","te","tek","tij","ti","tjerë","tjetër","tre","tu","ty","tyre","tona",
+    "u","une","unë",
+    "vete","vetë","vetëm","veten",
+    "xha",
+    "yn","ynë","yt","ytë","yni",
+    "zhë"
+  ],
+  "intentIndicators": {
+    "informational": ["si","çfarë","pse","kur","ku","udhëzues","shpjegim","përkufizim","listë","këshilla"],
+    "commercial": ["më i mirë","vlerësim","krahasim","ranking","mendime","alternativë","rekomandim"],
+    "transactional": ["blej","çmim","zbritje","shitje","porosit","ofertë","shkarko","rezervo"],
+    "navigational": ["faqe","zyrtare","kontakt","adresë","hyrje","regjistrim","uebfaqe"]
+  },
+  "bannedTokens": ["kliko këtu","falas","më e mira ndonjëherë","tronditëse","e pabesueshme","virale","ekskluzive","!!!","nuk do ta besoni","sensacion"],
+  "basicCorpus": [
+    "politikë qeveri shqipëri tiranë kuvend president zgjedhje parti",
+    "sport futboll basketboll tenis kampionat ndeshje turneu trajner",
+    "ekonomi biznes inflacion bankë kredi lek investim treg",
+    "kulturë teatër film muzikë art festival koncert letërsi",
+    "shëndetësi mjekësi mjek spital trajtim terapi diagnozë",
+    "teknologji kompjuter internet dixhital inovacion inteligjencë artificiale",
+    "arsim shkollë universitet student profesor shkencë kërkim",
+    "mjedis ekologji klimë ndotje natyrë energji e rinovueshme",
+    "turizëm udhëtim pushim destinacion hotel restorant fluturim",
+    "shkencë kërkim studim rezultat analizë të dhëna eksperiment"
+  ],
+  "conceptAssociations": {
+    "politikë": ["qeveri","ministër","kuvend","parlament","president","zgjedhje","parti","koalicion","opozitë"],
+    "qeveri": ["ministër","kryeministër","kabinet","mbledhje","vendim","ligj","reformë"],
+    "ekonomi": ["treg","investim","rritje","zhvillim","biznes","inflacion","bankë"],
+    "sport": ["ligë","ndeshje","trajner","lojtar","futboll","basketboll","kampionat"],
+    "kulturë": ["art","festival","traditë","trashëgimi","teatër","film","muzikë"],
+    "shëndetësi": ["mjekësi","terapi","parandalim","diagnozë","mjek","spital"],
+    "teknologji": ["inovacion","dixhitalizim","automatizim","kompjuter","internet"]
+  },
+  "tokenizer": {
+    "allowedChars": "çëÇË"
+  },
+  "ui": {
+    "generateButton": "✨ Gjenero SEO me SEO GEM",
+    "generatedButton": "✅ SEO u gjenerua",
+    "workingButton": "⏳ SEO GEM po punon...",
+    "loadingTitles": "Po analizoj tekstin dhe po gjeneroj sugjerime për tituj...",
+    "loadingGenerate": "Po gjeneroj Meta Përshkrimin, Fjalët kyçe dhe Schema Markup...",
+    "successMessage": "✅ Fushat SEO u plotësuan me sukses! Mund t'i rishikoni dhe editoni sipas nevojës.",
+    "errorMinLength": "Teksti i artikullit duhet të ketë të paktën 100 karaktere. Plotësoni përmbajtjen para gjenerimit.",
+    "errorSelectTitle": "Zgjidhni ose shkruani një titull.",
+    "categories": {
+      "informativni": "🔵 INFORMATIV",
+      "geo_pitanje": "🟢 GEO PYETJE",
+      "discover_hook": "🟣 DISCOVER HOOK"
+    },
+    "customLabel": "✏️ I personalizuar:",
+    "confirmButton": "✅ Konfirmo zgjedhjen",
+    "regenerateButton": "🔄 Sugjerime të reja",
+    "closeButton": "Mbyll",
+    "redoButton": "🔄 Rigjenero"
+  }
+}

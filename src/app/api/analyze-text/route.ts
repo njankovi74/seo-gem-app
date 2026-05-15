@@ -6,6 +6,7 @@ import { computeAuthorMetrics } from '@/lib/author-metrics';
 import { buildAuthorRecommendations } from '@/lib/author-recommendations';
 import { prioritizeKeywords, prioritizedAsCSV, prioritizedAsCommaList } from '@/lib/keyword-prioritizer';
 import { saveTitleChoice } from '@/lib/title-history';
+import { type SupportedLanguage, isValidLanguage } from '@/lib/i18n';
 
 interface AnalysisRequest {
   text: string;
@@ -13,6 +14,7 @@ interface AnalysisRequest {
   provider?: 'openai' | 'gemini';
   model?: string;
   strictModel?: boolean;
+  language?: string;
   // New fields for title selection workflow
   selectedTitle?: string;
   selectionType?: 'ai_option_1' | 'ai_option_2' | 'ai_option_3' | 'custom';
@@ -66,12 +68,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
     provider, 
     model, 
     strictModel,
+    language: reqLang,
     selectedTitle,
     selectionType,
     offeredTitles,
     articleUrl,
     articleMetadata
   }: AnalysisRequest = await request.json();
+  const language: SupportedLanguage = (reqLang && isValidLanguage(reqLang)) ? reqLang : 'sr';
 
     console.log('📥 [analyze-text] Request body:', {
       textLength: text?.length || 0,
@@ -95,9 +99,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
       }, { status: 400 });
     }
 
-    // Initialize analyzers
-    const tfidfAnalyzer = new TFIDFAnalyzer();
-    const lsaAnalyzer = new LSAAnalyzer();
+    // Initialize analyzers with language config
+    const tfidfAnalyzer = new TFIDFAnalyzer(language);
+    const lsaAnalyzer = new LSAAnalyzer(language);
 
     // Use selectedTitle if provided, otherwise fall back to title
     const effectiveTitle = selectedTitle || title;
@@ -146,7 +150,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
     };
 
     // Prioritize keywords (2.3)
-    const prioritized = prioritizeKeywords(text, tfidfAnalysis, lsaAnalysis, searchIntent);
+    const prioritized = prioritizeKeywords(text, tfidfAnalysis, lsaAnalysis, searchIntent, language);
 
     // Generate SEO outputs (use prioritized keywords for inputs)
     const deterministicSEO = buildDeterministicSEO({
@@ -179,7 +183,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
             articleUrl,
             articleMetadata
           },
-          { model, strictModel, skipTitleGeneration: true }
+          { model, strictModel, skipTitleGeneration: true },
+          language
         );
         
         // Ensure the selected title is preserved (LLM should not generate a new one)

@@ -5,6 +5,7 @@ import { LSAAnalyzer } from '@/lib/lsa-analyzer';
 import { buildDeterministicSEO, buildSEOWithLLM } from '@/lib/seo-output';
 import { prioritizeKeywords } from '@/lib/keyword-prioritizer';
 import { saveTitleChoice } from '@/lib/title-history';
+import { type SupportedLanguage, isValidLanguage } from '@/lib/i18n';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,7 +28,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { title, selectedTitle, body: articleBody, lead, articleUrl, offeredTitles } = body;
+    const { title, selectedTitle, body: articleBody, lead, articleUrl, offeredTitles, language: reqLang } = body;
+    const language: SupportedLanguage = (reqLang && isValidLanguage(reqLang)) ? reqLang : 'sr';
 
     if (!selectedTitle || !selectedTitle.trim()) {
       return cmsErrorResponse('selectedTitle je obavezan.', 400, origin);
@@ -41,11 +43,11 @@ export async function POST(request: NextRequest) {
     const effectiveTitle = title || selectedTitle;
     const fullText = `${effectiveTitle}. ${text}`;
 
-    console.log(`🏢 [CMS/generate] Portal: ${auth.portalId}, selectedTitle: "${selectedTitle.substring(0, 50)}..."`);
+    console.log(`🏢 [CMS/generate] Portal: ${auth.portalId}, lang: ${language}, selectedTitle: "${selectedTitle.substring(0, 50)}..."`);
 
-    // TF-IDF + LSA for keyword extraction (same API as analyze-text route)
-    const tfidfAnalyzer = new TFIDFAnalyzer();
-    const lsaAnalyzer = new LSAAnalyzer();
+    // TF-IDF + LSA for keyword extraction with language config
+    const tfidfAnalyzer = new TFIDFAnalyzer(language);
+    const lsaAnalyzer = new LSAAnalyzer(language);
 
     const tfidfAnalysis = tfidfAnalyzer.analyze(fullText);
     const lsaAnalysis = lsaAnalyzer.analyzeSemantics(fullText);
@@ -56,7 +58,7 @@ export async function POST(request: NextRequest) {
       mainTopics = tfidfAnalysis.semanticCore.slice(0, 5).map((t: any) => t.word).filter((w: string) => w.length > 3);
     }
 
-    const prioritized = prioritizeKeywords(text, tfidfAnalysis, lsaAnalysis, searchIntent);
+    const prioritized = prioritizeKeywords(text, tfidfAnalysis, lsaAnalysis, searchIntent, language);
 
     // Build deterministic SEO as fallback
     const deterministicSEO = buildDeterministicSEO({
@@ -85,7 +87,8 @@ export async function POST(request: NextRequest) {
           articleUrl: articleUrl || '',
           articleMetadata: {},
         },
-        { model, strictModel, skipTitleGeneration: true }
+        { model, strictModel, skipTitleGeneration: true },
+        language
       );
 
       if (llmResult) {

@@ -1,3 +1,4 @@
+import { getLanguageConfig, type SupportedLanguage } from './i18n';
 export type KeywordCategory = 'primary' | 'secondary' | 'tertiary';
 
 export interface PrioritizedKeyword {
@@ -23,12 +24,12 @@ export function prioritizeKeywords(
   text: string,
   tfidf: TFIDFAnalysis,
   lsa: LSAAnalysis,
-  intent: SearchIntent
+  intent: SearchIntent,
+  language: SupportedLanguage = 'sr'
 ): PrioritizedKeyword[] {
+  const config = getLanguageConfig(language);
   // Osnovno čišćenje i zaštita od šuma
-  const banned = new Set<string>([
-    'autor','društvo','hronika','video','foto','komentar','najnovije','vesti','portal','izvor','uredništvo','politika','ekonomija','sport','pre','juče','danas'
-  ]);
+  const banned = new Set<string>(config.bannedTokens);
   function cleanTerm(s: string): string | null {
     const t = (s || '').toString().trim().toLowerCase();
     if (!t || t.length < 3) return null;
@@ -61,13 +62,8 @@ export function prioritizeKeywords(
 
   const textLower = text.toLowerCase();
 
-  // Intent keyword hints
-  const intentHints: Record<SearchIntent['type'], string[]> = {
-    informational: ['kako', 'šta', 'zašto', 'vodič', 'definicija', 'primeri', 'saveti'],
-    commercial: ['najbolji', 'recenzija', 'poređenje', 'iskustva', 'preporuke', 'alternativa', 'vs'],
-    transactional: ['cena', 'kupi', 'naruči', 'popust', 'akcija', 'preuzmi', 'rezerviši'],
-    navigational: ['sajt', 'zvanični', 'kontakt', 'adresa', 'prijava', 'registracija']
-  };
+  // Intent keyword hints from i18n config
+  const intentHints = config.intentIndicators as Record<SearchIntent['type'], string[]>;
 
   const clusters = lsa.topicClusters || [];
 
