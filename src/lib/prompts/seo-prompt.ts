@@ -21,6 +21,7 @@ export function getSEOPrompt(
       dateModified?: string;
       imageUrl?: string;
       publisherName?: string;
+      publisherLogoUrl?: string;
       articleSection?: string;
     };
   }
@@ -65,6 +66,7 @@ function buildUserPrompt(
       dateModified?: string;
       imageUrl?: string;
       publisherName?: string;
+      publisherLogoUrl?: string;
       articleSection?: string;
     };
   }
@@ -117,6 +119,7 @@ ${syntaxFirewall}
 - date_modified: ${articleMetadata?.dateModified || '(N/A)'}
 - author_name: ${articleMetadata?.authorName || '(N/A)'}
 - publisher_name: ${articleMetadata?.publisherName || '(N/A)'}
+- publisher_logo_url: ${(articleMetadata as any)?.publisherLogoUrl || '(N/A)'}
 - article_section: ${articleMetadata?.articleSection || '(N/A)'}
 - url_clanka: ${articleUrl || '(N/A)'}
 

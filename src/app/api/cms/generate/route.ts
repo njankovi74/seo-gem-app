@@ -40,6 +40,74 @@ export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, { status: 204, headers: corsHeaders(origin) });
 }
 
+// ── Fetch metadata from published article page (non-blocking) ──
+interface ScrapedMeta {
+  publishedTime?: string;
+  modifiedTime?: string;
+  imageUrl?: string;
+  canonicalUrl?: string;
+  articleSection?: string;
+  authorName?: string;
+}
+
+async function fetchArticleMetadata(articleUrl?: string): Promise<ScrapedMeta> {
+  if (!articleUrl || !articleUrl.startsWith('http')) return {};
+  // Skip backoffice/admin URLs — only fetch public article pages
+  if (articleUrl.includes('/admin') || articleUrl.includes('backoffice') || articleUrl.includes('localhost')) return {};
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000); // 3s timeout
+    const res = await fetch(articleUrl, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'SEO-GEM-Bot/1.0 (metadata-scraper)' },
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return {};
+    const html = await res.text();
+
+    // Extract meta tags with regex (fast, no DOM parser needed)
+    const getMeta = (property: string): string => {
+      // Match both property="..." and name="..." attributes
+      const patterns = [
+        new RegExp(`<meta[^>]+(?:property|name)=["']${property}["'][^>]+content=["']([^"']+)["']`, 'i'),
+        new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${property}["']`, 'i'),
+      ];
+      for (const re of patterns) {
+        const m = html.match(re);
+        if (m?.[1]) return m[1].trim();
+      }
+      return '';
+    };
+
+    const canonical = (() => {
+      const m = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i)
+        || html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']canonical["']/i);
+      return m?.[1]?.trim() || '';
+    })();
+
+    const result: ScrapedMeta = {
+      publishedTime: getMeta('article:published_time') || getMeta('datePublished'),
+      modifiedTime: getMeta('article:modified_time') || getMeta('dateModified'),
+      imageUrl: getMeta('og:image'),
+      canonicalUrl: canonical || getMeta('og:url'),
+      articleSection: getMeta('article:section'),
+      authorName: getMeta('article:author') || getMeta('author'),
+    };
+
+    const found = Object.values(result).filter(Boolean).length;
+    if (found > 0) {
+      console.log(`📋 [CMS/generate] Scraped ${found} metadata fields from ${articleUrl}`);
+    }
+    return result;
+  } catch (e: any) {
+    // Timeout or fetch error — article may not be published yet
+    console.log(`📋 [CMS/generate] Could not fetch article metadata (${e.message?.substring(0, 50)})`);
+    return {};
+  }
+}
+
 export async function POST(request: NextRequest) {
   const origin = request.headers.get('origin');
   const headers = corsHeaders(origin);
@@ -107,6 +175,9 @@ export async function POST(request: NextRequest) {
     const publisherInfo = PUBLISHER_INFO[auth.portalId || ''] || PUBLISHER_INFO.newsmax;
     const now = new Date().toISOString();
 
+    // Try to fetch real metadata from the published article page
+    const scraped = await fetchArticleMetadata(articleUrl);
+
     let seoOutputs: typeof deterministicSEO | null = null;
     let llmFailed = false;
     try {
@@ -118,14 +189,15 @@ export async function POST(request: NextRequest) {
           mainTopics,
           searchIntentType: searchIntent.type,
           textSample: text,
-          articleUrl: articleUrl || '',
+          articleUrl: scraped.canonicalUrl || articleUrl || '',
           articleMetadata: {
             publisherName: publisherInfo.name,
-            authorName: authorName || publisherInfo.name,
-            publishedTime: now,
-            dateModified: now,
-            imageUrl: '',  // Not available at CMS edit time; omitted from schema
-            articleSection: articleSection || '',
+            publisherLogoUrl: publisherInfo.logoUrl,
+            authorName: authorName || scraped.authorName || publisherInfo.name,
+            publishedTime: scraped.publishedTime || now,
+            dateModified: scraped.modifiedTime || now,
+            imageUrl: scraped.imageUrl || '',
+            articleSection: articleSection || scraped.articleSection || '',
           },
         },
         { model, strictModel, skipTitleGeneration: true },

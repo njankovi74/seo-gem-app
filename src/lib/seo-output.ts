@@ -101,6 +101,7 @@ export async function buildSEOWithLLM(
       dateModified?: string;
       imageUrl?: string;
       publisherName?: string;
+      publisherLogoUrl?: string;
       articleSection?: string;
     };
   },
@@ -508,6 +509,7 @@ export async function buildSEOWithDualLLM(
       dateModified?: string;
       imageUrl?: string;
       publisherName?: string;
+      publisherLogoUrl?: string;
       articleSection?: string;
     };
   }
