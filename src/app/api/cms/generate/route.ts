@@ -67,9 +67,15 @@ async function fetchArticleMetadata(articleUrl?: string): Promise<ScrapedMeta> {
     if (!res.ok) return {};
     const html = await res.text();
 
-    // Extract meta tags with regex (fast, no DOM parser needed)
+    // ── 1. Try to extract from existing JSON-LD script block (primary source) ──
+    let jsonLd: any = null;
+    const jsonLdMatch = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
+    if (jsonLdMatch?.[1]) {
+      try { jsonLd = JSON.parse(jsonLdMatch[1].trim()); } catch { /* invalid JSON-LD */ }
+    }
+
+    // ── 2. Extract meta tags as fallback ──
     const getMeta = (property: string): string => {
-      // Match both property="..." and name="..." attributes
       const patterns = [
         new RegExp(`<meta[^>]+(?:property|name)=["']${property}["'][^>]+content=["']([^"']+)["']`, 'i'),
         new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${property}["']`, 'i'),
@@ -87,18 +93,33 @@ async function fetchArticleMetadata(articleUrl?: string): Promise<ScrapedMeta> {
       return m?.[1]?.trim() || '';
     })();
 
+    // ── 3. Merge: JSON-LD takes priority, then meta tags ──
     const result: ScrapedMeta = {
-      publishedTime: getMeta('article:published_time') || getMeta('datePublished'),
-      modifiedTime: getMeta('article:modified_time') || getMeta('dateModified'),
-      imageUrl: getMeta('og:image'),
-      canonicalUrl: canonical || getMeta('og:url'),
-      articleSection: getMeta('article:section'),
-      authorName: getMeta('article:author') || getMeta('author'),
+      publishedTime:
+        jsonLd?.datePublished ||
+        getMeta('article:published_time') || getMeta('datePublished') || '',
+      modifiedTime:
+        jsonLd?.dateModified ||
+        getMeta('article:modified_time') || getMeta('dateModified') || '',
+      imageUrl:
+        (typeof jsonLd?.image === 'string' ? jsonLd.image : jsonLd?.image?.url) ||
+        getMeta('og:image') || '',
+      canonicalUrl:
+        jsonLd?.mainEntityOfPage?.['@id'] ||
+        canonical || getMeta('og:url') || '',
+      articleSection:
+        jsonLd?.articleSection ||
+        getMeta('article:section') || '',
+      authorName:
+        jsonLd?.creator ||
+        (typeof jsonLd?.author === 'string' ? jsonLd.author : jsonLd?.author?.name) ||
+        getMeta('article:author') || getMeta('author') || '',
     };
 
     const found = Object.values(result).filter(Boolean).length;
     if (found > 0) {
-      console.log(`📋 [CMS/generate] Scraped ${found} metadata fields from ${articleUrl}`);
+      console.log(`📋 [CMS/generate] Scraped ${found} metadata fields from ${articleUrl}:`,
+        JSON.stringify(result, null, 0).substring(0, 200));
     }
     return result;
   } catch (e: any) {
