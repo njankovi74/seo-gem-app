@@ -280,30 +280,66 @@ Identifikuj 4-6 ključnih tematskih aspekata koje članak pokriva. Svaka podtema
 }
 
 function getSchemaSection(lang: SupportedLanguage, bcp47: string): string {
+  const antiHallucination = {
+    en: `
+⚠️ ANTI-HALLUCINATION RULES FOR SCHEMA:
+- Use ONLY the values provided in "Known variables". NEVER invent dates, URLs, author names, or publisher names.
+- If a value is empty or "(N/A)", OMIT that field entirely from the schema. Do NOT use placeholder values like "example.com".
+- mainEntityOfPage.@id MUST be the exact url_clanka value (if provided).
+- datePublished and dateModified MUST be the exact values from published_time and date_modified.
+- publisher.name MUST be the exact publisher_name value.
+- author.name MUST be the exact author_name value.
+- Do NOT include "Newsmax Balkans" or any publisher name in the "mentions" array.`,
+    pl: `
+⚠️ ZASADY ANTY-HALUCYNACYJNE DLA SCHEMA:
+- Używaj WYŁĄCZNIE wartości podanych w "Znane zmienne". NIGDY nie wymyślaj dat, URL-ów, nazw autorów ani wydawców.
+- Jeśli wartość jest pusta lub "(N/A)", POMIŃ to pole w schemacie. NIE używaj wartości zastępczych jak "example.com".
+- mainEntityOfPage.@id MUSI być dokładną wartością url_clanka.
+- datePublished i dateModified MUSZĄ być dokładnymi wartościami z published_time i date_modified.
+- NIE umieszczaj nazwy wydawcy w tablicy "mentions".`,
+    sq: `
+⚠️ RREGULLA KUNDËR HALUCINIMINIT PËR SCHEMA:
+- Përdorni VETËM vlerat e dhëna në "Variablat e njohura". KURRË mos shpikni data, URL, emra autorësh ose botuesish.
+- Nëse një vlerë është bosh ose "(N/A)", HIQENI atë fushë nga skema. MOS përdorni vlera zëvendësuese si "example.com".
+- mainEntityOfPage.@id DUHET të jetë vlera e saktë e url_clanka.
+- NE e vendosni emrin e botuesit në grupin "mentions".`,
+    sr: `
+⚠️ STROGO ZABRANJENO HALUCINIRANJE U SCHEMA MARKUP-u:
+- Koristi ISKLJUČIVO vrednosti date u "Poznate varijable". NIKADA ne izmišljaj datume, URL-ove, imena autora ili publishera.
+- Ako je neka vrednost prazna ili "(N/A)", IZOSTAVI to polje iz schema markup-a. NE koristi placeholder vrednosti poput "example.com".
+- mainEntityOfPage.@id MORA biti tačna vrednost url_clanka (ako je data).
+- datePublished i dateModified MORAJU biti tačne vrednosti iz published_time i date_modified.
+- publisher.name MORA biti tačna vrednost publisher_name.
+- author.name MORA biti tačna vrednost author_name.
+- NE stavljaj ime publishera (npr. "Newsmax Balkans") u "mentions" niz.`,
+  };
+
+  const rules = antiHallucination[lang] || antiHallucination.sr;
+
   switch (lang) {
     case 'en':
       return `**4. Schema Markup (schema_markup)**
-Generate valid JSON-LD for NewsArticle schema. Required fields: @context, @type, headline, description (IDENTICAL to meta_description), articleBody (compressed entity-rich summary ≤150 words), mainEntityOfPage, inLanguage (MUST be "${bcp47}"), image, datePublished, dateModified, author, publisher, about, mentions, keywords, articleSection.
-
+Generate valid JSON-LD for NewsArticle schema. Required fields: @context, @type, headline, description (IDENTICAL to meta_description), articleBody (compressed entity-rich summary ≤150 words), mainEntityOfPage, inLanguage (MUST be "${bcp47}"), image (ONLY if image_url is provided), datePublished, dateModified, author, publisher, about, mentions, keywords, articleSection.
+${rules}
 ⚠️ SYNTAX FIREWALL: Return raw JSON only. NO markdown code fences.`;
 
     case 'pl':
       return `**4. Schema Markup (schema_markup)**
-Wygeneruj prawidłowy JSON-LD dla schematu NewsArticle. Wymagane pola: @context, @type, headline, description (IDENTYCZNY z meta_description), articleBody (skompresowane streszczenie bogate w encje ≤150 słów), mainEntityOfPage, inLanguage (MUSI być "${bcp47}"), image, datePublished, dateModified, author, publisher, about, mentions, keywords, articleSection.
-
+Wygeneruj prawidłowy JSON-LD dla schematu NewsArticle. Wymagane pola: @context, @type, headline, description (IDENTYCZNY z meta_description), articleBody (skompresowane streszczenie bogate w encje ≤150 słów), mainEntityOfPage, inLanguage (MUSI być "${bcp47}"), image (TYLKO jeśli image_url jest podany), datePublished, dateModified, author, publisher, about, mentions, keywords, articleSection.
+${rules}
 ⚠️ ZAPORA SKŁADNIOWA: Zwróć sam JSON. BEZ bloków kodu markdown.`;
 
     case 'sq':
       return `**4. Schema Markup (schema_markup)**
-Gjeneroni JSON-LD të vlefshëm për skemën NewsArticle. Fushat e detyrueshme: @context, @type, headline, description (IDENTIKE me meta_description), articleBody (përmbledhje e kompresuar e pasur me entitete ≤150 fjalë), mainEntityOfPage, inLanguage (DUHET të jetë "${bcp47}"), image, datePublished, dateModified, author, publisher, about, mentions, keywords, articleSection.
-
+Gjeneroni JSON-LD të vlefshëm për skemën NewsArticle. Fushat e detyrueshme: @context, @type, headline, description (IDENTIKE me meta_description), articleBody (përmbledhje e kompresuar e pasur me entitete ≤150 fjalë), mainEntityOfPage, inLanguage (DUHET të jetë "${bcp47}"), image (VETËM nëse image_url është dhënë), datePublished, dateModified, author, publisher, about, mentions, keywords, articleSection.
+${rules}
 ⚠️ MURI SINTAKSOR: Ktheni vetëm JSON të pastër. PA blloqe kodi markdown.`;
 
     default:
       return `**C. Schema Markup (schema_markup)**
 Generiši validan JSON-LD string za NewsArticle schemu.
-Obavezna polja: @context, @type, headline, description (IDENTIČNA meta_description), articleBody (kompresovani sažetak ≤150 reči), mainEntityOfPage, inLanguage (MORA biti "${bcp47}"), image, datePublished, dateModified, author, publisher, about, mentions, keywords, articleSection.
-
+Obavezna polja: @context, @type, headline, description (IDENTIČNA meta_description), articleBody (kompresovani sažetak ≤150 reči), mainEntityOfPage, inLanguage (MORA biti "${bcp47}"), image (SAMO ako je image_url dat), datePublished, dateModified, author, publisher, about, mentions, keywords, articleSection.
+${rules}
 ⚠️ SINTAKSNA ZAŠTITA: Vrati isključivo čistu JSON strukturu. STROGO ZABRANJENO korišćenje Markdown code blokova.`;
   }
 }

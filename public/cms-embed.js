@@ -33,6 +33,8 @@
       schema: scriptTag.getAttribute('data-field-schema') || '[name="schema_org"]',
       title: scriptTag.getAttribute('data-field-title') || '[name="heading"]',
       lead: scriptTag.getAttribute('data-field-lead') || '[name="lead"]',
+      author: scriptTag.getAttribute('data-field-author') || '[name="author"]',
+      section: scriptTag.getAttribute('data-field-section') || '[name="article_section"]',
     },
     editorType: (scriptTag.getAttribute('data-editor-type') || 'ckeditor').toLowerCase(),
     language: (scriptTag.getAttribute('data-language') || 'sr').toLowerCase(),
@@ -630,6 +632,14 @@
     state.error = null;
     render();
 
+    // Gather metadata from CMS fields
+    var authorName = '';
+    try { authorName = getFieldValue(CONFIG.fields.author) || ''; } catch(e) { /* field may not exist */ }
+    var articleSection = '';
+    try { articleSection = getFieldValue(CONFIG.fields.section) || ''; } catch(e) { /* field may not exist */ }
+    // Article URL: use the CMS page URL (backoffice URL contains article path)
+    var articleUrl = window.location.href || '';
+
     // Inner function for calling generate API (used for auto-retry)
     async function callGenerate() {
       const data = await apiCall('/api/cms/generate', {
@@ -637,6 +647,9 @@
         selectedTitle,
         body: bodyText,
         lead,
+        articleUrl: articleUrl,
+        authorName: authorName,
+        articleSection: articleSection,
         offeredTitles: state.titles,
         language: CONFIG.language,
       });

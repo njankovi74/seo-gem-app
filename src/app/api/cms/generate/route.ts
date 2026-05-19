@@ -10,6 +10,30 @@ import { type SupportedLanguage, isValidLanguage } from '@/lib/i18n';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// ── Per-portal publisher info (known constants) ──
+const PUBLISHER_INFO: Record<string, { name: string; logoUrl: string; domain: string }> = {
+  newsmax: {
+    name: 'Newsmax Balkans',
+    logoUrl: 'https://newsmaxbalkans.com/files/img/logo.png',
+    domain: 'newsmaxbalkans.com',
+  },
+  newsmax_en: {
+    name: 'Newsmax Balkans',
+    logoUrl: 'https://newsmaxbalkans.com/files/img/logo.png',
+    domain: 'newsmaxbalkans.com',
+  },
+  newsmax_al: {
+    name: 'Newsmax Balkans',
+    logoUrl: 'https://newsmaxbalkans.com/files/img/logo.png',
+    domain: 'newsmaxbalkans.com',
+  },
+  newsmax_pl: {
+    name: 'Newsmax Polska',
+    logoUrl: 'https://newsmaxpolska.com/files/img/logo.png',
+    domain: 'newsmaxpolska.com',
+  },
+};
+
 // Handle CORS preflight
 export async function OPTIONS(request: NextRequest) {
   const origin = request.headers.get('origin');
@@ -28,7 +52,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { title, selectedTitle, body: articleBody, lead, articleUrl, offeredTitles, language: reqLang } = body;
+    const {
+      title, selectedTitle, body: articleBody, lead, articleUrl,
+      offeredTitles, language: reqLang,
+      // New metadata fields from CMS embed
+      authorName, articleSection,
+    } = body;
     const language: SupportedLanguage = (reqLang && isValidLanguage(reqLang)) ? reqLang : 'sr';
 
     if (!selectedTitle || !selectedTitle.trim()) {
@@ -74,6 +103,10 @@ export async function POST(request: NextRequest) {
     const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     const strictModel = (process.env.SEO_LLM_STRICT_MODEL || '').toLowerCase() === 'true';
 
+    // Resolve publisher info from portal ID
+    const publisherInfo = PUBLISHER_INFO[auth.portalId || ''] || PUBLISHER_INFO.newsmax;
+    const now = new Date().toISOString();
+
     let seoOutputs: typeof deterministicSEO | null = null;
     let llmFailed = false;
     try {
@@ -86,7 +119,14 @@ export async function POST(request: NextRequest) {
           searchIntentType: searchIntent.type,
           textSample: text,
           articleUrl: articleUrl || '',
-          articleMetadata: {},
+          articleMetadata: {
+            publisherName: publisherInfo.name,
+            authorName: authorName || publisherInfo.name,
+            publishedTime: now,
+            dateModified: now,
+            imageUrl: '',  // Not available at CMS edit time; omitted from schema
+            articleSection: articleSection || '',
+          },
         },
         { model, strictModel, skipTitleGeneration: true },
         language

@@ -249,6 +249,53 @@ export async function buildSEOWithLLM(
     return out.slice(0, 10);
   }
 
+  // Remove hallucinated/placeholder values from schema markup
+  function cleanSchemaMarkup(obj: any): any {
+    if (obj == null) return undefined;
+
+    // Check for placeholder string values
+    if (typeof obj === 'string') {
+      const s = obj.trim();
+      if (!s || s === '(N/A)' || s === 'N/A' || s === 'n/a') return undefined;
+      if (s.includes('example.com') || s.includes('example.org')) return undefined;
+      return s;
+    }
+
+    // Clean arrays — also remove publisher from mentions
+    if (Array.isArray(obj)) {
+      const publisherNames = ['newsmax balkans', 'newsmax polska', 'newsmax albania', 'newsmax'];
+      const cleaned = obj
+        .map(item => cleanSchemaMarkup(item))
+        .filter(item => {
+          if (item == null) return false;
+          // Remove publisher entities from mentions array
+          if (typeof item === 'object' && item.name) {
+            if (publisherNames.includes(item.name.toLowerCase())) return false;
+          }
+          return true;
+        });
+      return cleaned.length > 0 ? cleaned : undefined;
+    }
+
+    // Clean objects recursively
+    if (typeof obj === 'object') {
+      const cleaned: Record<string, any> = {};
+      for (const [key, value] of Object.entries(obj)) {
+        const cleanedValue = cleanSchemaMarkup(value);
+        if (cleanedValue !== undefined) {
+          cleaned[key] = cleanedValue;
+        }
+      }
+      // Don't return empty objects (except @context which is always needed)
+      const keys = Object.keys(cleaned);
+      if (keys.length === 0) return undefined;
+      if (keys.length === 1 && keys[0] === '@type') return undefined; // only @type left = useless
+      return cleaned;
+    }
+
+    return obj; // numbers, booleans, etc.
+  }
+
   function parseOutput(outRaw: any): SEOOutputs {
     const out = ensureText(outRaw);
     let title = fallback.title;
@@ -283,10 +330,16 @@ export async function buildSEOWithLLM(
       }
       // Parse schema_markup — could be a string or an object
       if (obj?.schema_markup) {
+        let schemaObj: any;
         if (typeof obj.schema_markup === 'string') {
-          schemaMarkup = obj.schema_markup;
+          try { schemaObj = JSON.parse(obj.schema_markup); } catch { schemaMarkup = obj.schema_markup; }
         } else if (typeof obj.schema_markup === 'object') {
-          schemaMarkup = JSON.stringify(obj.schema_markup, null, 2);
+          schemaObj = obj.schema_markup;
+        }
+        // Clean hallucinated values from schema
+        if (schemaObj) {
+          schemaObj = cleanSchemaMarkup(schemaObj);
+          schemaMarkup = JSON.stringify(schemaObj);
         }
       }
     } catch {
