@@ -116,6 +116,11 @@ async function fetchArticleMetadata(articleUrl?: string): Promise<ScrapedMeta> {
         getMeta('article:author') || getMeta('author') || '',
     };
 
+    // Clean ?preview=true and other query params from canonical URL
+    if (result.canonicalUrl) {
+      try { result.canonicalUrl = result.canonicalUrl.split('?')[0]; } catch { /* */ }
+    }
+
     const found = Object.values(result).filter(Boolean).length;
     if (found > 0) {
       console.log(`📋 [CMS/generate] Scraped ${found} metadata fields from ${articleUrl}:`,
