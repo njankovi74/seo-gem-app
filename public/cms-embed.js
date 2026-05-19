@@ -638,15 +638,48 @@
     try { authorName = getFieldValue(CONFIG.fields.author) || ''; } catch(e) { /* field may not exist */ }
     var articleSection = '';
     try { articleSection = getFieldValue(CONFIG.fields.section) || ''; } catch(e) { /* field may not exist */ }
-    // Article URL: try to get the public article URL, not the backoffice URL
+    // Article URL: find the public URL from the backoffice page
     var articleUrl = '';
-    // 1. Try dedicated config field
+
+    // 1. Try dedicated config field (if CMS admin configured it)
     if (CONFIG.fields.articleUrl) {
       try { articleUrl = getFieldValue(CONFIG.fields.articleUrl) || ''; } catch(e) { /* */ }
     }
-    // 2. Try common CMS input field names for article URL
+
+    // 2. PRIMARY: Find "View article" button/link (Cubes CMS has this on edit page)
     if (!articleUrl) {
-      var urlSelectors = ['[name="og_url"]', '[name="canonical_url"]', '[name="article_url"]', '[name="url"]', '[name="slug"]', '[name="permalink"]'];
+      try {
+        var allLinks = document.querySelectorAll('a');
+        for (var li = 0; li < allLinks.length; li++) {
+          var linkText = (allLinks[li].textContent || '').trim().toLowerCase();
+          var linkHref = allLinks[li].href || '';
+          // Match "View article", "View", "Pregledaj" or similar
+          if ((linkText === 'view article' || linkText === 'view' || linkText === 'pregledaj članak')
+              && linkHref && !linkHref.includes('backoffice') && linkHref.startsWith('http')) {
+            articleUrl = linkHref;
+            break;
+          }
+        }
+      } catch(e) { /* */ }
+    }
+
+    // 3. Find any link to the public domain with article pattern (/vest, /vesti/)
+    if (!articleUrl) {
+      try {
+        var pubLinks = document.querySelectorAll('a[href*="/vest"]');
+        for (var pi = 0; pi < pubLinks.length; pi++) {
+          var ph = pubLinks[pi].href || '';
+          if (ph && !ph.includes('backoffice') && (ph.includes('newsmaxbalkans.com') || ph.includes('newsmaxpolska.com'))) {
+            articleUrl = ph;
+            break;
+          }
+        }
+      } catch(e) { /* */ }
+    }
+
+    // 4. Try CMS input fields (og_url, canonical_url, etc.)
+    if (!articleUrl) {
+      var urlSelectors = ['[name="og_url"]', '[name="canonical_url"]', '[name="article_url"]', '[name="permalink"]'];
       for (var si = 0; si < urlSelectors.length; si++) {
         try {
           var el = document.querySelector(urlSelectors[si]);
@@ -654,39 +687,12 @@
         } catch(e) { /* */ }
       }
     }
-    // 3. Try reading og:url meta tag from page HEAD
-    if (!articleUrl) {
-      try {
-        var ogUrlMeta = document.querySelector('meta[property="og:url"]');
-        if (ogUrlMeta && ogUrlMeta.content && !ogUrlMeta.content.includes('backoffice')) {
-          articleUrl = ogUrlMeta.content;
-        }
-      } catch(e) { /* */ }
-    }
-    // 4. Try reading canonical link from page HEAD
-    if (!articleUrl) {
-      try {
-        var canonicalLink = document.querySelector('link[rel="canonical"]');
-        if (canonicalLink && canonicalLink.href && !canonicalLink.href.includes('backoffice')) {
-          articleUrl = canonicalLink.href;
-        }
-      } catch(e) { /* */ }
-    }
-    // 5. Try to find a preview link on the page (often present in backoffice)
-    if (!articleUrl) {
-      try {
-        var previewLinks = document.querySelectorAll('a[href*="preview=true"], a[href*="/vest"], a.preview-link, a.article-link');
-        for (var pi = 0; pi < previewLinks.length; pi++) {
-          var href = previewLinks[pi].href;
-          if (href && !href.includes('backoffice') && href.includes('newsmaxbalkans.com')) {
-            articleUrl = href;
-            break;
-          }
-        }
-      } catch(e) { /* */ }
-    }
-    // 6. Fallback: use current page URL
+
+    // 5. Fallback: use current page URL
     if (!articleUrl) { articleUrl = window.location.href || ''; }
+
+    // Strip ?preview=true from URL for schema
+    articleUrl = articleUrl.split('?')[0];
 
     // Inner function for calling generate API (used for auto-retry)
     async function callGenerate() {
