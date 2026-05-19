@@ -35,6 +35,7 @@
       lead: scriptTag.getAttribute('data-field-lead') || '[name="lead"]',
       author: scriptTag.getAttribute('data-field-author') || '[name="author"]',
       section: scriptTag.getAttribute('data-field-section') || '[name="article_section"]',
+      articleUrl: scriptTag.getAttribute('data-field-article-url') || '',
     },
     editorType: (scriptTag.getAttribute('data-editor-type') || 'ckeditor').toLowerCase(),
     language: (scriptTag.getAttribute('data-language') || 'sr').toLowerCase(),
@@ -637,8 +638,24 @@
     try { authorName = getFieldValue(CONFIG.fields.author) || ''; } catch(e) { /* field may not exist */ }
     var articleSection = '';
     try { articleSection = getFieldValue(CONFIG.fields.section) || ''; } catch(e) { /* field may not exist */ }
-    // Article URL: use the CMS page URL (backoffice URL contains article path)
-    var articleUrl = window.location.href || '';
+    // Article URL: try to get the public article URL, not the backoffice URL
+    var articleUrl = '';
+    // 1. Try dedicated config field
+    if (CONFIG.fields.articleUrl) {
+      try { articleUrl = getFieldValue(CONFIG.fields.articleUrl) || ''; } catch(e) { /* */ }
+    }
+    // 2. Try common CMS field names for article URL/slug
+    if (!articleUrl) {
+      var urlSelectors = ['[name="og_url"]', '[name="canonical_url"]', '[name="article_url"]', '[name="url"]', '[name="slug"]'];
+      for (var si = 0; si < urlSelectors.length; si++) {
+        try {
+          var el = document.querySelector(urlSelectors[si]);
+          if (el && el.value && el.value.startsWith('http')) { articleUrl = el.value; break; }
+        } catch(e) { /* */ }
+      }
+    }
+    // 3. Fallback to current page URL
+    if (!articleUrl) { articleUrl = window.location.href || ''; }
 
     // Inner function for calling generate API (used for auto-retry)
     async function callGenerate() {

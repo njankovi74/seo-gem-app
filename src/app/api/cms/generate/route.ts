@@ -52,8 +52,8 @@ interface ScrapedMeta {
 
 async function fetchArticleMetadata(articleUrl?: string): Promise<ScrapedMeta> {
   if (!articleUrl || !articleUrl.startsWith('http')) return {};
-  // Skip backoffice/admin URLs — only fetch public article pages
-  if (articleUrl.includes('/admin') || articleUrl.includes('backoffice') || articleUrl.includes('localhost')) return {};
+  // Skip obviously non-article URLs
+  if (articleUrl.includes('localhost') || articleUrl.includes('127.0.0.1')) return {};
 
   try {
     const controller = new AbortController();
