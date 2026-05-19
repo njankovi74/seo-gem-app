@@ -52,8 +52,12 @@ interface ScrapedMeta {
 
 async function fetchArticleMetadata(articleUrl?: string): Promise<ScrapedMeta> {
   if (!articleUrl || !articleUrl.startsWith('http')) return {};
-  // Skip obviously non-article URLs
+  // Skip non-article URLs
   if (articleUrl.includes('localhost') || articleUrl.includes('127.0.0.1')) return {};
+  if (articleUrl.includes('backoffice')) {
+    console.log(`📋 [CMS/generate] Skipping backoffice URL for metadata scrape: ${articleUrl.substring(0, 60)}...`);
+    return {};
+  }
 
   try {
     const controller = new AbortController();

@@ -644,9 +644,9 @@
     if (CONFIG.fields.articleUrl) {
       try { articleUrl = getFieldValue(CONFIG.fields.articleUrl) || ''; } catch(e) { /* */ }
     }
-    // 2. Try common CMS field names for article URL/slug
+    // 2. Try common CMS input field names for article URL
     if (!articleUrl) {
-      var urlSelectors = ['[name="og_url"]', '[name="canonical_url"]', '[name="article_url"]', '[name="url"]', '[name="slug"]'];
+      var urlSelectors = ['[name="og_url"]', '[name="canonical_url"]', '[name="article_url"]', '[name="url"]', '[name="slug"]', '[name="permalink"]'];
       for (var si = 0; si < urlSelectors.length; si++) {
         try {
           var el = document.querySelector(urlSelectors[si]);
@@ -654,7 +654,38 @@
         } catch(e) { /* */ }
       }
     }
-    // 3. Fallback to current page URL
+    // 3. Try reading og:url meta tag from page HEAD
+    if (!articleUrl) {
+      try {
+        var ogUrlMeta = document.querySelector('meta[property="og:url"]');
+        if (ogUrlMeta && ogUrlMeta.content && !ogUrlMeta.content.includes('backoffice')) {
+          articleUrl = ogUrlMeta.content;
+        }
+      } catch(e) { /* */ }
+    }
+    // 4. Try reading canonical link from page HEAD
+    if (!articleUrl) {
+      try {
+        var canonicalLink = document.querySelector('link[rel="canonical"]');
+        if (canonicalLink && canonicalLink.href && !canonicalLink.href.includes('backoffice')) {
+          articleUrl = canonicalLink.href;
+        }
+      } catch(e) { /* */ }
+    }
+    // 5. Try to find a preview link on the page (often present in backoffice)
+    if (!articleUrl) {
+      try {
+        var previewLinks = document.querySelectorAll('a[href*="preview=true"], a[href*="/vest"], a.preview-link, a.article-link');
+        for (var pi = 0; pi < previewLinks.length; pi++) {
+          var href = previewLinks[pi].href;
+          if (href && !href.includes('backoffice') && href.includes('newsmaxbalkans.com')) {
+            articleUrl = href;
+            break;
+          }
+        }
+      } catch(e) { /* */ }
+    }
+    // 6. Fallback: use current page URL
     if (!articleUrl) { articleUrl = window.location.href || ''; }
 
     // Inner function for calling generate API (used for auto-retry)
