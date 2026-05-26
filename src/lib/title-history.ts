@@ -30,11 +30,12 @@ export interface SimilarExample {
   offered_titles: TitleOption[];
   selected_title: string;
   selection_type: string;
-  similarity: number;
+  similarity: number; // kept for backward compat; set to 1.0 for style-based results
 }
 
 /**
  * Generate embedding for article text using OpenAI
+ * Used only when SAVING new title choices (for potential future semantic search)
  */
 async function generateEmbedding(text: string): Promise<number[]> {
   const response = await openai.embeddings.create({
@@ -56,7 +57,7 @@ export async function saveTitleChoice(choice: TitleChoice): Promise<void> {
       textLength: choice.articleText.length
     });
 
-    // Generate embedding for semantic search
+    // Generate embedding (kept for future semantic search if needed)
     const embedding = await generateEmbedding(choice.articleText);
     console.log('🧮 Generated embedding:', embedding.length, 'dimensions');
 
@@ -86,8 +87,14 @@ export async function saveTitleChoice(choice: TitleChoice): Promise<void> {
 }
 
 /**
- * Get similar past articles using semantic search (RAG)
- * Returns top N most similar title choices for few-shot prompting
+ * Get recent title choices from the same portal for style-based RAG.
+ * 
+ * PURPOSE: Teach the AI the journalist's title STRUCTURE preferences
+ * (informativni vs geo_pitanje vs discover_hook, length, tone, formatting)
+ * regardless of article topic.
+ * 
+ * Fetches a broad sample (last 30 valid records) to compute aggregate stats,
+ * then returns a representative subset as few-shot examples.
  */
 export async function getSimilarTitleExamples(
   articleText: string,
@@ -95,65 +102,157 @@ export async function getSimilarTitleExamples(
   portalId?: string
 ): Promise<SimilarExample[]> {
   try {
-    console.log('🔍 Searching for similar articles in Supabase...', {
-      textLength: articleText.length,
-      limit,
-      portalId: portalId || '(all portals)'
-    });
+    const effectivePortal = portalId || 'web_app';
+    console.log(`🔍 [RAG] Fetching title style history for portal: ${effectivePortal}`);
 
-    // Generate embedding for query
-    const queryEmbedding = await generateEmbedding(articleText);
-    console.log('🧮 Query embedding generated:', queryEmbedding.length, 'dimensions');
-
-    // Call Supabase RPC function for semantic search
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rpcParams: any = {
-      query_embedding: queryEmbedding,
-      match_threshold: 0.7, // 70% similarity threshold
-      match_count: limit,
-    };
-    // Filter by portal_id if provided (multi-tenant RAG isolation)
-    if (portalId) {
-      rpcParams.filter_portal_id = portalId;
-    }
-
-    const { data, error } = await supabase.rpc('match_title_examples', rpcParams);
+    // Fetch broader sample for pattern analysis (30 records, then filter)
+    const { data, error } = await supabase
+      .from('title_history')
+      .select('id, article_url, article_text, offered_titles, selected_title, selection_type')
+      .eq('portal_id', effectivePortal)
+      .not('offered_titles', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(90); // fetch 90, filter to ~30 valid
 
     if (error) {
-      console.error('❌ Failed to get similar examples:', error);
+      console.error('❌ [RAG] Failed to get style examples:', error);
       return [];
     }
 
-    console.log(`✅ Found ${data?.length || 0} similar examples from Supabase`);
-    if (data && data.length > 0) {
-      console.log('📊 Similarity scores:', data.map((ex: SimilarExample) => ({
-        similarity: ex.similarity,
-        title: ex.selected_title.substring(0, 50)
-      })));
+    if (!data || data.length === 0) {
+      console.log(`ℹ️ [RAG] No title history for portal ${effectivePortal} — cold start`);
+      return [];
     }
-    
-    return data || [];
+
+    // Filter: only records with valid offered_titles (≥3 titles with style tags)
+    const validExamples = data.filter((row: any) =>
+      Array.isArray(row.offered_titles) &&
+      row.offered_titles.length >= 3 &&
+      row.offered_titles.some((t: any) => t?.style && t?.text)
+    );
+
+    if (validExamples.length === 0) {
+      console.log(`ℹ️ [RAG] No valid title records for portal ${effectivePortal}`);
+      return [];
+    }
+
+    // Select diverse representatives: pick from different style preferences
+    const byPickedStyle: Record<string, any[]> = { informativni: [], geo_pitanje: [], discover_hook: [], custom_new: [] };
+    validExamples.forEach((row: any) => {
+      const match = row.offered_titles.find((t: any) => t?.text === row.selected_title);
+      const style = match?.style || 'custom_new';
+      if (byPickedStyle[style]) byPickedStyle[style].push(row);
+      else byPickedStyle[style] = [row];
+    });
+
+    // Pick representatives: prioritize diversity across styles
+    const representatives: any[] = [];
+    const stylesPresent = Object.entries(byPickedStyle).filter(([, arr]) => arr.length > 0);
+    // Round-robin across styles up to limit
+    let round = 0;
+    while (representatives.length < limit && round < 10) {
+      for (const [, arr] of stylesPresent) {
+        if (round < arr.length && representatives.length < limit) {
+          const candidate = arr[round];
+          if (!representatives.find((r: any) => r.id === candidate.id)) {
+            representatives.push(candidate);
+          }
+        }
+      }
+      round++;
+    }
+
+    // If still under limit, fill from most recent
+    if (representatives.length < limit) {
+      for (const row of validExamples) {
+        if (representatives.length >= limit) break;
+        if (!representatives.find((r: any) => r.id === row.id)) {
+          representatives.push(row);
+        }
+      }
+    }
+
+    // Map to SimilarExample interface
+    const result: SimilarExample[] = representatives.map((row: any) => ({
+      id: row.id,
+      article_url: row.article_url,
+      article_text: row.article_text || '',
+      offered_titles: row.offered_titles,
+      selected_title: row.selected_title,
+      selection_type: row.selection_type,
+      similarity: 1.0,
+    }));
+
+    console.log(`✅ [RAG] ${validExamples.length} total records analyzed, ${result.length} diverse examples selected for portal ${effectivePortal}`);
+
+    return result;
   } catch (error) {
-    console.error('❌ Error in getSimilarTitleExamples:', error);
-    return []; // Return empty array on error - graceful degradation
+    console.error('❌ [RAG] Error in getSimilarTitleExamples:', error);
+    return []; // Graceful degradation
   }
 }
 
 /**
- * Analyze pattern from similar examples
- * Used to understand user's style preferences
+ * Analyze pattern from the RAG examples to produce rich aggregate statistics.
+ * Returns a structured insight string that tells the AI:
+ * - Which style the journalist prefers
+ * - Average title length
+ * - How often they modify AI suggestions
+ * - Total sample size (so AI understands confidence level)
  */
 export function analyzePattern(examples: SimilarExample[]): string {
-  if (examples.length === 0) return 'Informativni stil (default)';
+  if (examples.length === 0) return 'Nema prethodnih podataka — koristi podrazumevani informativni stil.';
 
-  const styles: Record<string, number> = {};
+  // Count which style was picked
+  const styleCounts: Record<string, number> = {};
+  const titleLengths: number[] = [];
+  let exactAiPick = 0;
+  let customModified = 0;
+
   examples.forEach((ex) => {
-    const selected = ex.offered_titles.find((t) => t.text === ex.selected_title);
-    if (selected) {
-      styles[selected.style] = (styles[selected.style] || 0) + 1;
+    // Track title length
+    if (ex.selected_title) titleLengths.push(ex.selected_title.length);
+
+    // Find if selected matches one of the offered
+    const match = ex.offered_titles?.find((t) => t?.text === ex.selected_title);
+    if (match?.style) {
+      styleCounts[match.style] = (styleCounts[match.style] || 0) + 1;
+      exactAiPick++;
+    } else {
+      customModified++;
     }
   });
 
-  const preferred = Object.entries(styles).sort((a, b) => b[1] - a[1])[0];
-  return preferred ? `${preferred[0]} (${preferred[1]}/${examples.length})` : 'Informativni stil';
+  const total = examples.length;
+  const avgLen = titleLengths.length > 0 ? Math.round(titleLengths.reduce((s, l) => s + l, 0) / titleLengths.length) : 0;
+
+  // Build insight string
+  const parts: string[] = [];
+  parts.push(`Analizirano ${total} prethodnih izbora novinara.`);
+
+  // Style preference
+  const sorted = Object.entries(styleCounts).sort((a, b) => b[1] - a[1]);
+  if (sorted.length > 0) {
+    const styleDescriptions = sorted.map(([style, count]) => {
+      const pct = Math.round((count / total) * 100);
+      return `${style}: ${count}x (${pct}%)`;
+    });
+    parts.push(`Preferiran stil: ${styleDescriptions.join(', ')}.`);
+  }
+
+  // Modification rate
+  if (customModified > 0) {
+    const modPct = Math.round((customModified / total) * 100);
+    parts.push(`Novinar menja AI predlog u ${modPct}% slučajeva (${customModified}/${total}).`);
+  } else {
+    parts.push(`Novinar uvek bira jedan od ponuđenih AI naslova.`);
+  }
+
+  // Average length
+  if (avgLen > 0) {
+    parts.push(`Prosečna dužina izabranog naslova: ${avgLen} karaktera.`);
+  }
+
+  return parts.join(' ');
 }
+

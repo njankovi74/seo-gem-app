@@ -4,6 +4,7 @@ import { getSimilarTitleExamples, analyzePattern, type TitleOption } from '@/lib
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 55;
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -145,7 +146,10 @@ ${articleText}
 
     const model = genAI.getGenerativeModel({
       model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-      generationConfig: { temperature: 0.6 },
+      generationConfig: {
+        temperature: 0.6,
+        thinkingConfig: { thinkingBudget: 0 },
+      } as any,
     });
 
     const result = await model.generateContent(prompt);

@@ -428,8 +428,14 @@ export async function buildSEOWithLLM(
     const primaryModel = requestedModel;
     const client = new mod.GoogleGenerativeAI(apiKey);
     // Force JSON output to reduce parsing ambiguity on Gemini 2.x
-    // Increased maxOutputTokens to 4000 - Serbian Cyrillic/Latin + complex keyword arrays need more tokens
-    const genConfig = { temperature: 0.6, maxOutputTokens: 4000, responseMimeType: 'application/json' } as any;
+    // maxOutputTokens: 8192 — Gemini 2.5 uses ~2000-3000 thinking tokens that count against this limit
+    // thinkingConfig: disabled to reduce latency (SEO generation doesn't need chain-of-thought reasoning)
+    const genConfig = {
+      temperature: 0.6,
+      maxOutputTokens: 8192,
+      responseMimeType: 'application/json',
+      thinkingConfig: { thinkingBudget: 0 },
+    } as any;
 
     let lastErrMsg: string | undefined;
     async function tryGemini(modelName: string): Promise<string | null> {

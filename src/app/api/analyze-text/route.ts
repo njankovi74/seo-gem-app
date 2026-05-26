@@ -453,6 +453,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
 // Ensure Node.js runtime (uses Node libs and external SDKs) and prevent static optimization
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 55; // Allow up to 55s for LLM generation
 
 export async function OPTIONS() {
   return new NextResponse(null, {

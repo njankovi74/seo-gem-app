@@ -9,6 +9,7 @@ import { type SupportedLanguage, isValidLanguage } from '@/lib/i18n';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 55; // Allow up to 55s for LLM generation (Vercel Pro limit: 60s)
 
 // ── Per-portal publisher info (known constants) ──
 const PUBLISHER_INFO: Record<string, { name: string; logoUrl: string; domain: string }> = {
@@ -172,6 +173,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`🏢 [CMS/generate] Portal: ${auth.portalId}, lang: ${language}, selectedTitle: "${selectedTitle.substring(0, 50)}..."`);
 
+    // ── PARALLEL: Run metadata scrape AND TF-IDF/LSA analysis concurrently ──
+    const metadataPromise = fetchArticleMetadata(articleUrl);
+
     // TF-IDF + LSA for keyword extraction with language config
     const tfidfAnalyzer = new TFIDFAnalyzer(language);
     const lsaAnalyzer = new LSAAnalyzer(language);
@@ -205,8 +209,8 @@ export async function POST(request: NextRequest) {
     const publisherInfo = PUBLISHER_INFO[auth.portalId || ''] || PUBLISHER_INFO.newsmax;
     const now = new Date().toISOString();
 
-    // Try to fetch real metadata from the published article page
-    const scraped = await fetchArticleMetadata(articleUrl);
+    // Await metadata (already running in parallel, should be done by now)
+    const scraped = await metadataPromise;
 
     let seoOutputs: typeof deterministicSEO | null = null;
     let llmFailed = false;
