@@ -4,6 +4,13 @@ import * as cheerio from 'cheerio';
 import { parseHTML } from 'linkedom';
 import { Readability } from '@mozilla/readability';
 
+function validateAppToken(request: NextRequest): boolean {
+  const token = request.headers.get('x-app-token');
+  const expected = process.env.APP_API_TOKEN;
+  if (!expected) return true; // If no token configured, allow (dev mode)
+  return token === expected;
+}
+
 interface ExtractedContent {
   title: string;
   content: string;
@@ -446,6 +453,10 @@ async function extractByUrl(url: string) {
 // ─── Route handlers ─────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
+  if (!validateAppToken(req)) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const url = req.nextUrl.searchParams.get('url') || '';
     if (!url) {
@@ -459,6 +470,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!validateAppToken(request)) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { url } = await request.json();
     if (!url) {

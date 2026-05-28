@@ -112,6 +112,9 @@ export default function Home() {
       const qs = new URLSearchParams({ url }).toString();
       const response = await fetch(`/api/extract-content?${qs}`, {
         method: 'GET',
+        headers: {
+          'x-app-token': process.env.NEXT_PUBLIC_APP_API_TOKEN || '',
+        },
       });
 
       // Prefer JSON when present, but gracefully handle empty/non-JSON error bodies (e.g. 405)
@@ -149,7 +152,10 @@ export default function Home() {
 
       const titleResponse = await fetch('/api/generate-title-options', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-app-token': process.env.NEXT_PUBLIC_APP_API_TOKEN || '',
+        },
         body: JSON.stringify({
           articleText: fullContext,
           primaryKeyword: '', // Will be extracted from content
@@ -219,7 +225,10 @@ export default function Home() {
     try {
       const response = await fetch('/api/analyze-text', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-app-token': process.env.NEXT_PUBLIC_APP_API_TOKEN || '',
+        },
         body: JSON.stringify({
           text: extractedContent.content,
           title: extractedContent.title,

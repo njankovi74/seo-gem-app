@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getSimilarTitleExamples, analyzePattern, type TitleOption } from '@/lib/title-history';
 
+function validateAppToken(request: NextRequest): boolean {
+  const token = request.headers.get('x-app-token');
+  const expected = process.env.APP_API_TOKEN;
+  if (!expected) return true; // If no token configured, allow (dev mode)
+  return token === expected;
+}
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 55;
@@ -17,6 +24,10 @@ interface GenerateTitlesRequest {
 }
 
 export async function POST(request: NextRequest) {
+  if (!validateAppToken(request)) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body: GenerateTitlesRequest = await request.json();
     const { articleText, primaryKeyword, secondaryKeywords, mainTopics, searchIntent } = body;

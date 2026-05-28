@@ -8,6 +8,13 @@ import { prioritizeKeywords, prioritizedAsCSV, prioritizedAsCommaList } from '@/
 import { saveTitleChoice } from '@/lib/title-history';
 import { type SupportedLanguage, isValidLanguage } from '@/lib/i18n';
 
+function validateAppToken(request: NextRequest): boolean {
+  const token = request.headers.get('x-app-token');
+  const expected = process.env.APP_API_TOKEN;
+  if (!expected) return true; // If no token configured, allow (dev mode)
+  return token === expected;
+}
+
 interface AnalysisRequest {
   text: string;
   title?: string;
@@ -61,6 +68,10 @@ interface AnalysisResponse {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse<AnalysisResponse>> {
+  if (!validateAppToken(request)) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
   const { 
     text, 
@@ -460,124 +471,4 @@ export async function OPTIONS() {
     status: 204,
     headers: { 'Allow': 'POST, OPTIONS' },
   });
-}
-
-export async function GET(request: NextRequest): Promise<NextResponse<AnalysisResponse>> {
-  // Lightweight browser-friendly probe: /api/analyze-text?text=...&provider=gemini&model=gemini-2.5-pro
-  try {
-    const { searchParams } = new URL(request.url);
-    const text = searchParams.get('text') || '';
-    const title = searchParams.get('title') || undefined;
-    const providerParam = (searchParams.get('provider') || undefined) as 'openai' | 'gemini' | undefined;
-    const model = searchParams.get('model') || undefined;
-    const strictModel = (searchParams.get('strict') || '').toLowerCase() === 'true' || undefined;
-
-    if (!text || text.trim().length < 20) {
-      return NextResponse.json({
-        success: false,
-        error: 'Dodaj ?text= sa najmanje 20 karaktera'
-      }, { status: 400 });
-    }
-
-    // Same pipeline as POST (TF-IDF, LSA, intent)
-    const tfidfAnalyzer = new TFIDFAnalyzer();
-    const lsaAnalyzer = new LSAAnalyzer();
-    const fullText = title ? `${title}. ${text}` : text;
-    const tfidfAnalysis = tfidfAnalyzer.analyze(fullText);
-    const lsaAnalysis = lsaAnalyzer.analyzeSemantics(fullText);
-    const searchIntent = lsaAnalyzer.classifySearchIntent(fullText, tfidfAnalysis.semanticCore);
-
-    const mainTopics = lsaAnalysis.topicClusters.map(cluster => cluster.name);
-    const prioritized = prioritizeKeywords(text, tfidfAnalysis, lsaAnalysis, searchIntent);
-
-    const deterministicSEO = buildDeterministicSEO({
-      title,
-      keyTerms: prioritized.map(p => p.term),
-      mainTopics,
-      searchIntentType: searchIntent.type
-    }, text);
-
-    const noBase = (process.env.SEO_NO_BASE_SEO || '').toLowerCase() === 'true';
-    let seoOutputs: ReturnType<typeof buildDeterministicSEO> | undefined;
-    let llmError: string | undefined;
-    try {
-      seoOutputs = await buildSEOWithLLM(
-        deterministicSEO,
-        {
-          documentTitle: title,
-          keyTerms: prioritized.map(p => p.term),
-          mainTopics,
-          searchIntentType: searchIntent.type,
-          textSample: text
-        },
-        { model, strictModel }
-      );
-    } catch (e: any) {
-      llmError = e?.message || 'LLM failure';
-      if (!noBase) {
-        seoOutputs = deterministicSEO;
-      }
-    }
-
-    const configuredProvider = (providerParam || process.env.SEO_LLM_PROVIDER || '').toLowerCase();
-    const configuredModel =
-      configuredProvider === 'openai'
-        ? (model || process.env.OPENAI_MODEL || '')
-        : configuredProvider === 'gemini'
-          ? (model || process.env.GEMINI_MODEL || '')
-          : '';
-    const usedLLM = !!seoOutputs && (
-      seoOutputs.title !== deterministicSEO.title ||
-      seoOutputs.metaDescription !== deterministicSEO.metaDescription ||
-      seoOutputs.keywordsLine !== deterministicSEO.keywordsLine
-    );
-
-    // Cleanup: Ukloni tačku sa kraja SEO title i description
-    if (seoOutputs) {
-      if (seoOutputs.title && seoOutputs.title.endsWith('.')) {
-        seoOutputs.title = seoOutputs.title.slice(0, -1);
-      }
-      if (seoOutputs.metaDescription && seoOutputs.metaDescription.endsWith('.')) {
-        seoOutputs.metaDescription = seoOutputs.metaDescription.slice(0, -1);
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        tfidfAnalysis,
-        lsaAnalysis,
-        searchIntent,
-        summary: {
-          mainTopics,
-          keyTerms: tfidfAnalysis.semanticCore.slice(0, 10).map(t => t.word),
-          readabilityScore: tfidfAnalysis.readabilityScore,
-          conceptStrength: lsaAnalysis.conceptStrength,
-          recommendedFocus: searchIntent.type
-        },
-        ...(seoOutputs ? { seoOutputs } : {}),
-        prioritizedKeywords: {
-          items: prioritized,
-          csv: prioritizedAsCSV(prioritized),
-          commaList: prioritizedAsCommaList(prioritized)
-        },
-        llm: {
-          configuredProvider,
-          configuredModel,
-          strictModel: !!(strictModel ?? ((process.env.SEO_LLM_STRICT_MODEL || '').toLowerCase() === 'true')),
-          used: usedLLM,
-          hasKeys: {
-            openai: !!process.env.OPENAI_API_KEY,
-            gemini: !!process.env.GEMINI_API_KEY,
-          },
-          error: llmError
-        }
-      }
-    });
-  } catch (error) {
-    const isDev = process.env.NODE_ENV !== 'production';
-    const debug = (process.env.SEO_DEBUG || '').toLowerCase() === 'true';
-    const message = (isDev || debug) && error instanceof Error ? `${error.message}` : 'Greška pri GET analizi.';
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
 }

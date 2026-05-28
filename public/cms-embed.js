@@ -17,6 +17,9 @@
  * ></script>
  */
 (function () {
+  if (window.__seoGemLoaded) return;
+  window.__seoGemLoaded = true;
+
   'use strict';
 
   // ── Configuration from script tag data attributes ──
