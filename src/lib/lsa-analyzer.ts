@@ -179,53 +179,57 @@ export class LSAAnalyzer {
     return ngrams;
   }
 
+  private getTopicPatterns(): Array<{ name: string; keywords: string[]; threshold: number }> {
+    const patterns: Record<string, Array<{ name: string; keywords: string[]; threshold: number }>> = {
+      sr: [
+        { name: 'Politika', keywords: ['politika', 'vlada', 'ministar', 'parlament', 'izbori', 'stranka', 'predsednik', 'zakon', 'skupština'], threshold: 0.08 },
+        { name: 'Ekonomija', keywords: ['ekonomija', 'privreda', 'inflacija', 'banka', 'investicije', 'tržište', 'BDP', 'cena', 'finansije'], threshold: 0.08 },
+        { name: 'Sport', keywords: ['sport', 'fudbal', 'košarka', 'utakmica', 'liga', 'reprezentacija', 'turnir', 'igrač', 'trener'], threshold: 0.08 },
+        { name: 'Zdravlje', keywords: ['zdravlje', 'medicina', 'bolnica', 'lečenje', 'terapija', 'dijagnoza', 'hidrira', 'hidracija', 'organizam', 'voda', 'minerali', 'vitamin', 'unos', 'ishrana', 'prehrana', 'lekar', 'preporuk'], threshold: 0.05 },
+        { name: 'Tehnologija', keywords: ['tehnologija', 'internet', 'AI', 'digitalno', 'inovacije', 'automatizacija', 'softver', 'aplikacija'], threshold: 0.08 },
+        { name: 'Kultura', keywords: ['kultura', 'umetnost', 'festival', 'pozorište', 'muzika', 'nasleđe', 'film'], threshold: 0.08 },
+        { name: 'Nauka', keywords: ['nauka', 'istraživanje', 'studija', 'rezultati', 'analiza', 'eksperiment', 'doktor', 'univerzitet'], threshold: 0.08 },
+        { name: 'Životna sredina', keywords: ['ekologija', 'klima', 'zagađenje', 'životna', 'sredina', 'zaštita', 'priroda', 'održiv'], threshold: 0.08 },
+      ],
+      sq: [
+        { name: 'Politikë', keywords: ['politikë', 'qeveri', 'ministër', 'parlament', 'ligj', 'votim', 'zgjedhje', 'kuvend', 'kryeministër', 'president'], threshold: 0.08 },
+        { name: 'Ekonomi', keywords: ['ekonomi', 'buxhet', 'inflacion', 'taksë', 'investim', 'pagë', 'punësim', 'eksport', 'import', 'biznes'], threshold: 0.08 },
+        { name: 'Sport', keywords: ['futboll', 'ndeshje', 'kampionat', 'gol', 'trajner', 'skuadër', 'fitore', 'humbje', 'ekip', 'lojtar'], threshold: 0.08 },
+        { name: 'Botë', keywords: ['luftë', 'paqe', 'diplomaci', 'ndërkombëtar', 'NATO', 'BE', 'SHBA', 'OKB', 'sanksion', 'marrëveshje'], threshold: 0.08 },
+        { name: 'Teknologji', keywords: ['teknologji', 'internet', 'aplikacion', 'rrjet', 'digjital', 'robot', 'inovacion', 'kompjuter', 'softuer'], threshold: 0.08 },
+        { name: 'Shëndetësi', keywords: ['shëndet', 'sëmundje', 'spital', 'mjek', 'vaksinë', 'ilaç', 'pacient', 'kirurgji', 'terapi', 'pandemi'], threshold: 0.05 },
+        { name: 'Kulturë', keywords: ['kulturë', 'art', 'film', 'muzikë', 'libër', 'teatër', 'festival', 'ekspozitë', 'letërsi'], threshold: 0.08 },
+        { name: 'Shoqëri', keywords: ['shoqëri', 'arsim', 'shkollë', 'universitet', 'familje', 'fëmijë', 'të rinj', 'komunitet', 'drejtësi'], threshold: 0.08 },
+      ],
+      pl: [
+        { name: 'Polityka', keywords: ['polityka', 'rząd', 'minister', 'parlament', 'ustawa', 'głosowanie', 'wybory', 'sejm', 'premier', 'prezydent'], threshold: 0.08 },
+        { name: 'Ekonomia', keywords: ['ekonomia', 'budżet', 'inflacja', 'podatek', 'inwestycja', 'płaca', 'zatrudnienie', 'eksport', 'import', 'biznes'], threshold: 0.08 },
+        { name: 'Sport', keywords: ['piłka', 'mecz', 'mistrzostwa', 'gol', 'trener', 'drużyna', 'zwycięstwo', 'porażka', 'zawodnik', 'liga'], threshold: 0.08 },
+        { name: 'Świat', keywords: ['wojna', 'pokój', 'dyplomacja', 'międzynarodowy', 'NATO', 'UE', 'USA', 'ONZ', 'sankcje', 'umowa'], threshold: 0.08 },
+        { name: 'Technologia', keywords: ['technologia', 'internet', 'aplikacja', 'sieć', 'cyfrowy', 'robot', 'innowacja', 'komputer', 'oprogramowanie'], threshold: 0.08 },
+        { name: 'Zdrowie', keywords: ['zdrowie', 'choroba', 'szpital', 'lekarz', 'szczepionka', 'lek', 'pacjent', 'chirurgia', 'terapia', 'pandemia'], threshold: 0.05 },
+        { name: 'Kultura', keywords: ['kultura', 'sztuka', 'film', 'muzyka', 'książka', 'teatr', 'festiwal', 'wystawa', 'literatura'], threshold: 0.08 },
+        { name: 'Społeczeństwo', keywords: ['społeczeństwo', 'edukacja', 'szkoła', 'uniwersytet', 'rodzina', 'dzieci', 'młodzież', 'społeczność', 'sprawiedliwość'], threshold: 0.08 },
+      ],
+      en: [
+        { name: 'Politics', keywords: ['politics', 'government', 'minister', 'parliament', 'law', 'voting', 'election', 'congress', 'prime minister', 'president'], threshold: 0.08 },
+        { name: 'Economy', keywords: ['economy', 'budget', 'inflation', 'tax', 'investment', 'salary', 'employment', 'export', 'import', 'business'], threshold: 0.08 },
+        { name: 'Sports', keywords: ['football', 'match', 'championship', 'goal', 'coach', 'team', 'victory', 'defeat', 'player', 'league'], threshold: 0.08 },
+        { name: 'World', keywords: ['war', 'peace', 'diplomacy', 'international', 'NATO', 'EU', 'USA', 'UN', 'sanctions', 'agreement'], threshold: 0.08 },
+        { name: 'Technology', keywords: ['technology', 'internet', 'application', 'network', 'digital', 'robot', 'innovation', 'computer', 'software'], threshold: 0.08 },
+        { name: 'Health', keywords: ['health', 'disease', 'hospital', 'doctor', 'vaccine', 'medicine', 'patient', 'surgery', 'therapy', 'pandemic'], threshold: 0.05 },
+        { name: 'Culture', keywords: ['culture', 'art', 'film', 'music', 'book', 'theater', 'festival', 'exhibition', 'literature'], threshold: 0.08 },
+        { name: 'Society', keywords: ['society', 'education', 'school', 'university', 'family', 'children', 'youth', 'community', 'justice'], threshold: 0.08 },
+      ],
+    };
+    return patterns[this.language] || patterns.sr;
+  }
+
   private identifyTopicClusters(conceptVectors: ConceptVector[]): TopicCluster[] {
     const clusters: TopicCluster[] = [];
     const usedConcepts = new Set<string>();
     
-    // Predefined topic patterns for Serbian content
-    const topicPatterns = [
-      {
-        name: 'Politika',
-        keywords: ['politika', 'vlada', 'ministar', 'parlament', 'izbori', 'stranka', 'predsednik', 'zakon', 'skupština'],
-        threshold: 0.08
-      },
-      {
-        name: 'Ekonomija',
-        keywords: ['ekonomija', 'privreda', 'inflacija', 'banka', 'investicije', 'tržište', 'BDP', 'cena', 'finansije'],
-        threshold: 0.08
-      },
-      {
-        name: 'Sport',
-        keywords: ['sport', 'fudbal', 'košarka', 'utakmica', 'liga', 'reprezentacija', 'turnir', 'igrač', 'trener'],
-        threshold: 0.08
-      },
-      {
-        name: 'Zdravlje',
-        keywords: ['zdravlje', 'medicina', 'bolnica', 'lečenje', 'terapija', 'dijagnoza', 'hidrira', 'hidracija', 'organizam', 'voda', 'minerali', 'vitamin', 'unos', 'ishrana', 'prehrana', 'lekar', 'preporuk'],
-        threshold: 0.05
-      },
-      {
-        name: 'Tehnologija',
-        keywords: ['tehnologija', 'internet', 'AI', 'digitalno', 'inovacije', 'automatizacija', 'softver', 'aplikacija'],
-        threshold: 0.08
-      },
-      {
-        name: 'Kultura',
-        keywords: ['kultura', 'umetnost', 'festival', 'pozorište', 'muzika', 'nasleđe', 'film'],
-        threshold: 0.08
-      },
-      {
-        name: 'Nauka',
-        keywords: ['nauka', 'istraživanje', 'studija', 'rezultati', 'analiza', 'eksperiment', 'doktor', 'univerzitet'],
-        threshold: 0.08
-      },
-      {
-        name: 'Životna sredina',
-        keywords: ['ekologija', 'klima', 'zagađenje', 'životna', 'sredina', 'zaštita', 'priroda', 'održiv'],
-        threshold: 0.08
-      }
-    ];
+    const topicPatterns = this.getTopicPatterns();
 
     topicPatterns.forEach(pattern => {
       const matchingConcepts = conceptVectors.filter(cv => 

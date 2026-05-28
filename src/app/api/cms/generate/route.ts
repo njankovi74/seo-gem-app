@@ -25,8 +25,8 @@ const PUBLISHER_INFO: Record<string, { name: string; logoUrl: string; domain: st
   },
   newsmax_al: {
     name: 'Newsmax Balkans',
-    logoUrl: 'https://newsmaxbalkans.com/files/img/logo.png',
-    domain: 'newsmaxbalkans.com',
+    logoUrl: 'https://newsmaxbalkans.al/files/img/logo.png',
+    domain: 'newsmaxbalkans.al',
   },
   newsmax_pl: {
     name: 'Newsmax Polska',
@@ -159,12 +159,20 @@ export async function POST(request: NextRequest) {
     } = body;
     const language: SupportedLanguage = (reqLang && isValidLanguage(reqLang)) ? reqLang : 'sr';
 
+    const errorMsgs: Record<string, { titleRequired: string; textTooShort: string }> = {
+      sr: { titleRequired: 'selectedTitle je obavezan.', textTooShort: 'Tekst članka mora imati najmanje 100 karaktera.' },
+      en: { titleRequired: 'selectedTitle is required.', textTooShort: 'Article text must have at least 100 characters.' },
+      pl: { titleRequired: 'selectedTitle jest wymagany.', textTooShort: 'Tekst artykułu musi mieć co najmniej 100 znaków.' },
+      sq: { titleRequired: 'selectedTitle është i detyrueshëm.', textTooShort: 'Teksti i artikullit duhet të ketë të paktën 100 karaktere.' },
+    };
+    const msgs = errorMsgs[language] || errorMsgs.sr;
+
     if (!selectedTitle || !selectedTitle.trim()) {
-      return cmsErrorResponse('selectedTitle je obavezan.', 400, origin);
+      return cmsErrorResponse(msgs.titleRequired, 400, origin);
     }
 
     if (!articleBody || articleBody.trim().length < 100) {
-      return cmsErrorResponse('Tekst članka mora imati najmanje 100 karaktera.', 400, origin);
+      return cmsErrorResponse(msgs.textTooShort, 400, origin);
     }
 
     const text = (lead ? lead + '\n\n' : '') + articleBody;
@@ -197,7 +205,7 @@ export async function POST(request: NextRequest) {
       keyTerms: prioritized.map(p => p.term),
       mainTopics,
       searchIntentType: searchIntent.type,
-    }, text);
+    }, text, language);
 
     deterministicSEO.title = selectedTitle;
 

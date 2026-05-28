@@ -657,7 +657,7 @@
           var linkText = (allLinks[li].textContent || '').trim().toLowerCase();
           var linkHref = allLinks[li].href || '';
           // Match "View article", "View", "Pregledaj" or similar
-          if ((linkText === 'view article' || linkText === 'view' || linkText === 'pregledaj članak')
+          if ((linkText === 'view article' || linkText === 'view' || linkText === 'pregledaj članak' || linkText === 'shiko artikullin')
               && linkHref && !linkHref.includes('backoffice') && linkHref.startsWith('http')) {
             articleUrl = linkHref;
             break;
@@ -669,10 +669,10 @@
     // 3. Find any link to the public domain with article pattern (/vest, /vesti/)
     if (!articleUrl) {
       try {
-        var pubLinks = document.querySelectorAll('a[href*="/vest"]');
+        var pubLinks = document.querySelectorAll('a[href*="/vest"], a[href*="/lajm"], a[href*="/artikull"]');
         for (var pi = 0; pi < pubLinks.length; pi++) {
           var ph = pubLinks[pi].href || '';
-          if (ph && !ph.includes('backoffice') && (ph.includes('newsmaxbalkans.com') || ph.includes('newsmaxpolska.com'))) {
+          if (ph && !ph.includes('backoffice') && (ph.includes('newsmaxbalkans.com') || ph.includes('newsmaxpolska.com') || ph.includes('newsmaxbalkans.al'))) {
             articleUrl = ph;
             break;
           }

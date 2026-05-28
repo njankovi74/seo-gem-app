@@ -169,7 +169,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
       keyTerms: prioritized.map(p => p.term),
       mainTopics,
       searchIntentType: searchIntent.type
-    }, text);
+    }, text, language);
 
     // If selectedTitle is provided, use it directly and skip LLM title generation
     // Only generate Meta description and Keywords with LLM

@@ -61,18 +61,26 @@ export async function POST(request: NextRequest) {
     const secondaryKWs = prioritized.slice(1, 6).map(p => p.term);
 
     // Get RAG examples (filtered by portal for multi-tenant isolation)
-    const similarExamples = await getSimilarTitleExamples(text, 3, auth.portalId);
-    const preferredPattern = analyzePattern(similarExamples);
+    const similarExamples = await getSimilarTitleExamples(text, 5, auth.portalId);
+    const preferredPattern = analyzePattern(similarExamples, language);
 
-    // Build few-shot examples
+    // Build few-shot examples with language-aware labels
+    const ragLabels: Record<string, { header: string; example: string; textLabel: string; offered: string; selected: string }> = {
+      sr: { header: 'PRETHODNI IZBORI NOVINARA (slični članci)', example: 'PRIMER', textLabel: 'Tekst', offered: 'Ponuđeni', selected: 'ODABRAN' },
+      en: { header: 'PREVIOUS EDITOR CHOICES (similar articles)', example: 'EXAMPLE', textLabel: 'Text', offered: 'Offered', selected: 'SELECTED' },
+      pl: { header: 'POPRZEDNIE WYBORY REDAKTORA (podobne artykuły)', example: 'PRZYKŁAD', textLabel: 'Tekst', offered: 'Zaproponowane', selected: 'WYBRANY' },
+      sq: { header: 'ZGJEDHJET E MËPARSHME TË REDAKTORIT (artikuj të ngjashëm)', example: 'SHEMBULL', textLabel: 'Teksti', offered: 'Të ofruara', selected: 'I ZGJEDHUR' },
+    };
+    const labels = ragLabels[language] || ragLabels.sr;
+
     const fewShotExamples = similarExamples.length > 0
-      ? `\n\n**PRETHODNI IZBORI NOVINARA (slični članci):**\n\n${similarExamples
+      ? `\n\n**${labels.header}:**\n\n${similarExamples
           .map(
-            (ex, i) => `PRIMER ${i + 1}:
-Tekst: "${ex.article_text.substring(0, 150)}..."
-Ponuđeni:
+            (ex, i) => `${labels.example} ${i + 1}:
+${labels.textLabel}: "${ex.article_text.substring(0, 150)}..."
+${labels.offered}:
 ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`).join('\n')}
-✅ ODABRAN: "${ex.selected_title}"
+✅ ${labels.selected}: "${ex.selected_title}"
 `
           )
           .join('\n')}\n`

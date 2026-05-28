@@ -46,15 +46,61 @@ function joinWithCharLimit(items: string[], limit: number, sep = ', '): string {
   return out.join(sep);
 }
 
+// Language-specific fallback strings for deterministic SEO output
+const deterministicStrings: Record<string, {
+  titleSuffix: string;
+  metaTemplate: (primary: string, secondary: string) => string;
+  secondaryFallback: string;
+  mdTitle: string;
+  mdMeta: string;
+  mdKeywords: string;
+}> = {
+  sr: {
+    titleSuffix: 'Sve što treba da znate',
+    metaTemplate: (p, s) => `${capitalize(p)} utiče na vašu publiku i rezultate. Saznajte kako se odnosi na ${s || 'ključne pojmove'} i zašto je važno za SEO. Pročitajte kompletnu analizu.`,
+    secondaryFallback: 'ključne pojmove',
+    mdTitle: '1. SEO Naslov (Title Tag)',
+    mdMeta: '2. Meta Opis (Meta Description)',
+    mdKeywords: '3. Formatirana Lista Ključnih Reči',
+  },
+  sq: {
+    titleSuffix: 'Gjithçka që duhet të dini',
+    metaTemplate: (p, s) => `${capitalize(p)} ndikon në audiencën tuaj dhe rezultatet. Zbuloni si lidhet me ${s || 'termat kryesore'} dhe pse ka rëndësi për SEO. Lexoni analizën e plotë.`,
+    secondaryFallback: 'termat kryesore',
+    mdTitle: '1. Titulli SEO (Title Tag)',
+    mdMeta: '2. Meta Përshkrimi (Meta Description)',
+    mdKeywords: '3. Lista e Fjalëve Kyçe',
+  },
+  pl: {
+    titleSuffix: 'Wszystko, co musisz wiedzieć',
+    metaTemplate: (p, s) => `${capitalize(p)} wpływa na Twoją publiczność i wyniki. Dowiedz się, jak odnosi się do ${s || 'kluczowych pojęć'} i dlaczego jest ważne dla SEO. Przeczytaj pełną analizę.`,
+    secondaryFallback: 'kluczowych pojęć',
+    mdTitle: '1. Tytuł SEO (Title Tag)',
+    mdMeta: '2. Meta Opis (Meta Description)',
+    mdKeywords: '3. Sformatowana Lista Słów Kluczowych',
+  },
+  en: {
+    titleSuffix: 'Everything You Need to Know',
+    metaTemplate: (p, s) => `${capitalize(p)} impacts your audience and results. Learn how it relates to ${s || 'key concepts'} and why it matters for SEO. Read the full analysis.`,
+    secondaryFallback: 'key concepts',
+    mdTitle: '1. SEO Title (Title Tag)',
+    mdMeta: '2. Meta Description',
+    mdKeywords: '3. Formatted Keyword List',
+  },
+};
+
 export function buildDeterministicSEO(
   params: { title?: string; keyTerms: string[]; mainTopics: string[]; searchIntentType: string },
-  _sourceText?: string
+  _sourceText?: string,
+  language?: SupportedLanguage
 ): SEOOutputs {
+  const lang = language || 'sr';
+  const strings = deterministicStrings[lang] || deterministicStrings.sr;
   const primary = params.keyTerms[0] || params.mainTopics[0] || (params.title || '').split(' ').slice(0, 3).join(' ');
   const secondary = params.keyTerms[1] || params.mainTopics[1] || '';
-  let rawTitle = `${capitalize(primary)}: Sve što treba da znate`;
+  let rawTitle = `${capitalize(primary)}: ${strings.titleSuffix}`;
   rawTitle = truncate(rawTitle, 60);
-  let baseMeta = `${capitalize(primary)} utiče na vašu publiku i rezultate. Saznajte kako se odnosi na ${secondary || 'ključne pojmove'} i zašto je važno za SEO. Pročitajte kompletnu analizu.`;
+  let baseMeta = strings.metaTemplate(primary, secondary);
   baseMeta = truncate(baseMeta, 160);
 
   // Remove trailing period from title and meta description (SEO best practice)
@@ -65,19 +111,19 @@ export function buildDeterministicSEO(
   const keywordsLine = joinWithCharLimit(uniq.slice(0, 14), 300, ', ');
   const schemaMarkup = '';
   const markdown = [
-    '1. SEO Naslov (Title Tag)',
+    strings.mdTitle,
     '',
     '```',
     rawTitle,
     '```',
     '',
-    '2. Meta Opis (Meta Description)',
+    strings.mdMeta,
     '',
     '```',
     baseMeta,
     '```',
     '',
-    '3. Formatirana Lista Ključnih Reči',
+    strings.mdKeywords,
     '',
     '```',
     keywordsLine,
@@ -347,9 +393,9 @@ export async function buildSEOWithLLM(
       // Fallback: heuristike iz prethodne verzije (ako model nije poslao JSON)
       const text = ensureText(out);
       const lines = text.split(/\r?\n/).map((l: string) => l.trim()).filter(Boolean);
-      const idx1 = lines.findIndex((l: string) => l.toLowerCase().includes('1. seo naslov') || /^1\./.test(l));
-      const idx2 = lines.findIndex((l: string) => l.toLowerCase().includes('2. meta opis') || /^2\./.test(l));
-      const idx3 = lines.findIndex((l: string) => l.toLowerCase().includes('3. formatirana') || /^3\./.test(l));
+      const idx1 = lines.findIndex((l: string) => l.toLowerCase().includes('1. seo naslov') || l.toLowerCase().includes('1. seo title') || l.toLowerCase().includes('1. titulli seo') || l.toLowerCase().includes('1. tytuł seo') || /^1\./.test(l));
+      const idx2 = lines.findIndex((l: string) => l.toLowerCase().includes('2. meta opis') || l.toLowerCase().includes('2. meta description') || l.toLowerCase().includes('2. meta përshkrimi') || /^2\./.test(l));
+      const idx3 = lines.findIndex((l: string) => l.toLowerCase().includes('3. formatirana') || l.toLowerCase().includes('3. formatted') || l.toLowerCase().includes('3. lista e') || l.toLowerCase().includes('3. sformatowana') || /^3\./.test(l));
       if (idx1 >= 0 && idx2 > idx1) title = lines[idx1 + 1] || title;
       if (idx2 >= 0 && ((idx3 > idx2) || idx3 === -1)) meta = lines[idx2 + 1] || meta;
       if (idx3 >= 0) kwLine = lines[idx3 + 1] || kwLine;
@@ -361,7 +407,10 @@ export async function buildSEOWithLLM(
     // Remove trailing period from title (SEO best practice), keep meta as-is (has CTA with period)
     title = title.trim().replace(/\.$/, '');
 
-    const markdown = ['1. SEO Naslov (Title Tag)', '', '```', title, '```', '', '2. Meta Opis (Meta Description)', '', '```', meta, '```', '', '3. Ključne reči / Tagovi (Named Entities)', '', '```', kwLine, '```', '', '4. Schema Markup (JSON-LD)', '', '```json', schemaMarkup || '(nije generisan)', '```'].join('\n');
+    // Use language-aware labels for markdown output
+    const mdStrings = deterministicStrings[effectiveLang] || deterministicStrings.sr;
+    const schemaLabel = effectiveLang === 'sq' ? '(nuk u gjenerua)' : effectiveLang === 'pl' ? '(nie wygenerowano)' : effectiveLang === 'en' ? '(not generated)' : '(nije generisan)';
+    const markdown = [mdStrings.mdTitle, '', '```', title, '```', '', mdStrings.mdMeta, '', '```', meta, '```', '', mdStrings.mdKeywords + ' / Tagovi (Named Entities)', '', '```', kwLine, '```', '', '4. Schema Markup (JSON-LD)', '', '```json', schemaMarkup || schemaLabel, '```'].join('\n');
     return { title, metaDescription: meta, keywordsLine: kwLine, schemaMarkup, markdown, subtopics };
   }
 

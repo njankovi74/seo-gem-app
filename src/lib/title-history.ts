@@ -112,7 +112,7 @@ export async function getSimilarTitleExamples(
       .eq('portal_id', effectivePortal)
       .not('offered_titles', 'is', null)
       .order('created_at', { ascending: false })
-      .limit(90); // fetch 90, filter to ~30 valid
+      .limit(120); // fetch 120, filter to ~30 valid
 
     if (error) {
       console.error('❌ [RAG] Failed to get style examples:', error);
@@ -200,8 +200,51 @@ export async function getSimilarTitleExamples(
  * - How often they modify AI suggestions
  * - Total sample size (so AI understands confidence level)
  */
-export function analyzePattern(examples: SimilarExample[]): string {
-  if (examples.length === 0) return 'Nema prethodnih podataka — koristi podrazumevani informativni stil.';
+export function analyzePattern(examples: SimilarExample[], language: string = 'sr'): string {
+  const patternStrings: Record<string, {
+    noData: string;
+    analyzed: (n: number) => string;
+    preferredStyle: string;
+    modifies: (pct: number, mod: number, total: number) => string;
+    alwaysPicks: string;
+    avgLength: (len: number) => string;
+  }> = {
+    sr: {
+      noData: 'Nema prethodnih podataka — koristi podrazumevani informativni stil.',
+      analyzed: (n) => `Analizirano ${n} prethodnih izbora novinara.`,
+      preferredStyle: 'Preferiran stil',
+      modifies: (pct, mod, total) => `Novinar menja AI predlog u ${pct}% slučajeva (${mod}/${total}).`,
+      alwaysPicks: 'Novinar uvek bira jedan od ponuđenih AI naslova.',
+      avgLength: (len) => `Prosečna dužina izabranog naslova: ${len} karaktera.`,
+    },
+    en: {
+      noData: 'No previous data — use default informative style.',
+      analyzed: (n) => `Analyzed ${n} previous editor choices.`,
+      preferredStyle: 'Preferred style',
+      modifies: (pct, mod, total) => `Editor modifies AI suggestion in ${pct}% of cases (${mod}/${total}).`,
+      alwaysPicks: 'Editor always picks one of the offered AI titles.',
+      avgLength: (len) => `Average selected title length: ${len} characters.`,
+    },
+    pl: {
+      noData: 'Brak poprzednich danych — użyj domyślnego stylu informacyjnego.',
+      analyzed: (n) => `Przeanalizowano ${n} poprzednich wyborów redaktora.`,
+      preferredStyle: 'Preferowany styl',
+      modifies: (pct, mod, total) => `Redaktor zmienia sugestię AI w ${pct}% przypadków (${mod}/${total}).`,
+      alwaysPicks: 'Redaktor zawsze wybiera jeden z zaproponowanych tytułów AI.',
+      avgLength: (len) => `Średnia długość wybranego tytułu: ${len} znaków.`,
+    },
+    sq: {
+      noData: 'Nuk ka të dhëna të mëparshme — përdor stilin informativ të paracaktuar.',
+      analyzed: (n) => `U analizuan ${n} zgjedhje të mëparshme të redaktorit.`,
+      preferredStyle: 'Stili i preferuar',
+      modifies: (pct, mod, total) => `Redaktori ndryshon sugjerimin e AI në ${pct}% të rasteve (${mod}/${total}).`,
+      alwaysPicks: 'Redaktori gjithmonë zgjedh një nga titujt e ofruar nga AI.',
+      avgLength: (len) => `Gjatësia mesatare e titullit të zgjedhur: ${len} karaktere.`,
+    },
+  };
+
+  const s = patternStrings[language] || patternStrings.sr;
+  if (examples.length === 0) return s.noData;
 
   // Count which style was picked
   const styleCounts: Record<string, number> = {};
@@ -228,7 +271,7 @@ export function analyzePattern(examples: SimilarExample[]): string {
 
   // Build insight string
   const parts: string[] = [];
-  parts.push(`Analizirano ${total} prethodnih izbora novinara.`);
+  parts.push(s.analyzed(total));
 
   // Style preference
   const sorted = Object.entries(styleCounts).sort((a, b) => b[1] - a[1]);
@@ -237,20 +280,20 @@ export function analyzePattern(examples: SimilarExample[]): string {
       const pct = Math.round((count / total) * 100);
       return `${style}: ${count}x (${pct}%)`;
     });
-    parts.push(`Preferiran stil: ${styleDescriptions.join(', ')}.`);
+    parts.push(`${s.preferredStyle}: ${styleDescriptions.join(', ')}.`);
   }
 
   // Modification rate
   if (customModified > 0) {
     const modPct = Math.round((customModified / total) * 100);
-    parts.push(`Novinar menja AI predlog u ${modPct}% slučajeva (${customModified}/${total}).`);
+    parts.push(s.modifies(modPct, customModified, total));
   } else {
-    parts.push(`Novinar uvek bira jedan od ponuđenih AI naslova.`);
+    parts.push(s.alwaysPicks);
   }
 
   // Average length
   if (avgLen > 0) {
-    parts.push(`Prosečna dužina izabranog naslova: ${avgLen} karaktera.`);
+    parts.push(s.avgLength(avgLen));
   }
 
   return parts.join(' ');
