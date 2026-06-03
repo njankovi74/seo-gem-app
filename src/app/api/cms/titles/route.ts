@@ -42,9 +42,12 @@ export async function POST(request: NextRequest) {
 
     console.log(`🏢 [CMS/titles] Portal: ${auth.portalId}, lang: ${language}, title: "${effectiveTitle.substring(0, 50)}...", text: ${text.length} chars`);
 
-    // Run TF-IDF + LSA analysis with language-specific config
+    // Run analysis + RAG fetch IN PARALLEL for latency optimization
     const tfidfAnalyzer = new TFIDFAnalyzer(language);
     const lsaAnalyzer = new LSAAnalyzer(language);
+
+    // CPU-bound analysis (sync) + DB query (async) run concurrently
+    const ragPromise = getSimilarTitleExamples(text, 5, auth.portalId);
 
     const tfidfAnalysis = tfidfAnalyzer.analyze(fullText);
     const lsaAnalysis = lsaAnalyzer.analyzeSemantics(fullText);
@@ -60,8 +63,8 @@ export async function POST(request: NextRequest) {
     const primaryKW = prioritized[0]?.term || '';
     const secondaryKWs = prioritized.slice(1, 6).map(p => p.term);
 
-    // Get RAG examples (filtered by portal for multi-tenant isolation)
-    const similarExamples = await getSimilarTitleExamples(text, 5, auth.portalId);
+    // Await RAG results (likely already resolved during CPU analysis)
+    const similarExamples = await ragPromise;
     const preferredPattern = analyzePattern(similarExamples, language);
 
     // Build few-shot examples with language-aware labels
@@ -98,12 +101,16 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
       preferredPattern: preferredPattern || undefined,
     });
 
+    const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const isThinkingModel = modelName.includes('2.5');
     const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      model: modelName,
       generationConfig: {
         temperature: 0.6,
         responseMimeType: 'application/json',
-      },
+        // Limit thinking budget to reduce latency while preserving output quality
+        ...(isThinkingModel ? { thinkingConfig: { thinkingBudget: 4096 } } : {}),
+      } as any,
     });
 
     // Retry up to 2 times on JSON parse failure
