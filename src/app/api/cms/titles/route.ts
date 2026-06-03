@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { authenticateCmsRequest, corsHeaders, cmsErrorResponse } from '@/lib/cms-auth';
-import { getSimilarTitleExamples, analyzePattern, type TitleOption } from '@/lib/title-history';
+import { getSimilarTitleExamples, analyzePattern, analyzeStylePatterns, type TitleOption } from '@/lib/title-history';
 import { TFIDFAnalyzer } from '@/lib/tfidf-analyzer';
 import { LSAAnalyzer } from '@/lib/lsa-analyzer';
 import { prioritizeKeywords } from '@/lib/keyword-prioritizer';
 import { type SupportedLanguage, isValidLanguage } from '@/lib/i18n';
 import { getTitlesPrompt } from '@/lib/prompts/titles-prompt';
+import { getGoogleSuggestions } from '@/lib/google-suggest';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,12 +43,13 @@ export async function POST(request: NextRequest) {
 
     console.log(`🏢 [CMS/titles] Portal: ${auth.portalId}, lang: ${language}, title: "${effectiveTitle.substring(0, 50)}...", text: ${text.length} chars`);
 
-    // Run analysis + RAG fetch IN PARALLEL for latency optimization
+    // Run analysis + RAG + Google Suggest + Style Analysis IN PARALLEL
     const tfidfAnalyzer = new TFIDFAnalyzer(language);
     const lsaAnalyzer = new LSAAnalyzer(language);
 
-    // CPU-bound analysis (sync) + DB query (async) run concurrently
+    // Launch ALL async operations concurrently
     const ragPromise = getSimilarTitleExamples(text, 5, auth.portalId);
+    const stylePromise = analyzeStylePatterns(auth.portalId!, language);
 
     const tfidfAnalysis = tfidfAnalyzer.analyze(fullText);
     const lsaAnalysis = lsaAnalyzer.analyzeSemantics(fullText);
@@ -63,9 +65,12 @@ export async function POST(request: NextRequest) {
     const primaryKW = prioritized[0]?.term || '';
     const secondaryKWs = prioritized.slice(1, 6).map(p => p.term);
 
-    // Await RAG results (likely already resolved during CPU analysis)
-    const similarExamples = await ragPromise;
+    // Await all async results (likely already resolved during CPU analysis)
+    const [similarExamples, styleAnalysis] = await Promise.all([ragPromise, stylePromise]);
     const preferredPattern = analyzePattern(similarExamples, language);
+
+    // Fetch Google Suggest for primary keyword (runs after we know the keyword)
+    const googleSuggestions = await getGoogleSuggestions(primaryKW, language);
 
     // Build few-shot examples with language-aware labels
     const ragLabels: Record<string, { header: string; example: string; textLabel: string; offered: string; selected: string }> = {
@@ -99,6 +104,8 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
       text,
       fewShotExamples: fewShotExamples || undefined,
       preferredPattern: preferredPattern || undefined,
+      googleSuggestions: googleSuggestions.length > 0 ? googleSuggestions : undefined,
+      styleAnalysis: styleAnalysis || undefined,
     });
 
     const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';

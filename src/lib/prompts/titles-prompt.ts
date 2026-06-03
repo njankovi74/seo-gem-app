@@ -14,9 +14,11 @@ export function getTitlesPrompt(
     text: string;
     fewShotExamples?: string;
     preferredPattern?: string;
+    googleSuggestions?: string[];
+    styleAnalysis?: string;
   }
 ): string {
-  const { primaryKW, secondaryKWs, mainTopics, searchIntentType, text, fewShotExamples, preferredPattern } = params;
+  const { primaryKW, secondaryKWs, mainTopics, searchIntentType, text, fewShotExamples, preferredPattern, googleSuggestions, styleAnalysis } = params;
 
   const ragBlock = fewShotExamples
     ? `${fewShotExamples}\n${preferredPattern ? `**PATTERN:** ${preferredPattern}\n` : ''}`
@@ -26,13 +28,20 @@ export function getTitlesPrompt(
     ? getRAGInstruction(language, preferredPattern || '')
     : '';
 
+  const suggestBlock = googleSuggestions && googleSuggestions.length > 0
+    ? getSuggestBlock(language, googleSuggestions)
+    : '';
+
+  const styleBlock = styleAnalysis ? `\n${styleAnalysis}\n` : '';
+
   const basePrompt = getBasePrompt(language);
   const formatBlock = getFormatBlock(language);
 
   return `${basePrompt}
 ${ragBlock}
 ${ragInstruction}
-
+${suggestBlock}
+${styleBlock}
 ${getAnalysisStep(language)}
 
 ${getGenerationStep(language)}
@@ -127,7 +136,12 @@ Based on the analysis above, generate 2 unique variations for each of the follow
 
 **Options 1 & 2 (Style: informativni):** Classic SEO titles. Focus on the main problem (Subject). Names of commentators FORBIDDEN.
 **Options 3 & 4 (Style: geo_pitanje):** Conversational questions for AI Overviews and voice search. Names FORBIDDEN.
-**Options 5 & 6 (Style: discover_hook):** E-E-A-T titles for Google Discover. MANDATORY: Full Name of the most prominent interviewee + bold claim.`;
+**Options 5 & 6 (Style: discover_hook):** E-E-A-T titles for Google Discover.
+
+DISCOVER HOOK FORMAT RULE:
+A) If the text features a PUBLICLY KNOWN figure (politician, athlete, celebrity, minister, president, CEO of a major company) → Format: "Full Name: bold claim"
+B) If the text features an expert/blogger/doctor who is NOT publicly known to the portal's audience → Format: "Benefit + specific solution" WITHOUT the person's name. Example: "A Grease-Free Kitchen: The Solution You Already Have at Home!"
+⚠️ NEVER use the name of a person who only provides everyday advice (cleaning, cooking, health, fitness) unless they are a PUBLIC FIGURE known to readers.`;
 
     case 'pl':
       return `**KROK 2: WYGENERUJ 6 TYTUŁÓW**
@@ -135,7 +149,12 @@ Na podstawie powyższej analizy wygeneruj po 2 unikalne warianty dla każdego z 
 
 **Opcje 1 i 2 (Styl: informativni):** Klasyczne tytuły SEO. Skupienie na głównym problemie (Podmiocie). Nazwiska komentatorów ZABRONIONE.
 **Opcje 3 i 4 (Styl: geo_pitanje):** Konwersacyjne pytania dla AI Overviews i wyszukiwania głosowego. Nazwiska ZABRONIONE.
-**Opcje 5 i 6 (Styl: discover_hook):** Tytuły E-E-A-T dla Google Discover. OBOWIĄZKOWE: Pełne Imię i Nazwisko najważniejszego rozmówcy + odważne stwierdzenie.`;
+**Opcje 5 i 6 (Styl: discover_hook):** Tytuły E-E-A-T dla Google Discover.
+
+ZASADA FORMATU DISCOVER HOOK:
+A) Jeśli w tekście występuje PUBLICZNIE ZNANA osoba (polityk, sportowiec, celebryta, minister, prezes dużej firmy) → Format: "Imię Nazwisko: odważne stwierdzenie"
+B) Jeśli w tekście występuje ekspert/bloger/lekarz, który NIE jest publicznie znany czytelnikom portalu → Format: "Korzyść + konkretne rozwiązanie" BEZ nazwiska. Przykład: "Kuchnia bez tłuszczu: Rozwiązanie, które masz w domu!"
+⚠️ NIGDY nie używaj nazwiska osoby, która jedynie udziela codziennych porad (sprzątanie, gotowanie, zdrowie, fitness), chyba że jest OSOBĄ PUBLICZNĄ znaną czytelnikom.`;
 
     case 'sq':
       return `**HAPI 2: GJENERO 6 TITUJ**
@@ -143,7 +162,12 @@ Bazuar në analizën e mësipërme, gjenero 2 variacione unike për secilin nga 
 
 **Opsionet 1 dhe 2 (Stili: informativni):** Tituj klasikë SEO. Fokusi te problemi kryesor (Subjekti). Emrat e komentuesve TË NDALUARA.
 **Opsionet 3 dhe 4 (Stili: geo_pitanje):** Pyetje konverzacionale për AI Overviews dhe kërkimin me zë. Emrat TË NDALUARA.
-**Opsionet 5 dhe 6 (Stili: discover_hook):** Tituj E-E-A-T për Google Discover. E DETYRUESHME: Emri i plotë i bashkëbiseduesit më të spikatur + deklaratë e guximshme.`;
+**Opsionet 5 dhe 6 (Stili: discover_hook):** Tituj E-E-A-T për Google Discover.
+
+RREGULLI I FORMATIT DISCOVER HOOK:
+A) Nëse në tekst paraqitet një FIGURË PUBLIKE e njohur (politikan, sportist, personazh i njohur, ministër, president, drejtor i kompanisë së madhe) → Formati: "Emri i plotë: deklaratë e guximshme"
+B) Nëse në tekst paraqitet një ekspert/bloger/mjek që NUK është i njohur publikisht për lexuesit e portalit → Formati: "Përfitimi + zgjidhje konkrete" PA emrin e personit. Shembull: "Kuzhina pa yndyrë: Zgjidhja që e keni tashmë në shtëpi!"
+⚠️ ASNJËHERË mos përdorni emrin e një personi që vetëm jep këshilla të përditshme (pastrim, gatim, shëndet, fitnes) përveç nëse është FIGURË PUBLIKE e njohur për lexuesit.`;
 
     default: // sr
       return `**KORAK 2: GENERISANJE 6 NASLOVA**
@@ -151,7 +175,12 @@ Na osnovu gornje analize, generiši po 2 unikatne varijacije za sledeća tri sti
 
 **Opcija 1 i 2 (Stil: informativni):** Klasični SEO naslovi. Fokus na glavnom problemu (Subjekat). ZABRANJENA imena sagovornika.
 **Opcija 3 i 4 (Stil: geo_pitanje):** Konverzacijska pitanja za AI Overviews i glasovnu pretragu. ZABRANJENA imena.
-**Opcija 5 i 6 (Stil: discover_hook):** E-E-A-T naslovi za Google Discover. OBAVEZNO Ime i Prezime najistaknutijeg sagovornika + udarna tvrdnja.`;
+**Opcija 5 i 6 (Stil: discover_hook):** E-E-A-T naslovi za Google Discover.
+
+PRAVILO ZA FORMAT DISCOVER HOOK:
+A) Ako je u tekstu JAVNO POZNATA ličnost (političar, sportista, celebrity, ministar, predsednik, direktor poznate kompanije) → Format: "Ime Prezime: udarna tvrdnja"
+B) Ako je u tekstu stručnjak/bloger/lekar koji NIJE javno poznat čitaocima portala → Format: "Benefit + konkretno rešenje" BEZ imena. Primer: "Kuhinja bez masnoće: Rešenje koje već imate u kući!"
+⚠️ NIKADA ne koristi ime osobe koja samo daje savete za svakodnevne teme (čišćenje, kuvanje, zdravlje, fitness) osim ako nije JAVNO POZNATA LIČNOST čitaocima portala.`;
   }
 }
 
@@ -246,4 +275,30 @@ function getTopicsLabel(lang: SupportedLanguage): string {
 }
 function getTextLabel(lang: SupportedLanguage): string {
   return lang === 'en' ? 'TEXT' : lang === 'pl' ? 'TEKST' : lang === 'sq' ? 'TEKSTI' : 'TEKST';
+}
+
+function getSuggestBlock(lang: SupportedLanguage, suggestions: string[]): string {
+  const list = suggestions.map(s => `- ${s}`).join('\n');
+
+  switch (lang) {
+    case 'en':
+      return `\n**REAL USER SEARCHES (Google Suggest):**
+${list}
+⚠️ Include at least one of these EXACT phrases in your titles — this is what people ACTUALLY search for!\n`;
+
+    case 'pl':
+      return `\n**REALNE WYSZUKIWANIA UŻYTKOWNIKÓW (Google Suggest):**
+${list}
+⚠️ Uwzględnij co najmniej jedną z tych DOKŁADNYCH fraz w tytułach — to jest to, czego ludzie NAPRAWDĘ szukają!\n`;
+
+    case 'sq':
+      return `\n**KËRKIMET REALE TË PËRDORUESVE (Google Suggest):**
+${list}
+⚠️ Përfshini të paktën një nga këto fraza të SAKTA në tituj — kjo është ajo që njerëzit VËRTET kërkojnë!\n`;
+
+    default: // sr
+      return `\n**REALNE PRETRAGE KORISNIKA (Google Suggest):**
+${list}
+⚠️ Uključi barem jednu od ovih TAČNIH fraza u naslove — ovo je ono što ljudi ZAISTA pretražuju!\n`;
+  }
 }

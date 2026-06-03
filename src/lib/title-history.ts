@@ -299,3 +299,158 @@ export function analyzePattern(examples: SimilarExample[], language: string = 's
   return parts.join(' ');
 }
 
+/**
+ * Analyze structural STYLE patterns from journalist's custom title choices.
+ * Returns a natural language summary that guides the AI to match the journalist's
+ * preferred writing style (format, punctuation, length, voice, structure).
+ * 
+ * Requires min 10 custom titles to produce meaningful analysis.
+ * Returns empty string if insufficient data (graceful degradation).
+ */
+export async function analyzeStylePatterns(portalId: string, language: string = 'sr'): Promise<string> {
+  try {
+    const { data, error } = await supabase
+      .from('title_history')
+      .select('selected_title, selection_type')
+      .eq('portal_id', portalId)
+      .order('created_at', { ascending: false })
+      .limit(120);
+
+    if (error || !data) return '';
+
+    // Focus on custom titles — these reveal the journalist's true preference
+    const customTitles = data
+      .filter((r: any) => r.selection_type === 'custom' && r.selected_title?.length > 10)
+      .map((r: any) => r.selected_title as string)
+      .slice(0, 50); // analyze last 50
+
+    if (customTitles.length < 10) return ''; // not enough data
+
+    // Analyze structural dimensions
+    let questions = 0;       // ends with ?
+    let exclamations = 0;    // ends with !
+    let colons = 0;          // contains :
+    let imperatives = 0;     // starts with imperative verb patterns
+    let lists = 0;           // starts with number ("5 načina...")
+    let directAddress = 0;   // contains "vi", "vaš", "vaša", "ty", "twój", "ju", "juaj"
+    const lengths: number[] = [];
+
+    const directWords: Record<string, string[]> = {
+      sr: ['vaš', 'vaša', 'vaše', 'vašem', 'vašoj', 'vama', 'vas'],
+      pl: ['twój', 'twoja', 'twoje', 'wasz', 'wasza', 'wasze', 'ciebie', 'tobie'],
+      sq: ['juaj', 'juaja', 'tuaj', 'tuaja', 'juve', 'tyre'],
+      en: ['your', 'yours', 'you'],
+    };
+
+    const words = directWords[language] || directWords.sr;
+
+    for (const title of customTitles) {
+      const trimmed = title.trim();
+      lengths.push(trimmed.length);
+
+      if (trimmed.endsWith('?')) questions++;
+      if (trimmed.endsWith('!')) exclamations++;
+      if (trimmed.includes(':')) colons++;
+      if (/^\d+\s/.test(trimmed)) lists++;
+
+      const lower = trimmed.toLowerCase();
+      if (words.some(w => lower.includes(w))) directAddress++;
+
+      // Imperative detection (sr-specific patterns, extensible)
+      if (language === 'sr' && /^(saznajte|otkrijte|pogledajte|pročitajte|isprobajte|očistite|napravite|koristite)/i.test(lower)) imperatives++;
+      if (language === 'pl' && /^(dowiedz|odkryj|sprawdź|przeczytaj|wypróbuj|użyj|poznaj|zobacz)/i.test(lower)) imperatives++;
+      if (language === 'sq' && /^(mëso|zbulo|shiko|lexo|provo|përdor|njihu)/i.test(lower)) imperatives++;
+    }
+
+    const total = customTitles.length;
+    const avgLen = Math.round(lengths.reduce((s, l) => s + l, 0) / total);
+
+    // Determine dominant format
+    const formats: { name: string; count: number; label: Record<string, string> }[] = [
+      { name: 'question', count: questions, label: { sr: 'Pitanja', pl: 'Pytania', sq: 'Pyetje', en: 'Questions' } },
+      { name: 'exclamation', count: exclamations, label: { sr: 'Uzvičnici', pl: 'Wykrzykniki', sq: 'Pikëçuditëse', en: 'Exclamations' } },
+      { name: 'colon', count: colons, label: { sr: 'Sa dvotačkom (Tema: Podnaslov)', pl: 'Z dwukropkiem (Temat: Podtytuł)', sq: 'Me dy pika (Tema: Nëntitull)', en: 'With colon (Topic: Subtitle)' } },
+      { name: 'list', count: lists, label: { sr: 'Numerisane liste', pl: 'Listy numerowane', sq: 'Lista me numra', en: 'Numbered lists' } },
+      { name: 'imperative', count: imperatives, label: { sr: 'Imperativ (Saznajte, Otkrijte...)', pl: 'Tryb rozkazujący (Dowiedz się...)', sq: 'Urdhërore (Mëso, Zbulo...)', en: 'Imperative (Discover, Learn...)' } },
+    ];
+
+    const significantFormats = formats.filter(f => f.count >= 2 && (f.count / total) >= 0.05);
+    significantFormats.sort((a, b) => b.count - a.count);
+
+    // Build natural language summary
+    const i18nHeaders: Record<string, string> = {
+      sr: '**STILSKA PREFERENCIJA NOVINARA:**',
+      pl: '**PREFERENCJA STYLISTYCZNA REDAKTORA:**',
+      sq: '**PREFERENCA STILISTIKE E REDAKTORIT:**',
+      en: '**JOURNALIST STYLE PREFERENCE:**',
+    };
+
+    const i18nAnalyzed: Record<string, (n: number) => string> = {
+      sr: (n) => `Na osnovu poslednjih ${n} odabranih naslova, novinar preferira:`,
+      pl: (n) => `Na podstawie ostatnich ${n} wybranych tytułów, redaktor preferuje:`,
+      sq: (n) => `Bazuar në ${n} titujt e fundit të zgjedhur, redaktori preferon:`,
+      en: (n) => `Based on the last ${n} selected titles, the journalist prefers:`,
+    };
+
+    const i18nLength: Record<string, (n: number) => string> = {
+      sr: (n) => `Prosečna dužina: ${n} karaktera`,
+      pl: (n) => `Średnia długość: ${n} znaków`,
+      sq: (n) => `Gjatësia mesatare: ${n} karaktere`,
+      en: (n) => `Average length: ${n} characters`,
+    };
+
+    const i18nDirect: Record<string, string> = {
+      sr: 'Koristi direktno obraćanje čitaocu ("vaš", "vas")',
+      pl: 'Używa bezpośredniego zwrotu do czytelnika ("twój", "wasz")',
+      sq: 'Përdor adresimin e drejtpërdrejtë ("juaj", "tuaj")',
+      en: 'Uses direct reader address ("your", "you")',
+    };
+
+    const i18nNoDirect: Record<string, string> = {
+      sr: 'Retko se obraća direktno čitaocu',
+      pl: 'Rzadko zwraca się bezpośrednio do czytelnika',
+      sq: 'Rrallë adresohet drejtpërdrejt lexuesit',
+      en: 'Rarely addresses the reader directly',
+    };
+
+    const i18nFollow: Record<string, string> = {
+      sr: '⚠️ Generiši naslove koji prate OVAJ STIL!',
+      pl: '⚠️ Wygeneruj tytuły, które PODĄŻAJĄ ZA TYM STYLEM!',
+      sq: '⚠️ Gjeneroni tituj që NDJEKIN KËTË STIL!',
+      en: '⚠️ Generate titles that FOLLOW THIS STYLE!',
+    };
+
+    const lang = language as string;
+    const lines: string[] = [];
+    lines.push(i18nHeaders[lang] || i18nHeaders.sr);
+    lines.push((i18nAnalyzed[lang] || i18nAnalyzed.sr)(total));
+
+    // Format breakdown
+    if (significantFormats.length > 0) {
+      for (const f of significantFormats) {
+        const pct = Math.round((f.count / total) * 100);
+        lines.push(`- ${f.label[lang] || f.label.sr}: ${pct}% (${f.count}/${total})`);
+      }
+    }
+
+    // Length
+    lines.push(`- ${(i18nLength[lang] || i18nLength.sr)(avgLen)}`);
+
+    // Direct address
+    const directPct = Math.round((directAddress / total) * 100);
+    if (directPct >= 15) {
+      lines.push(`- ${i18nDirect[lang] || i18nDirect.sr} (${directPct}%)`);
+    } else {
+      lines.push(`- ${i18nNoDirect[lang] || i18nNoDirect.sr}`);
+    }
+
+    lines.push(i18nFollow[lang] || i18nFollow.sr);
+
+    console.log(`📊 [StyleAnalysis] Portal ${portalId}: ${total} titles analyzed, ${significantFormats.length} patterns found`);
+
+    return lines.join('\n');
+  } catch (error) {
+    console.error('❌ [StyleAnalysis] Error:', error);
+    return ''; // Graceful degradation
+  }
+}
