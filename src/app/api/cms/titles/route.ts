@@ -100,19 +100,43 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
 
     const model = genAI.getGenerativeModel({
       model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-      generationConfig: { temperature: 0.6 },
+      generationConfig: {
+        temperature: 0.6,
+        responseMimeType: 'application/json',
+      },
     });
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    // Retry up to 2 times on JSON parse failure
+    let titles: TitleOption[] | null = null;
+    let lastError: Error | null = null;
 
-    // Parse JSON
-    const cleanedText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const parsed = JSON.parse(cleanedText);
-    const titles: TitleOption[] = parsed.titles;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const result = await model.generateContent(prompt);
+        const responseText = result.response.text();
 
-    if (!Array.isArray(titles) || titles.length < 3) {
-      throw new Error(`Expected 6 titles, got ${titles?.length || 0}`);
+        // Parse JSON — strip markdown fences if present
+        const cleanedText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        // Try to extract JSON object if there's extra text before/after
+        const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+        const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleanedText);
+        titles = parsed.titles;
+
+        if (!Array.isArray(titles) || titles.length < 3) {
+          throw new Error(`Expected 6 titles, got ${titles?.length || 0}`);
+        }
+        break; // success
+      } catch (e) {
+        lastError = e instanceof Error ? e : new Error(String(e));
+        console.warn(`⚠️ [CMS/titles] Attempt ${attempt} failed: ${lastError.message}`);
+        if (attempt < 2) {
+          console.log('🔄 [CMS/titles] Retrying...');
+        }
+      }
+    }
+
+    if (!titles) {
+      throw lastError || new Error('Failed to generate titles');
     }
 
     // Fix lengths
