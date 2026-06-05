@@ -8,6 +8,7 @@ import { prioritizeKeywords } from '@/lib/keyword-prioritizer';
 import { type SupportedLanguage, isValidLanguage } from '@/lib/i18n';
 import { getTitlesPrompt } from '@/lib/prompts/titles-prompt';
 import { getGoogleSuggestions } from '@/lib/google-suggest';
+import { validateTitleLanguage } from '@/lib/language-validator';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -167,12 +168,75 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
     // Fix lengths
     titles.forEach(t => { t.length = t.text.length; });
 
-    console.log(`✅ [CMS/titles] Generated ${titles.length} titles for ${auth.portalId}`);
+    // === LANGUAGE VALIDATION ===
+    const langCheck = await validateTitleLanguage(
+      titles.map(t => t.text),
+      language
+    );
+
+    if (!langCheck.isMatch && langCheck.confidence !== 'undetermined') {
+      console.warn(`⚠️ [CMS/titles] Language mismatch! Expected: ${language}, Got: ${langCheck.detected}. Retrying with enforcement...`);
+
+      // Language enforcement labels
+      const langEnforce: Record<string, string> = {
+        sr: '\n\n⚠️ KRITIČNO: Svi naslovi MORAJU biti na SRPSKOM jeziku. Piši ISKLJUČIVO na srpskom.',
+        pl: '\n\n⚠️ KRYTYCZNE: Wszystkie tytuły MUSZĄ być w języku POLSKIM. Pisz WYŁĄCZNIE po polsku.',
+        sq: '\n\n⚠️ KRITIKE: Të gjithë titujt DUHET të jenë në gjuhën SHQIPE. Shkruani VETËM në shqip.',
+        en: '\n\n⚠️ CRITICAL: All titles MUST be in ENGLISH. Write EXCLUSIVELY in English.',
+      };
+
+      const enforcedPrompt = prompt + (langEnforce[language] || langEnforce.sr);
+
+      // Retry with enforced language
+      try {
+        const retryResult = await model.generateContent(enforcedPrompt);
+        const retryText = retryResult.response.text();
+        const retryCleaned = retryText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const retryJsonMatch = retryCleaned.match(/\{[\s\S]*\}/);
+        const retryParsed = JSON.parse(retryJsonMatch ? retryJsonMatch[0] : retryCleaned);
+        const retryTitles = retryParsed.titles as TitleOption[];
+
+        if (Array.isArray(retryTitles) && retryTitles.length >= 3) {
+          retryTitles.forEach(t => { t.length = t.text.length; });
+
+          // Validate retry result
+          const retryCheck = await validateTitleLanguage(
+            retryTitles.map(t => t.text),
+            language
+          );
+
+          if (retryCheck.isMatch || retryCheck.confidence === 'undetermined') {
+            console.log(`✅ [CMS/titles] Retry succeeded — language now correct`);
+            titles = retryTitles;
+          } else {
+            // Both attempts failed — return error
+            console.error(`❌ [CMS/titles] Retry also produced wrong language (${retryCheck.detected}). Blocking response.`);
+            return cmsErrorResponse(
+              `Language generation error: expected ${language}, got ${retryCheck.detected}. Please try again.`,
+              422, origin
+            );
+          }
+        }
+      } catch (retryError) {
+        console.error('❌ [CMS/titles] Language retry failed:', retryError);
+        return cmsErrorResponse(
+          `Language validation failed. Please try again.`,
+          422, origin
+        );
+      }
+    }
+
+    console.log(`✅ [CMS/titles] Generated ${titles.length} titles for ${auth.portalId} (lang: ${language}, validated: ${langCheck.isMatch ? 'pass' : 'retry-pass'})`);
 
     return NextResponse.json({
       success: true,
       titles,
       usedRAG: similarExamples.length > 0,
+      languageValidation: {
+        expected: langCheck.expected,
+        detected: langCheck.detected,
+        validated: true,
+      },
     }, { headers });
 
   } catch (error) {
