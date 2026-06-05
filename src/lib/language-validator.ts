@@ -1,25 +1,21 @@
 /**
- * Language Validation Module
+ * Language Validation Module (Hybrid Approach)
  * 
- * Uses franc trigram analysis to detect the language of generated titles.
- * All 6 titles are concatenated for reliable detection (~350+ chars).
+ * Strategy:
+ *   1. franc trigram detection (works well for SR, PL, EN)
+ *   2. Word/character marker fallback (for SQ and edge cases)
+ *   3. "Negative check" logic: only BLOCK when we're SURE it's wrong
  * 
- * Flow:
- *   1. Concatenate all titles → franc detects language
- *   2. If detected == expected → pass
- *   3. If mismatch → flag for retry
- *   4. Log all results for monitoring
+ * Decision tree:
+ *   franc detects EXPECTED language      → ✅ pass
+ *   franc detects KNOWN WRONG language   → ⚠️ block (trigger retry)
+ *   franc returns unknown/undetermined   → run marker check:
+ *     markers confirm expected language  → ✅ pass
+ *     markers detect wrong language      → ⚠️ block (trigger retry)
+ *     markers inconclusive              → ✅ pass (fail open)
  */
 
-// franc-min uses ISO 639-3 codes
-// Our app uses: 'sr' (Serbian), 'pl' (Polish), 'sq' (Albanian), 'en' (English)
-const OUR_TO_ISO639_3: Record<string, string[]> = {
-  sr: ['srp', 'hbs', 'bos', 'hrv'], // Serbian + related (Bosnian, Croatian — trigrams overlap)
-  pl: ['pol'],
-  sq: ['sqi'],
-  en: ['eng'],
-};
-
+// franc ISO 639-3 → our codes
 const ISO639_3_TO_OURS: Record<string, string> = {
   srp: 'sr', hbs: 'sr', bos: 'sr', hrv: 'sr',
   pol: 'pl',
@@ -27,82 +23,181 @@ const ISO639_3_TO_OURS: Record<string, string> = {
   eng: 'en',
 };
 
+// Our codes → franc ISO 639-3 (acceptable matches)
+const OUR_TO_ISO639_3: Record<string, string[]> = {
+  sr: ['srp', 'hbs', 'bos', 'hrv'],
+  pl: ['pol'],
+  sq: ['sqi'],
+  en: ['eng'],
+};
+
+/**
+ * Word markers unique to each language.
+ * Function words + common short words that are highly distinctive.
+ * We match whole words only (word boundary).
+ */
+const LANGUAGE_MARKERS: Record<string, { words: string[]; chars: RegExp | null }> = {
+  sq: {
+    // Albanian function words — very distinctive
+    words: ['në', 'dhe', 'për', 'që', 'nga', 'është', 'ka', 'pas', 'ose', 'por', 'edhe', 'mund', 'duke', 'ndaj', 'sipas', 'gjatë', 'deri', 'tek', 'çdo', 'asnjë', 'kjo', 'kush', 'pse', 'gjithë', 'vetëm', 'rreth', 'midis', 'nën', 'mbi', 'tjera'],
+    chars: /[ëç]/i,
+  },
+  pl: {
+    words: ['jest', 'nie', 'się', 'dla', 'jak', 'czy', 'już', 'też', 'ale', 'gdzie', 'przez', 'które', 'został', 'między', 'jednak', 'przed', 'według', 'podczas', 'bardzo', 'nowej'],
+    chars: /[ąęśźżłń]/i,
+  },
+  sr: {
+    words: ['je', 'su', 'koji', 'koja', 'koje', 'ali', 'kako', 'što', 'kod', 'prema', 'nakon', 'zbog', 'nego', 'već', 'između', 'može', 'samo', 'biti', 'ovaj', 'tako'],
+    chars: /[đ]/i, // đ is uniquely Serbian (ć, č, š, ž exist in Croatian too but that's OK)
+  },
+  en: {
+    words: ['the', 'and', 'for', 'with', 'from', 'this', 'that', 'which', 'have', 'been', 'will', 'after', 'about', 'between', 'during', 'before', 'against', 'through'],
+    chars: null,
+  },
+};
+
+/**
+ * Count how many marker words from a language appear in the text.
+ * Returns a score 0..1 (fraction of markers found).
+ */
+function markerScore(text: string, lang: string): number {
+  const markers = LANGUAGE_MARKERS[lang];
+  if (!markers) return 0;
+
+  const lowerText = ' ' + text.toLowerCase() + ' ';
+  let found = 0;
+
+  // Check character markers
+  if (markers.chars && markers.chars.test(text)) {
+    found += 3; // Character markers are strong signals
+  }
+
+  // Check word markers (whole word match)
+  for (const word of markers.words) {
+    // Match word boundaries using spaces, punctuation, start/end
+    const regex = new RegExp(`(?:^|[\\s.,;:!?()\\[\\]"'])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[\\s.,;:!?()\\[\\]"'])`, 'i');
+    if (regex.test(lowerText)) {
+      found++;
+    }
+  }
+
+  return found / (markers.words.length + 3); // +3 for char marker weight
+}
+
 export interface LanguageValidationResult {
   expected: string;
-  detected: string;       // our code (sr/pl/sq/en)
-  detectedRaw: string;    // franc ISO 639-3 code
+  detected: string;
+  detectedRaw: string;
   isMatch: boolean;
-  confidence: string;     // 'high' | 'low' | 'undetermined'
+  confidence: 'high' | 'medium' | 'low' | 'undetermined';
+  method: 'franc' | 'markers' | 'both' | 'fail-open';
   combinedTextLength: number;
 }
 
-/**
- * Validate that generated titles are in the expected language.
- * 
- * @param titles - Array of generated title strings
- * @param expectedLang - Expected language code ('sr', 'pl', 'sq', 'en')
- * @returns Validation result with match status
- */
 export async function validateTitleLanguage(
   titles: string[],
   expectedLang: string
 ): Promise<LanguageValidationResult> {
-  // Combine all titles for better detection accuracy
   const combinedText = titles.join('. ');
   const textLength = combinedText.length;
 
-  // Dynamic import for franc-min (ESM module)
-  let francDetect: (text: string) => string;
+  // === Step 1: franc detection ===
+  let francResult = 'und';
   try {
-    // franc-min exports { franc } as named export
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const francModule = require('franc-min');
-    francDetect = francModule.franc || francModule;
-  } catch (e) {
-    console.warn('⚠️ [LangValidator] franc-min not available, skipping validation');
+    const francFn = francModule.franc || francModule;
+    francResult = francFn(combinedText);
+  } catch {
+    console.warn('⚠️ [LangValidator] franc-min not available');
+  }
+
+  const francLang = ISO639_3_TO_OURS[francResult] || null;
+  const francMatch = francLang === expectedLang ||
+    (OUR_TO_ISO639_3[expectedLang] || []).includes(francResult);
+
+  // === Step 2: If franc gives clear answer, use it ===
+  if (francResult !== 'und' && francLang !== null) {
+    if (francMatch) {
+      console.log(`✅ [LangValidator] franc: ${expectedLang}==${francLang} ✓ (${francResult}, ${textLength} chars)`);
+      return {
+        expected: expectedLang,
+        detected: francLang,
+        detectedRaw: francResult,
+        isMatch: true,
+        confidence: textLength >= 300 ? 'high' : 'medium',
+        method: 'franc',
+        combinedTextLength: textLength,
+      };
+    }
+    // franc detected a KNOWN DIFFERENT language → strong mismatch signal
+    console.warn(`⚠️ [LangValidator] franc: expected ${expectedLang}, got ${francLang} (${francResult}) — MISMATCH`);
+    return {
+      expected: expectedLang,
+      detected: francLang,
+      detectedRaw: francResult,
+      isMatch: false,
+      confidence: textLength >= 300 ? 'high' : 'medium',
+      method: 'franc',
+      combinedTextLength: textLength,
+    };
+  }
+
+  // === Step 3: franc inconclusive → use marker scoring ===
+  console.log(`🔍 [LangValidator] franc inconclusive (${francResult}), falling back to markers...`);
+
+  const expectedScore = markerScore(combinedText, expectedLang);
+
+  // Check if any OTHER language scores higher
+  const otherLangs = Object.keys(LANGUAGE_MARKERS).filter(l => l !== expectedLang);
+  let highestOther = { lang: '', score: 0 };
+  for (const lang of otherLangs) {
+    const score = markerScore(combinedText, lang);
+    if (score > highestOther.score) {
+      highestOther = { lang, score };
+    }
+  }
+
+  console.log(`🔍 [LangValidator] Marker scores: ${expectedLang}=${expectedScore.toFixed(2)}, best other=${highestOther.lang}:${highestOther.score.toFixed(2)}`);
+
+  // Decision: if expected language has reasonable markers OR no other language dominates
+  if (expectedScore >= 0.05) {
+    // Expected language markers found
+    console.log(`✅ [LangValidator] Markers confirm ${expectedLang} (score: ${expectedScore.toFixed(2)})`);
     return {
       expected: expectedLang,
       detected: expectedLang,
-      detectedRaw: 'und',
-      isMatch: true, // fail open if library not available
-      confidence: 'undetermined',
+      detectedRaw: francResult,
+      isMatch: true,
+      confidence: expectedScore >= 0.15 ? 'high' : 'medium',
+      method: 'markers',
       combinedTextLength: textLength,
     };
   }
 
-  const detectedRaw = francDetect(combinedText);
-
-  // Map franc result to our language code
-  const detectedLang = ISO639_3_TO_OURS[detectedRaw] || 'unknown';
-
-  // Check if it matches expected
-  const acceptableCodes = OUR_TO_ISO639_3[expectedLang] || [];
-  const isMatch = acceptableCodes.includes(detectedRaw);
-
-  // Confidence based on text length
-  const confidence = textLength >= 300 ? 'high' : textLength >= 150 ? 'low' : 'undetermined';
-
-  // If undetermined by franc (too short), fail open
-  if (detectedRaw === 'und') {
+  if (highestOther.score > expectedScore && highestOther.score >= 0.1) {
+    // Another language clearly dominates
+    console.warn(`⚠️ [LangValidator] Markers suggest ${highestOther.lang} (${highestOther.score.toFixed(2)}) instead of ${expectedLang} (${expectedScore.toFixed(2)})`);
     return {
       expected: expectedLang,
-      detected: 'undetermined',
-      detectedRaw,
-      isMatch: true, // don't block if we can't determine
-      confidence: 'undetermined',
+      detected: highestOther.lang,
+      detectedRaw: francResult,
+      isMatch: false,
+      confidence: 'medium',
+      method: 'markers',
       combinedTextLength: textLength,
     };
   }
 
-  const emoji = isMatch ? '✅' : '⚠️';
-  console.log(`${emoji} [LangValidator] Expected: ${expectedLang}, Detected: ${detectedLang} (${detectedRaw}), Match: ${isMatch}, Confidence: ${confidence}, Text: ${textLength} chars`);
-
+  // Inconclusive — fail open (don't block)
+  console.log(`🤷 [LangValidator] Inconclusive, failing open for ${expectedLang}`);
   return {
     expected: expectedLang,
-    detected: detectedLang,
-    detectedRaw,
-    isMatch,
-    confidence,
+    detected: expectedLang,
+    detectedRaw: francResult,
+    isMatch: true,
+    confidence: 'undetermined',
+    method: 'fail-open',
     combinedTextLength: textLength,
   };
 }
