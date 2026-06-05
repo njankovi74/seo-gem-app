@@ -31,7 +31,18 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { title, body: articleBody, lead, language: reqLang } = body;
-    const language: SupportedLanguage = (reqLang && isValidLanguage(reqLang)) ? reqLang : 'sr';
+
+    // Language resolution: request param > portal-based fallback > 'sr'
+    const portalLangMap: Record<string, SupportedLanguage> = {
+      newsmax_al: 'sq',
+      newsmax_pl: 'pl',
+      newsmax_en: 'en',
+      newsmax: 'sr',
+    };
+    const portalLang = auth.portalId ? portalLangMap[auth.portalId] : undefined;
+    const language: SupportedLanguage = (reqLang && isValidLanguage(reqLang))
+      ? reqLang
+      : portalLang || 'sr';
 
     if (!articleBody || articleBody.trim().length < 100) {
       return cmsErrorResponse('Tekst članka mora imati najmanje 100 karaktera.', 400, origin);
