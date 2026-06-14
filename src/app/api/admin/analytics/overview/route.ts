@@ -64,21 +64,43 @@ export async function GET(request: NextRequest) {
         .gte('date', startDate)
         .lte('date', endDate);
 
-      // GA4 aggregates
+      // GA4 aggregates — full per-URL data for cross-referencing
       const { data: ga4 } = await sb
         .from('article_ga4_metrics')
-        .select('pageviews, sessions, avg_engagement_seconds, pages_per_session, country_breakdown')
+        .select('article_url, pageviews, sessions, avg_engagement_seconds, pages_per_session, country_breakdown')
         .eq('portal_id', portal.portal_id)
         .gte('date', startDate)
         .lte('date', endDate);
 
-      // Count SEO GEM articles
+      // Get ALL SEO GEM article URLs for this portal (not just the period)
+      const { data: seoGemArticles } = await sb
+        .from('title_history')
+        .select('article_url')
+        .eq('portal_id', portal.portal_id);
+
+      // Count SEO GEM articles created in this period
       const { count: seoGemCount } = await sb
         .from('title_history')
         .select('id', { count: 'exact', head: true })
         .eq('portal_id', portal.portal_id)
         .gte('created_at', `${startDate}T00:00:00`)
         .lte('created_at', `${endDate}T23:59:59`);
+
+      // Total SEO GEM articles ever
+      const { count: seoGemTotal } = await sb
+        .from('title_history')
+        .select('id', { count: 'exact', head: true })
+        .eq('portal_id', portal.portal_id);
+
+      // Build set of SEO GEM URL paths for matching
+      const seoGemPaths = new Set<string>();
+      for (const art of (seoGemArticles || [])) {
+        try {
+          seoGemPaths.add(new URL(art.article_url).pathname);
+        } catch {
+          seoGemPaths.add(art.article_url);
+        }
+      }
 
       // Calculate totals
       const webImpressions = (gscWeb || []).reduce((s, r) => s + r.impressions, 0);
@@ -88,32 +110,46 @@ export async function GET(request: NextRequest) {
       const totalImpressions = webImpressions + discoverImpressions;
       const totalClicks = webClicks + discoverClicks;
 
-      const totalPageviews = (ga4 || []).reduce((s, r) => s + r.pageviews, 0);
-      const totalSessions = (ga4 || []).reduce((s, r) => s + r.sessions, 0);
-      const avgEngagement = (ga4 || []).length > 0
-        ? (ga4 || []).reduce((s, r) => s + r.avg_engagement_seconds, 0) / (ga4 || []).length
-        : 0;
-      const avgPPS = (ga4 || []).length > 0
-        ? (ga4 || []).reduce((s, r) => s + r.pages_per_session, 0) / (ga4 || []).length
-        : 0;
-
-      // Aggregate country data from last GA4 entry
+      // GA4 totals + SEO GEM filtered
+      let totalPageviews = 0, totalSessions = 0, totalEngagement = 0, totalPPS = 0;
+      let gemPageviews = 0, gemSessions = 0, gemEngagement = 0, gemPPS = 0, gemCount = 0;
       const countryTotals: Record<string, number> = {};
+
       for (const row of (ga4 || [])) {
+        totalPageviews += row.pageviews;
+        totalSessions += row.sessions;
+        totalEngagement += row.avg_engagement_seconds;
+        totalPPS += row.pages_per_session;
+
+        // Check if this URL is a SEO GEM article
+        const path = row.article_url.startsWith('/') ? row.article_url : `/${row.article_url}`;
+        if (seoGemPaths.has(path)) {
+          gemPageviews += row.pageviews;
+          gemSessions += row.sessions;
+          gemEngagement += row.avg_engagement_seconds;
+          gemPPS += row.pages_per_session;
+          gemCount += 1;
+        }
+
+        // Country aggregation
         if (row.country_breakdown) {
           for (const [country, count] of Object.entries(row.country_breakdown)) {
             countryTotals[country] = (countryTotals[country] || 0) + (count as number);
           }
         }
       }
+
+      const ga4Count = (ga4 || []).length;
+      const avgEngagement = ga4Count > 0 ? totalEngagement / ga4Count : 0;
+      const avgPPS = ga4Count > 0 ? totalPPS / ga4Count : 0;
+      const gemAvgEngagement = gemCount > 0 ? gemEngagement / gemCount : 0;
+      const gemAvgPPS = gemCount > 0 ? gemPPS / gemCount : 0;
+
       // Top 5 countries
       const topCountries = Object.entries(countryTotals)
         .sort(([, a], [, b]) => (b as number) - (a as number))
         .slice(0, 5)
         .map(([country, sessions]) => ({ country, sessions }));
-
-      // Unique URLs count
-      const uniqueWebUrls = new Set((gscWeb || []).map(r => JSON.stringify(r))).size; // approximate
 
       overview.push({
         portal_id: portal.portal_id,
@@ -122,7 +158,8 @@ export async function GET(request: NextRequest) {
           gsc: portal.last_gsc_sync_at,
           ga4: portal.last_ga4_sync_at,
         },
-        seo_gem_articles: seoGemCount || 0,
+        seo_gem_articles_period: seoGemCount || 0,
+        seo_gem_articles_total: seoGemTotal || 0,
         gsc: {
           total_impressions: totalImpressions,
           total_clicks: totalClicks,
@@ -138,6 +175,13 @@ export async function GET(request: NextRequest) {
           avg_engagement_sec: Math.round(avgEngagement),
           pages_per_session: Math.round(avgPPS * 10) / 10,
           top_countries: topCountries,
+          // SEO GEM specific GA4 data
+          gem_pageviews: gemPageviews,
+          gem_sessions: gemSessions,
+          gem_avg_engagement_sec: Math.round(gemAvgEngagement),
+          gem_pages_per_session: Math.round(gemAvgPPS * 10) / 10,
+          gem_pageviews_pct: totalPageviews > 0 ? Math.round((gemPageviews / totalPageviews) * 1000) / 10 : 0,
+          gem_sessions_pct: totalSessions > 0 ? Math.round((gemSessions / totalSessions) * 1000) / 10 : 0,
         },
       });
     }

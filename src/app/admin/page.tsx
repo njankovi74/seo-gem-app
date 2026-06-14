@@ -13,7 +13,8 @@ import { useState, useEffect, useCallback } from 'react';
 interface PortalOverview {
   portal_id: string;
   portal_name: string;
-  seo_gem_articles: number;
+  seo_gem_articles_period: number;
+  seo_gem_articles_total: number;
   gsc: {
     total_impressions: number;
     total_clicks: number;
@@ -27,6 +28,12 @@ interface PortalOverview {
     avg_engagement_sec: number;
     pages_per_session: number;
     top_countries: Array<{ country: string; sessions: number }>;
+    gem_pageviews: number;
+    gem_sessions: number;
+    gem_avg_engagement_sec: number;
+    gem_pages_per_session: number;
+    gem_pageviews_pct: number;
+    gem_sessions_pct: number;
   };
 }
 
@@ -283,16 +290,35 @@ export default function AdminDashboard() {
                 <span style={{ fontSize: 28 }}>{PORTAL_FLAGS[p.portal_id] || '🌐'}</span>
                 <h2 style={S.cardTitle}>{p.portal_name}</h2>
               </div>
+              {/* GSC red */}
+              <div style={S.sectionLabel}>🔍 Google Search Console</div>
               <div style={S.mGrid}>
                 <MBox label="Impressions" value={formatNum(p.gsc.total_impressions)} src="GSC" />
                 <MBox label="Clicks" value={formatNum(p.gsc.total_clicks)} src="GSC" />
                 <MBox label="CTR" value={p.gsc.ctr + '%'} src="GSC" hi={p.gsc.ctr > 4} />
                 <MBox label="Discover" value={formatNum(p.gsc.discover_impressions)} src="GSC" />
+              </div>
+
+              {/* GA4 total */}
+              <div style={{ ...S.sectionLabel, marginTop: 14 }}>📈 GA4 — Ceo sajt</div>
+              <div style={S.mGrid}>
                 <MBox label="Pageviews" value={formatNum(p.ga4.pageviews)} src="GA4" />
                 <MBox label="Sessions" value={formatNum(p.ga4.sessions)} src="GA4" />
                 <MBox label="Engagement" value={formatSec(p.ga4.avg_engagement_sec)} src="GA4" />
                 <MBox label="Pages/Ses" value={String(p.ga4.pages_per_session)} src="GA4" />
               </div>
+
+              {/* GA4 SEO GEM only */}
+              <div style={{ ...S.sectionLabel, marginTop: 14, color: '#a78bfa' }}>💎 GA4 — Samo SEO GEM članci</div>
+              <div style={S.mGrid}>
+                <MBox label="Pageviews" value={formatNum(p.ga4.gem_pageviews)} src="GEM"
+                  sub={`${p.ga4.gem_pageviews_pct}% sajta`} hi={p.ga4.gem_pageviews_pct > 30} />
+                <MBox label="Sessions" value={formatNum(p.ga4.gem_sessions)} src="GEM"
+                  sub={`${p.ga4.gem_sessions_pct}% sajta`} hi={p.ga4.gem_sessions_pct > 30} />
+                <MBox label="Engagement" value={formatSec(p.ga4.gem_avg_engagement_sec)} src="GEM" />
+                <MBox label="Pages/Ses" value={String(p.ga4.gem_pages_per_session)} src="GEM" />
+              </div>
+
               {p.ga4.top_countries.length > 0 && (
                 <div style={S.countries}>
                   🌍 {p.ga4.top_countries.map((c, i) => (
@@ -300,7 +326,10 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               )}
-              <div style={S.gemBadge}>SEO GEM članaka: <strong>{p.seo_gem_articles}</strong></div>
+              <div style={S.gemBadge}>
+                SEO GEM članaka u periodu: <strong>{p.seo_gem_articles_period}</strong>
+                &nbsp;│&nbsp; Ukupno: <strong>{p.seo_gem_articles_total}</strong>
+              </div>
             </div>
           ))}
         </div>
@@ -401,12 +430,20 @@ export default function AdminDashboard() {
 }
 
 // ── Metric Box ──
-function MBox({ label, value, src, hi }: { label: string; value: string; src: string; hi?: boolean }) {
+function MBox({ label, value, src, hi, sub }: { label: string; value: string; src: string; hi?: boolean; sub?: string }) {
+  const srcColor = src === 'GEM' ? '#a78bfa' : src === 'GA4' ? '#34d399' : '#60a5fa';
   return (
-    <div style={S.mBox} title={`${label} — izvor: ${src}`}>
+    <div style={{
+      ...S.mBox,
+      ...(src === 'GEM' ? { border: '1px solid #a78bfa30' } : {}),
+    }} title={`${label} — izvor: ${src}`}>
       <div style={S.mLabel}>{label}</div>
-      <div style={{ ...S.mVal, ...(hi ? { color: '#10b981' } : {}) }}>{value}</div>
-      <div style={S.mSrc}>{src}</div>
+      <div style={{ ...S.mVal, ...(hi ? { color: '#10b981' } : {}), ...(src === 'GEM' ? { color: '#a78bfa' } : {}) }}>{value}</div>
+      {sub ? (
+        <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{sub}</div>
+      ) : (
+        <div style={{ ...S.mSrc, color: srcColor }}>{src}</div>
+      )}
     </div>
   );
 }
@@ -489,6 +526,7 @@ const S: Record<string, React.CSSProperties> = {
   card: { background: '#1e293b', borderRadius: 12, padding: 20, border: '1px solid #334155' },
   cardHead: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 },
   cardTitle: { margin: 0, fontSize: 17, fontWeight: 600 },
+  sectionLabel: { fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.5px' },
   mGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 },
   mBox: { background: '#0f172a', borderRadius: 8, padding: '10px 6px', textAlign: 'center' },
   mLabel: { fontSize: 10, color: '#64748b', marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.5px' },
