@@ -38,23 +38,27 @@ interface PortalOverview {
 }
 
 interface Article {
+  article_id: string;
   url: string;
-  seo_title: string | null;
-  style: string | null;
-  published_at: string | null;
-  age_days: number | null;
-  has_seo_gem: boolean;
+  seo_title: string;
+  style: string;
+  selection_type: string;
+  published_at: string;
+  age_days: number;
   impressions: number;
   clicks: number;
   ctr: number;
   avg_position: number | null;
   discover_impressions: number;
   top_queries: Array<{ query: string; impressions: number; clicks: number }>;
+  has_gsc: boolean;
   pageviews: number;
   sessions: number;
   avg_engagement_sec: number;
   pages_per_session: number;
   organic_pct: number;
+  direct_pct: number;
+  has_ga4: boolean;
   status: 'early' | 'ok' | 'warning' | 'top';
 }
 
@@ -82,18 +86,18 @@ const PORTAL_FLAGS: Record<string, string> = {
 };
 
 const COLUMNS = [
-  { key: 'status', label: '', tooltip: 'Status članka', width: 40 },
-  { key: 'published', label: 'Objav.', tooltip: 'Datum objave (iz SEO GEM)', width: 70 },
-  { key: 'title', label: 'SEO Naslov / URL', tooltip: 'Naslov generisan kroz SEO GEM', width: 320 },
-  { key: 'age', label: 'Star.', tooltip: 'Starost članka u danima od objave', width: 50 },
-  { key: 'impressions', label: 'Impr.', tooltip: 'Impressions — broj prikaza u Google rezultatima (GSC)', width: 70 },
-  { key: 'clicks', label: 'Clicks', tooltip: 'Clicks — broj klikova iz Google rezultata (GSC)', width: 60 },
-  { key: 'ctr', label: 'CTR', tooltip: 'Click-Through Rate — procenat klikova od prikaza (GSC)', width: 55 },
-  { key: 'position', label: 'Poz.', tooltip: 'Prosečna pozicija u Google pretrazi (GSC)', width: 50 },
-  { key: 'discover', label: 'Disc.', tooltip: 'Impressions iz Google Discover (GSC)', width: 55 },
-  { key: 'pageviews', label: 'Views', tooltip: 'Pageviews — ukupno pregleda stranice (GA4)', width: 60 },
-  { key: 'engagement', label: 'Eng.', tooltip: 'Prosečno vreme zadržavanja korisnika (GA4)', width: 55 },
-  { key: 'pps', label: 'Str/S', tooltip: 'Strane po sesiji — interlinking signal (GA4)', width: 50 },
+  { key: 'status', label: '', src: '', tip: 'Status članka' },
+  { key: 'published', label: 'Objavljeno', src: 'GEM', tip: 'Datum kada je SEO GEM kreirao naslov za ovaj članak' },
+  { key: 'title', label: 'SEO Naslov', src: 'GEM', tip: 'Naslov generisan ili odabran kroz SEO GEM alat' },
+  { key: 'age', label: 'Starost', src: '', tip: 'Koliko dana je prošlo od kreiranja naslova' },
+  { key: 'impressions', label: 'Impr.', src: 'GSC', tip: 'Google Search Console: Koliko puta se članak pojavio u Google pretrazivačkim rezultatima' },
+  { key: 'clicks', label: 'Klikovi', src: 'GSC', tip: 'Google Search Console: Koliko puta su korisnici kliknuli na članak iz Google rezultata' },
+  { key: 'ctr', label: 'CTR', src: 'GSC', tip: 'Google Search Console: Click-Through Rate — procenat korisnika koji su kliknuli na članak od ukupnog broja koji su ga videli' },
+  { key: 'position', label: 'Pozicija', src: 'GSC', tip: 'Google Search Console: Prosečna pozicija članka u Google rezultatima pretrage (niže = bolje)' },
+  { key: 'discover', label: 'Discover', src: 'GSC', tip: 'Google Search Console: Broj prikaza članka u Google Discover feed-u' },
+  { key: 'pageviews', label: 'Pregledi', src: 'GA4', tip: 'Google Analytics 4: Ukupan broj pregleda stranice u izabranom periodu (svi izvori saobraćaja)' },
+  { key: 'engagement', label: 'Angažman', src: 'GA4', tip: 'Google Analytics 4: Prosečno vreme koje korisnik provodi na stranici' },
+  { key: 'pps', label: 'Str/Sesija', src: 'GA4', tip: 'Google Analytics 4: Prosečan broj stranica po sesiji — pokazuje koliko članak podstiče dalje čitanje (interlinking)' },
 ];
 
 // ── Helpers ──
@@ -161,8 +165,8 @@ export default function AdminDashboard() {
       const artData = await artRes.json();
       if (!artData.success) throw new Error(artData.error);
       setArticles(artData.articles);
-      setTotalArticles(artData.total);
-      setSeoGemCount(artData.seo_gem_count);
+      setTotalArticles(artData.total_seo_gem);
+      setSeoGemCount(artData.with_analytics);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load data');
     } finally {
@@ -309,7 +313,11 @@ export default function AdminDashboard() {
               </div>
 
               {/* GA4 SEO GEM only */}
-              <div style={{ ...S.sectionLabel, marginTop: 14, color: '#a78bfa' }}>💎 GA4 — Samo SEO GEM članci</div>
+              <div style={{ ...S.sectionLabel, marginTop: 14, color: '#a78bfa', cursor: 'help' }}
+                title="GA4 pregledi i sesije SVIH članaka koji su ikada prošli kroz SEO GEM, filtrirani po izabranom vremenskom periodu. Uključuje sve članke sa odgovarajućim article ID-om u bazi, ne samo one kreirane u ovom periodu.">
+                💎 GA4 — Samo SEO GEM članci
+                <span style={{ fontSize: 9, marginLeft: 6, opacity: 0.7 }}>ⓘ svi GEM članci ikada, u izabranom periodu</span>
+              </div>
               <div style={S.mGrid}>
                 <MBox label="Pageviews" value={formatNum(p.ga4.gem_pageviews)} src="GEM"
                   sub={`${p.ga4.gem_pageviews_pct}% sajta`} hi={p.ga4.gem_pageviews_pct > 30} />
@@ -347,39 +355,41 @@ export default function AdminDashboard() {
               </button>
             ))}
             <span style={S.artCount}>
-              {totalArticles} URL-ova │ {seoGemCount} SEO GEM
+              💎 {totalArticles} SEO GEM članaka │ {seoGemCount} sa analitikom
             </span>
           </div>
 
           {/* Table */}
           <div style={S.tableWrap}>
-            <table style={S.table}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr>
                   {COLUMNS.map(col => (
-                    <th key={col.key} title={col.tooltip}
-                      style={{ ...S.th, width: col.width, minWidth: col.width, cursor: 'help' }}>
+                    <th key={col.key} title={col.tip}
+                      style={{
+                        ...S.th,
+                        cursor: 'help',
+                        ...(col.key === 'title' ? { textAlign: 'left', minWidth: 280 } : {}),
+                        ...(col.key === 'status' ? { width: 36 } : {}),
+                      }}>
                       {col.label}
-                      {col.tooltip.includes('GSC') && <span style={S.srcTag}>GSC</span>}
-                      {col.tooltip.includes('GA4') && <span style={S.srcTagGA}>GA4</span>}
+                      {col.src === 'GSC' && <span style={S.srcTag}>GSC</span>}
+                      {col.src === 'GA4' && <span style={S.srcTagGA}>GA4</span>}
+                      {col.src === 'GEM' && <span style={S.srcTagGem}>GEM</span>}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {articles.map((a, i) => (
-                  <tr key={i} style={i % 2 === 0 ? S.rowE : S.rowO}
+                  <tr key={a.article_id} style={i % 2 === 0 ? S.rowE : S.rowO}
                     title={STATUS_LABELS[a.status]}>
-                    {/* Status */}
                     <td style={S.tdC}>{STATUS_ICONS[a.status]}</td>
-                    {/* Published */}
                     <td style={S.tdC}>{formatDate(a.published_at)}</td>
-                    {/* Title */}
                     <td style={S.tdTitle}>
                       <div style={S.titleRow}>
-                        <span style={S.titleTxt}>{a.seo_title || '(bez naslova)'}</span>
-                        {a.style && <span style={S.badge}>{a.style}</span>}
-                        {!a.has_seo_gem && <span style={S.badgeNo}>—</span>}
+                        <span style={S.titleTxt}>{a.seo_title}</span>
+                        <span style={S.badge}>{a.style}</span>
                       </div>
                       <div style={S.urlTxt}>{a.url}</div>
                       {a.top_queries.length > 0 && (
@@ -390,30 +400,21 @@ export default function AdminDashboard() {
                         </div>
                       )}
                     </td>
-                    {/* Age */}
-                    <td style={S.tdR}>{a.age_days !== null ? `${a.age_days}d` : '—'}</td>
-                    {/* Impressions */}
-                    <td style={S.tdR}>{formatNum(a.impressions)}</td>
-                    {/* Clicks */}
-                    <td style={S.tdR}>{formatNum(a.clicks)}</td>
-                    {/* CTR */}
+                    <td style={S.tdR}>{a.age_days}d</td>
+                    <td style={S.tdR}>{a.has_gsc ? formatNum(a.impressions) : '—'}</td>
+                    <td style={S.tdR}>{a.has_gsc ? formatNum(a.clicks) : '—'}</td>
                     <td style={{
                       ...S.tdR,
-                      color: a.ctr > 6 ? '#10b981' : (a.ctr < 2 && a.status !== 'early') ? '#ef4444' : '#e2e8f0',
+                      color: a.ctr > 6 ? '#10b981' : (a.ctr < 2 && a.status !== 'early' && a.has_gsc) ? '#ef4444' : '#e2e8f0',
                       fontWeight: 600,
                     }}>
-                      {a.ctr}%
+                      {a.has_gsc ? `${a.ctr}%` : '—'}
                     </td>
-                    {/* Position */}
                     <td style={S.tdR}>{a.avg_position ?? '—'}</td>
-                    {/* Discover */}
                     <td style={S.tdR}>{a.discover_impressions > 0 ? formatNum(a.discover_impressions) : '—'}</td>
-                    {/* Pageviews */}
-                    <td style={S.tdR}>{formatNum(a.pageviews)}</td>
-                    {/* Engagement */}
-                    <td style={S.tdR}>{formatSec(a.avg_engagement_sec)}</td>
-                    {/* PPS */}
-                    <td style={S.tdR}>{a.pages_per_session}</td>
+                    <td style={S.tdR}>{a.has_ga4 ? formatNum(a.pageviews) : '—'}</td>
+                    <td style={S.tdR}>{a.has_ga4 ? formatSec(a.avg_engagement_sec) : '—'}</td>
+                    <td style={S.tdR}>{a.has_ga4 ? a.pages_per_session : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -421,7 +422,8 @@ export default function AdminDashboard() {
           </div>
 
           <div style={S.legend}>
-            🕐 Rani podaci (&lt;7d) &nbsp;│&nbsp; ✅ OK &nbsp;│&nbsp; ⚠️ Nizak CTR &nbsp;│&nbsp; 🔥 Top performer
+            🕐 Rani (&lt;7d) &nbsp;│&nbsp; ✅ OK &nbsp;│&nbsp; ⚠️ Nizak CTR &nbsp;│&nbsp; 🔥 Top &nbsp;│&nbsp;
+            Analitika: GSC podaci kasne 2-3 dana
           </div>
         </div>
       )}
@@ -572,6 +574,10 @@ const S: Record<string, React.CSSProperties> = {
   srcTagGA: {
     display: 'inline-block', marginLeft: 4, padding: '0 4px', borderRadius: 3,
     background: '#10b98120', color: '#34d399', fontSize: 8, verticalAlign: 'middle',
+  },
+  srcTagGem: {
+    display: 'inline-block', marginLeft: 4, padding: '0 4px', borderRadius: 3,
+    background: '#a78bfa20', color: '#a78bfa', fontSize: 8, verticalAlign: 'middle',
   },
   rowE: { background: '#1e293b' },
   rowO: { background: '#1a2332' },
