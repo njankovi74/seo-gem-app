@@ -58,7 +58,7 @@ export async function fetchGA4Data(portalId: string, startDate: string, endDate:
           { name: 'bounceRate' },
           { name: 'screenPageViewsPerSession' },
         ],
-        limit: 500,
+        limit: 10000,
         orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
       }),
     }
@@ -112,7 +112,7 @@ export async function fetchGA4TrafficSources(portalId: string, startDate: string
           { name: 'sessionDefaultChannelGroup' },
         ],
         metrics: [{ name: 'sessions' }],
-        limit: 5000,
+        limit: 10000,
         orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
       }),
     }

@@ -92,14 +92,12 @@ export async function GET(request: NextRequest) {
         .select('id', { count: 'exact', head: true })
         .eq('portal_id', portal.portal_id);
 
-      // Build set of SEO GEM URL paths for matching
-      const seoGemPaths = new Set<string>();
+      // Build set of SEO GEM article IDs for matching (extract numeric ID from URL)
+      const seoGemIds = new Set<string>();
       for (const art of (seoGemArticles || [])) {
-        try {
-          seoGemPaths.add(new URL(art.article_url).pathname);
-        } catch {
-          seoGemPaths.add(art.article_url);
-        }
+        if (!art.article_url) continue;
+        const match = art.article_url.match(/\/(\d+)\//);
+        if (match) seoGemIds.add(match[1]);
       }
 
       // Calculate totals
@@ -121,9 +119,9 @@ export async function GET(request: NextRequest) {
         totalEngagement += row.avg_engagement_seconds;
         totalPPS += row.pages_per_session;
 
-        // Check if this URL is a SEO GEM article
-        const path = row.article_url.startsWith('/') ? row.article_url : `/${row.article_url}`;
-        if (seoGemPaths.has(path)) {
+        // Check if this URL contains a SEO GEM article ID
+        const idMatch = row.article_url.match(/\/(\d+)\//);
+        if (idMatch && seoGemIds.has(idMatch[1])) {
           gemPageviews += row.pageviews;
           gemSessions += row.sessions;
           gemEngagement += row.avg_engagement_seconds;
