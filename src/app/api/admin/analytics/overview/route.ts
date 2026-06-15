@@ -64,19 +64,16 @@ export async function GET(request: NextRequest) {
         .gte('date', startDate)
         .lte('date', endDate);
 
-      // GA4 aggregates — full per-URL data for cross-referencing
-      const { data: ga4 } = await sb
-        .from('article_ga4_metrics')
-        .select('article_url, pageviews, sessions, avg_engagement_seconds, pages_per_session, country_breakdown')
-        .eq('portal_id', portal.portal_id)
-        .gte('date', startDate)
-        .lte('date', endDate);
+      // GA4 aggregates — paginated to get ALL data
+      const ga4 = await fetchAll(sb, 'article_ga4_metrics',
+        'article_url, pageviews, sessions, avg_engagement_seconds, pages_per_session, country_breakdown',
+        { portal_id: portal.portal_id },
+        startDate, endDate
+      );
 
-      // Get ALL SEO GEM article URLs for this portal (not just the period)
-      const { data: seoGemArticles } = await sb
-        .from('title_history')
-        .select('article_url')
-        .eq('portal_id', portal.portal_id);
+      // Get ALL SEO GEM article URLs for this portal
+      const seoGemArticles = await fetchAllSimple(sb, 'title_history', 'article_url',
+        { portal_id: portal.portal_id });
 
       // Count SEO GEM articles created in this period
       const { count: seoGemCount } = await sb
@@ -92,11 +89,13 @@ export async function GET(request: NextRequest) {
         .select('id', { count: 'exact', head: true })
         .eq('portal_id', portal.portal_id);
 
-      // Build set of SEO GEM article IDs for matching (extract numeric ID from URL)
+      // Build set of SEO GEM article IDs for matching
+      // Extract the numeric article ID from URLs like /category/vesti/12345/slug/vest
       const seoGemIds = new Set<string>();
-      for (const art of (seoGemArticles || [])) {
+      for (const art of seoGemArticles) {
         if (!art.article_url) continue;
-        const match = art.article_url.match(/\/(\d+)\//);
+        // Match numeric ID that's at least 4 digits (to exclude small author IDs etc)
+        const match = art.article_url.match(/\/(\d{4,})\//);
         if (match) seoGemIds.add(match[1]);
       }
 
@@ -120,7 +119,7 @@ export async function GET(request: NextRequest) {
         totalPPS += row.pages_per_session;
 
         // Check if this URL contains a SEO GEM article ID
-        const idMatch = row.article_url.match(/\/(\d+)\//);
+        const idMatch = row.article_url.match(/\/(\d{4,})\//);
         if (idMatch && seoGemIds.has(idMatch[1])) {
           gemPageviews += row.pageviews;
           gemSessions += row.sessions;
@@ -198,3 +197,57 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+/** Paginated fetch for analytics tables (overcomes Supabase 1000-row default) */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchAll(
+  sb: any,
+  table: string,
+  select: string,
+  filters: Record<string, string>,
+  startDate: string,
+  endDate: string,
+  pageSize = 1000
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const all: any[] = [];
+  let from = 0;
+  while (true) {
+    let q = sb.from(table).select(select).range(from, from + pageSize - 1);
+    for (const [k, v] of Object.entries(filters)) q = q.eq(k, v);
+    q = q.gte('date', startDate).lte('date', endDate);
+    const { data } = await q;
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
+/** Paginated fetch for simple queries without date range */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchAllSimple(
+  sb: any,
+  table: string,
+  select: string,
+  filters: Record<string, string>,
+  pageSize = 1000
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const all: any[] = [];
+  let from = 0;
+  while (true) {
+    let q = sb.from(table).select(select).range(from, from + pageSize - 1);
+    for (const [k, v] of Object.entries(filters)) q = q.eq(k, v);
+    const { data } = await q;
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
