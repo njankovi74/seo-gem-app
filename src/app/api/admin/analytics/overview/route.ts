@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
 
       // GA4 aggregates — paginated to get ALL data
       const ga4 = await fetchAll(sb, 'article_ga4_metrics',
-        'article_url, pageviews, sessions, avg_engagement_seconds, pages_per_session, country_breakdown',
+        'article_url, pageviews, sessions, avg_engagement_seconds, pages_per_session, country_breakdown, organic_pct, direct_pct',
         { portal_id: portal.portal_id },
         startDate, endDate
       );
@@ -110,6 +110,7 @@ export async function GET(request: NextRequest) {
       // GA4 totals + SEO GEM filtered
       let totalPageviews = 0, totalSessions = 0, totalEngagement = 0, totalPPS = 0;
       let gemPageviews = 0, gemSessions = 0, gemEngagement = 0, gemPPS = 0, gemCount = 0;
+      let gemOrganicDirectViews = 0;
       const countryTotals: Record<string, number> = {};
 
       for (const row of (ga4 || [])) {
@@ -126,6 +127,9 @@ export async function GET(request: NextRequest) {
           gemEngagement += row.avg_engagement_seconds;
           gemPPS += row.pages_per_session;
           gemCount += 1;
+          // Calculate Organic + Direct portion of pageviews
+          const orgDirectPct = ((row.organic_pct || 0) + (row.direct_pct || 0)) / 100;
+          gemOrganicDirectViews += Math.round(row.pageviews * orgDirectPct);
         }
 
         // Country aggregation
@@ -179,6 +183,9 @@ export async function GET(request: NextRequest) {
           gem_pages_per_session: Math.round(gemAvgPPS * 10) / 10,
           gem_pageviews_pct: totalPageviews > 0 ? Math.round((gemPageviews / totalPageviews) * 1000) / 10 : 0,
           gem_sessions_pct: totalSessions > 0 ? Math.round((gemSessions / totalSessions) * 1000) / 10 : 0,
+          // Organic + Direct only (SEO GEM attributable traffic)
+          gem_organic_direct_views: gemOrganicDirectViews,
+          gem_organic_direct_pct: gemPageviews > 0 ? Math.round((gemOrganicDirectViews / gemPageviews) * 1000) / 10 : 0,
         },
       });
     }

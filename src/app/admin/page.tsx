@@ -34,6 +34,8 @@ interface PortalOverview {
     gem_pages_per_session: number;
     gem_pageviews_pct: number;
     gem_sessions_pct: number;
+    gem_organic_direct_views: number;
+    gem_organic_direct_pct: number;
   };
 }
 
@@ -96,6 +98,8 @@ const COLUMNS = [
   { key: 'position', label: 'Pozicija', src: 'GSC', tip: 'Google Search Console: Prosečna pozicija članka u Google rezultatima pretrage (niže = bolje)' },
   { key: 'discover', label: 'Discover', src: 'GSC', tip: 'Google Search Console: Broj prikaza članka u Google Discover feed-u' },
   { key: 'pageviews', label: 'Pregledi', src: 'GA4', tip: 'Google Analytics 4: Ukupan broj pregleda stranice u izabranom periodu (svi izvori saobraćaja)' },
+  { key: 'organic', label: 'Organic%', src: 'GA4', tip: 'Google Analytics 4: Procenat sesija koje dolaze iz organskog Google pretraživanja — direktno zavisi od SEO naslova' },
+  { key: 'direct', label: 'Direct%', src: 'GA4', tip: 'Google Analytics 4: Procenat sesija od direktnog dolaska korisnika (bookmarks, link u poruci, itd.)' },
   { key: 'engagement', label: 'Angažman', src: 'GA4', tip: 'Google Analytics 4: Prosečno vreme koje korisnik provodi na stranici' },
   { key: 'pps', label: 'Str/Sesija', src: 'GA4', tip: 'Google Analytics 4: Prosečan broj stranica po sesiji — pokazuje koliko članak podstiče dalje čitanje (interlinking)' },
 ];
@@ -314,17 +318,29 @@ export default function AdminDashboard() {
 
               {/* GA4 SEO GEM only */}
               <div style={{ ...S.sectionLabel, marginTop: 14, color: '#a78bfa', cursor: 'help' }}
-                title="GA4 pregledi i sesije SVIH članaka koji su ikada prošli kroz SEO GEM, filtrirani po izabranom vremenskom periodu. Uključuje sve članke sa odgovarajućim article ID-om u bazi, ne samo one kreirane u ovom periodu.">
-                💎 GA4 — Samo SEO GEM članci
-                <span style={{ fontSize: 9, marginLeft: 6, opacity: 0.7 }}>ⓘ svi GEM članci ikada, u izabranom periodu</span>
+                title="Pregledi SVIH članaka koji su ikada prošli kroz SEO GEM, filtrirani po izabranom periodu. Uključuje sve izvore saobraćaja.">
+                💎 SEO GEM članci — Ukupno (svi izvori)
               </div>
               <div style={S.mGrid}>
-                <MBox label="Pageviews" value={formatNum(p.ga4.gem_pageviews)} src="GEM"
+                <MBox label="Svi pregledi" value={formatNum(p.ga4.gem_pageviews)} src="GEM"
                   sub={`${p.ga4.gem_pageviews_pct}% sajta`} hi={p.ga4.gem_pageviews_pct > 30} />
-                <MBox label="Sessions" value={formatNum(p.ga4.gem_sessions)} src="GEM"
-                  sub={`${p.ga4.gem_sessions_pct}% sajta`} hi={p.ga4.gem_sessions_pct > 30} />
-                <MBox label="Engagement" value={formatSec(p.ga4.gem_avg_engagement_sec)} src="GEM" />
-                <MBox label="Pages/Ses" value={String(p.ga4.gem_pages_per_session)} src="GEM" />
+                <MBox label="Sesije" value={formatNum(p.ga4.gem_sessions)} src="GEM"
+                  sub={`${p.ga4.gem_sessions_pct}% sajta`} />
+                <MBox label="Angažman" value={formatSec(p.ga4.gem_avg_engagement_sec)} src="GEM" />
+                <MBox label="Str/Sesija" value={String(p.ga4.gem_pages_per_session)} src="GEM" />
+              </div>
+
+              {/* Organic + Direct = SEO attributable */}
+              <div style={{ ...S.sectionLabel, marginTop: 10, color: '#fbbf24', cursor: 'help' }}
+                title="Samo Organic Search + Direct pregledi SEO GEM članaka. Ovo je saobraćaj koji je direktno pripisiv SEO GEM naslovima — korisnici koji su došli preko Google pretrage ili direktno.">
+                🎯 SEO GEM — Organic + Direct
+                <span style={{ fontSize: 9, marginLeft: 6, opacity: 0.7 }}>ⓘ pregledi pripisivi SEO naslovu</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                <MBox label="Organic+Direct" value={formatNum(p.ga4.gem_organic_direct_views)} src="GEM"
+                  sub={`${p.ga4.gem_organic_direct_pct}% GEM pregleda`} hi={p.ga4.gem_organic_direct_pct > 80} />
+                <MBox label="Ostali izvori" value={formatNum(p.ga4.gem_pageviews - p.ga4.gem_organic_direct_views)} src="GEM"
+                  sub={`${(100 - p.ga4.gem_organic_direct_pct).toFixed(1)}% GEM pregleda`} />
               </div>
 
               {p.ga4.top_countries.length > 0 && (
@@ -413,6 +429,12 @@ export default function AdminDashboard() {
                     <td style={S.tdR}>{a.avg_position ?? '—'}</td>
                     <td style={S.tdR}>{a.discover_impressions > 0 ? formatNum(a.discover_impressions) : '—'}</td>
                     <td style={S.tdR}>{a.has_ga4 ? formatNum(a.pageviews) : '—'}</td>
+                    <td style={{ ...S.tdR, color: a.organic_pct > 20 ? '#10b981' : '#94a3b8' }}>
+                      {a.has_ga4 ? `${a.organic_pct}%` : '—'}
+                    </td>
+                    <td style={{ ...S.tdR, color: a.direct_pct > 50 ? '#fbbf24' : '#94a3b8' }}>
+                      {a.has_ga4 ? `${a.direct_pct}%` : '—'}
+                    </td>
                     <td style={S.tdR}>{a.has_ga4 ? formatSec(a.avg_engagement_sec) : '—'}</td>
                     <td style={S.tdR}>{a.has_ga4 ? a.pages_per_session : '—'}</td>
                   </tr>
