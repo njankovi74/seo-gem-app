@@ -6,6 +6,7 @@ import { buildDeterministicSEO, buildSEOWithLLM } from '@/lib/seo-output';
 import { prioritizeKeywords } from '@/lib/keyword-prioritizer';
 import { saveTitleChoice } from '@/lib/title-history';
 import { type SupportedLanguage, isValidLanguage } from '@/lib/i18n';
+import { logGeneration, startTimer } from '@/lib/generation-logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -143,9 +144,13 @@ export async function POST(request: NextRequest) {
   const origin = request.headers.get('origin');
   const headers = corsHeaders(origin);
 
+  // Start latency timer
+  const timer = startTimer();
+
   // Authenticate
   const auth = authenticateCmsRequest(request);
   if (!auth.valid) {
+    logGeneration({ portal_id: 'unknown', endpoint: 'generate', status: 'error', latency_ms: timer(), error_message: auth.error || 'Unauthorized', error_type: 'auth_error' });
     return cmsErrorResponse(auth.error || 'Unauthorized', 401, origin);
   }
 
@@ -268,7 +273,7 @@ export async function POST(request: NextRequest) {
           articleText: text.substring(0, 5000),
           offeredTitles: offeredTitles || [],
           selectedTitle,
-          selectionType: 'custom',
+          selectionType: body.selection_type || 'custom',
           metaDescription: seoOutputs.metaDescription,
           keywords: seoOutputs.keywordsLine,
           portalId: auth.portalId,
@@ -281,8 +286,26 @@ export async function POST(request: NextRequest) {
 
     if (llmFailed) {
       console.warn(`⚠️ [CMS/generate] LLM failed for ${auth.portalId}, returning empty fields`);
+      logGeneration({
+        portal_id: auth.portalId!,
+        endpoint: 'generate',
+        status: 'partial',
+        article_url: articleUrl || undefined,
+        latency_ms: timer(),
+        language,
+        error_message: 'LLM failed or returned deterministic content',
+        error_type: 'llm_failure',
+      });
     } else {
       console.log(`✅ [CMS/generate] Done for ${auth.portalId}`);
+      logGeneration({
+        portal_id: auth.portalId!,
+        endpoint: 'generate',
+        status: 'success',
+        article_url: articleUrl || undefined,
+        latency_ms: timer(),
+        language,
+      });
     }
 
     return NextResponse.json({
@@ -296,6 +319,14 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ [CMS/generate] Error:', error);
+    logGeneration({
+      portal_id: auth.portalId || 'unknown',
+      endpoint: 'generate',
+      status: 'error',
+      latency_ms: timer(),
+      error_message: error instanceof Error ? error.message : String(error),
+      error_type: 'server_error',
+    });
     return cmsErrorResponse(
       error instanceof Error ? error.message : 'Internal server error',
       500, origin

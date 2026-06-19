@@ -9,6 +9,7 @@ import { type SupportedLanguage, isValidLanguage } from '@/lib/i18n';
 import { getTitlesPrompt } from '@/lib/prompts/titles-prompt';
 import { getGoogleSuggestions } from '@/lib/google-suggest';
 import { validateTitleLanguage } from '@/lib/language-validator';
+import { logGeneration, startTimer } from '@/lib/generation-logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,9 +24,13 @@ export async function POST(request: NextRequest) {
   const origin = request.headers.get('origin');
   const headers = corsHeaders(origin);
 
+  // Start latency timer
+  const timer = startTimer();
+
   // Authenticate
   const auth = authenticateCmsRequest(request);
   if (!auth.valid) {
+    logGeneration({ portal_id: 'unknown', endpoint: 'titles', status: 'error', latency_ms: timer(), error_message: auth.error || 'Unauthorized', error_type: 'auth_error' });
     return cmsErrorResponse(auth.error || 'Unauthorized', 401, origin);
   }
 
@@ -228,6 +233,25 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
 
     console.log(`✅ [CMS/titles] Generated ${titles.length} titles for ${auth.portalId} (lang: ${language}, validated: ${langCheck.isMatch ? 'pass' : 'retry-pass'})`);
 
+    // Log successful generation (fire-and-forget)
+    const styleBreakdown: Record<string, number> = {};
+    titles.forEach(t => { styleBreakdown[t.style] = (styleBreakdown[t.style] || 0) + 1; });
+    logGeneration({
+      portal_id: auth.portalId!,
+      endpoint: 'titles',
+      status: 'success',
+      article_url: body.articleUrl || body.url || undefined,
+      titles_count: titles.length,
+      style_breakdown: styleBreakdown,
+      model_used: modelName,
+      latency_ms: timer(),
+      language,
+      rag_used: similarExamples.length > 0,
+      rag_examples_count: similarExamples.length,
+      google_suggestions_count: googleSuggestions.length,
+      primary_keyword: primaryKW || undefined,
+    });
+
     return NextResponse.json({
       success: true,
       titles,
@@ -241,6 +265,14 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
 
   } catch (error) {
     console.error('❌ [CMS/titles] Error:', error);
+    logGeneration({
+      portal_id: auth.portalId || 'unknown',
+      endpoint: 'titles',
+      status: 'error',
+      latency_ms: timer(),
+      error_message: error instanceof Error ? error.message : String(error),
+      error_type: error instanceof Error && error.message.includes('timeout') ? 'llm_timeout' : 'server_error',
+    });
     return cmsErrorResponse(
       error instanceof Error ? error.message : 'Internal server error',
       500, origin
