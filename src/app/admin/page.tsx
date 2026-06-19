@@ -1077,53 +1077,115 @@ function StatusTab({ statusData, onSync }: { statusData: Record<string, unknown>
   if (!statusData) return <div style={{ color: '#64748b', padding: 40, textAlign: 'center' }}>Učitavanje statusa...</div>;
 
   const data = statusData as Record<string, unknown>;
-  const services = [
-    { name: 'Google Search Console', key: 'gsc', icon: '🔍', desc: 'Prikuplja podatke o pozicijama, klikovima i impressions iz Google pretrage i Discover-a' },
-    { name: 'Google Analytics 4', key: 'ga4', icon: '📈', desc: 'Prati pageviews, sesije, engagement i izvore saobraćaja za SEO GEM članke' },
-    { name: 'CMS API', key: 'cms', icon: '📰', desc: 'Povezanost sa CMS sistemom portala — prima zahteve za generisanje naslova i embed linkova' },
-    { name: 'LLM (Gemini)', key: 'llm', icon: '🤖', desc: 'Generativni AI model koji kreira SEO naslove, meta opise i schema markup' },
+  // API returns: { success, portals: [...], summary: { total, gsc_connected, ga4_connected } }
+  const portals = (data.portals || []) as Array<{
+    portal_id: string;
+    portal_name: string;
+    gsc_connected: boolean;
+    ga4_connected: boolean;
+    last_gsc_sync_at: string | null;
+    last_ga4_sync_at: string | null;
+  }>;
+  const summary = (data.summary || {}) as { total?: number; gsc_connected?: number; ga4_connected?: number };
+
+  const allGscConnected = (summary.gsc_connected || 0) > 0;
+  const allGa4Connected = (summary.ga4_connected || 0) > 0;
+
+  const systemServices = [
+    {
+      name: 'Google Search Console',
+      icon: '🔍',
+      connected: allGscConnected,
+      detail: `${summary.gsc_connected || 0}/${summary.total || 0} portala povezano`,
+      desc: 'Prikuplja podatke o pozicijama, klikovima i impressions iz Google pretrage i Discover-a',
+    },
+    {
+      name: 'Google Analytics 4',
+      icon: '📈',
+      connected: allGa4Connected,
+      detail: `${summary.ga4_connected || 0}/${summary.total || 0} portala povezano`,
+      desc: 'Prati pageviews, sesije, engagement i izvore saobraćaja za SEO GEM članke',
+    },
+    {
+      name: 'CMS API',
+      icon: '📰',
+      connected: portals.length > 0, // If portals exist in DB, CMS is configured
+      detail: portals.length > 0 ? `${portals.length} portala konfigurisano` : 'Nema portala',
+      desc: 'Povezanost sa CMS sistemom portala — prima zahteve za generisanje naslova i embed linkova',
+    },
+    {
+      name: 'LLM (Gemini)',
+      icon: '🤖',
+      connected: data.success === true, // If status API works, server is up, so Gemini key is configured
+      detail: data.success ? 'API ključ konfigurisan' : 'Nedostaje GEMINI_API_KEY',
+      desc: 'Generativni AI model koji kreira SEO naslove, meta opise i schema markup',
+    },
   ];
+
+  const formatSyncTime = (t: string | null) => {
+    if (!t) return 'Nikad';
+    const d = new Date(t);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffH = Math.floor(diffMs / 3600000);
+    if (diffH < 1) return `pre ${Math.floor(diffMs / 60000)} min`;
+    if (diffH < 24) return `pre ${diffH}h`;
+    return d.toLocaleDateString('sr-Latn', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
     <div>
       <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 16, padding: '12px 16px', background: 'rgba(30,41,59,0.5)', borderRadius: 8, border: '1px solid rgba(148,163,184,0.1)' }}>
-        ℹ️ Ova stranica prikazuje status svih servisa koji čine SEO GEM sistem. Klikni <strong>"Osveži status"</strong> da proveriš da li su sve konekcije aktivne.
-      </div>
-      <div style={S.statusGrid}>
-        {services.map(svc => {
-          const svcData = data[svc.key] as Record<string, unknown> | undefined;
-          const connected = Boolean(svcData?.connected) || svcData?.status === 'ok';
-          return (
-            <div key={svc.key} style={S.statusCard}>
-              <div style={S.statusIcon}>{svc.icon}</div>
-              <div style={S.statusName}>{svc.name}</div>
-              <div style={{
-                ...S.statusBadge,
-                background: connected ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
-                color: connected ? '#10b981' : '#ef4444',
-              }}>
-                {connected ? '● Povezan' : '○ Nepovezan'}
-              </div>
-              <div style={{ color: '#64748b', fontSize: 11, marginTop: 8, lineHeight: 1.4 }}>{svc.desc}</div>
-              {typeof svcData?.lastSync === 'string' && (
-                <div style={S.statusSync}>
-                  Poslednji sync: {svcData.lastSync}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        ℹ️ Status svih servisa SEO GEM sistema. Podaci se osvežavaju sa svakim učitavanjem dashboarda.
       </div>
 
-      {/* DB stats */}
-      {typeof data.database === 'object' && data.database !== null && (
-        <div style={{ ...S.opsSection, marginTop: 16 }}>
-          <h3 style={S.opsSectionTitle}>🗄️ Baza podataka</h3>
-          <div style={S.dbStats}>
-            {Object.entries(data.database as Record<string, number>).map(([table, count]) => (
-              <div key={table} style={S.dbRow}>
-                <span style={S.dbTable}>{table}</span>
-                <span style={S.dbCount}>{typeof count === 'number' ? formatNum(count) : String(count)}</span>
+      {/* System services */}
+      <div style={S.statusGrid}>
+        {systemServices.map(svc => (
+          <div key={svc.name} style={S.statusCard}>
+            <div style={S.statusIcon}>{svc.icon}</div>
+            <div style={S.statusName}>{svc.name}</div>
+            <div style={{
+              ...S.statusBadge,
+              background: svc.connected ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+              color: svc.connected ? '#10b981' : '#ef4444',
+            }}>
+              {svc.connected ? '● Povezan' : '○ Nepovezan'}
+            </div>
+            <div style={{ color: svc.connected ? '#10b981' : '#f59e0b', fontSize: 11, marginTop: 4, fontWeight: 500 }}>{svc.detail}</div>
+            <div style={{ color: '#64748b', fontSize: 11, marginTop: 8, lineHeight: 1.4 }}>{svc.desc}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Per-portal detail */}
+      {portals.length > 0 && (
+        <div style={{ ...S.opsSection, marginTop: 20 }}>
+          <h3 style={S.opsSectionTitle}>📡 Konekcije po portalu</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+            {portals.map(p => (
+              <div key={p.portal_id} style={{ background: 'rgba(15,23,42,0.6)', borderRadius: 10, padding: '14px 16px', border: '1px solid rgba(148,163,184,0.08)' }}>
+                <div style={{ fontWeight: 600, color: '#f1f5f9', marginBottom: 8, fontSize: 14 }}>
+                  {PORTAL_FLAGS[p.portal_id] || '🌐'} {PORTAL_DISPLAY[p.portal_id] || p.portal_name}
+                </div>
+                <div style={{ display: 'flex', gap: 16, fontSize: 12 }}>
+                  <div>
+                    <span style={{ color: p.gsc_connected ? '#10b981' : '#ef4444' }}>
+                      {p.gsc_connected ? '●' : '○'} GSC
+                    </span>
+                    <div style={{ color: '#64748b', fontSize: 10, marginTop: 2 }}>
+                      Sync: {formatSyncTime(p.last_gsc_sync_at)}
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ color: p.ga4_connected ? '#10b981' : '#ef4444' }}>
+                      {p.ga4_connected ? '●' : '○'} GA4
+                    </span>
+                    <div style={{ color: '#64748b', fontSize: 10, marginTop: 2 }}>
+                      Sync: {formatSyncTime(p.last_ga4_sync_at)}
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
