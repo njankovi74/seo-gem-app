@@ -129,9 +129,9 @@ const PORTAL_FLAGS: Record<string, string> = {
 };
 
 const PORTAL_DISPLAY: Record<string, string> = {
-  newsmax: 'Newsmax.rs',
-  newsmax_pl: 'Newsmax.pl',
-  newsmax_al: 'Newsmax.al',
+  newsmax: 'Newsmax Balkans SR',
+  newsmax_pl: 'Newsmax Polska',
+  newsmax_al: 'Newsmax Balkans AL',
   insajder: 'Insajder.net',
 };
 

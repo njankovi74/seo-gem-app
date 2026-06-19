@@ -31,8 +31,8 @@ const PUBLISHER_INFO: Record<string, { name: string; logoUrl: string; domain: st
   },
   newsmax_pl: {
     name: 'Newsmax Polska',
-    logoUrl: 'https://newsmaxpolska.com/files/img/logo.png',
-    domain: 'newsmaxpolska.com',
+    logoUrl: 'https://newsmaxpolska.pl/files/img/logo.png',
+    domain: 'newsmaxpolska.pl',
   },
 };
 
