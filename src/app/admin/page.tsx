@@ -107,6 +107,7 @@ interface OpsData {
 
 // ── Constants ──
 const PRESETS = [
+  { label: 'Danas', days: 0 },
   { label: 'Juče', days: 1 },
   { label: '7 dana', days: 7 },
   { label: '14 dana', days: 14 },
@@ -305,8 +306,14 @@ export default function AdminDashboard() {
 
   const selectPreset = (days: number) => {
     setActivePreset(days);
-    setStartDate(getDaysAgo(days));
-    setEndDate(getDaysAgo(0));
+    if (days === 0) {
+      // Danas = samo današnji dan
+      setStartDate(getDaysAgo(0));
+      setEndDate(getDaysAgo(0));
+    } else {
+      setStartDate(getDaysAgo(days));
+      setEndDate(getDaysAgo(0));
+    }
     setShowCustom(false);
   };
 
@@ -668,10 +675,24 @@ export default function AdminDashboard() {
                 <span style={S.artCount}>
                   💎 {totalArticles} SEO GEM članaka │ {seoGemCount} sa analitikom
                 </span>
+                <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 12 }}>
+                  📅 Podaci za period: {startDate} → {endDate}
+                </span>
               </div>
-              <div style={S.tableWrap}>
+              <div style={{ ...S.tableWrap, maxHeight: 'calc(100vh - 260px)', overflowY: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                  <thead>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#0f172a' }}>
+                    {/* Group headers row */}
+                    <tr>
+                      <th colSpan={3} style={{ ...S.th, borderBottom: 'none', paddingBottom: 0 }}></th>
+                      <th style={{ ...S.th, borderBottom: 'none', paddingBottom: 0 }}></th>
+                      <th colSpan={5} style={{ ...S.th, borderBottom: '2px solid #f59e0b', paddingBottom: 4, color: '#f59e0b', fontSize: 10, letterSpacing: 1 }}>
+                        GOOGLE SEARCH CONSOLE
+                      </th>
+                      <th colSpan={5} style={{ ...S.th, borderBottom: '2px solid #a78bfa', paddingBottom: 4, color: '#a78bfa', fontSize: 10, letterSpacing: 1 }}>
+                        GOOGLE ANALYTICS 4
+                      </th>
+                    </tr>
                     <tr>
                       {COLUMNS.map(col => (
                         <th key={col.key} title={col.tip}
@@ -739,7 +760,7 @@ export default function AdminDashboard() {
               </div>
               <div style={S.legend}>
                 🕐 Rani (&lt;7d) &nbsp;│&nbsp; ✅ OK &nbsp;│&nbsp; ⚠️ Nizak CTR &nbsp;│&nbsp; 🔥 Top &nbsp;│&nbsp;
-                GSC kasni 2-3 dana
+                GSC kasni 2-3 dana │ Svi podaci za izabrani period ({startDate} → {endDate})
               </div>
             </div>
           )}
@@ -1057,14 +1078,17 @@ function StatusTab({ statusData, onSync }: { statusData: Record<string, unknown>
 
   const data = statusData as Record<string, unknown>;
   const services = [
-    { name: 'Google Search Console', key: 'gsc', icon: '🔍' },
-    { name: 'Google Analytics 4', key: 'ga4', icon: '📈' },
-    { name: 'CMS API', key: 'cms', icon: '📰' },
-    { name: 'LLM (Gemini)', key: 'llm', icon: '🤖' },
+    { name: 'Google Search Console', key: 'gsc', icon: '🔍', desc: 'Prikuplja podatke o pozicijama, klikovima i impressions iz Google pretrage i Discover-a' },
+    { name: 'Google Analytics 4', key: 'ga4', icon: '📈', desc: 'Prati pageviews, sesije, engagement i izvore saobraćaja za SEO GEM članke' },
+    { name: 'CMS API', key: 'cms', icon: '📰', desc: 'Povezanost sa CMS sistemom portala — prima zahteve za generisanje naslova i embed linkova' },
+    { name: 'LLM (Gemini)', key: 'llm', icon: '🤖', desc: 'Generativni AI model koji kreira SEO naslove, meta opise i schema markup' },
   ];
 
   return (
     <div>
+      <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 16, padding: '12px 16px', background: 'rgba(30,41,59,0.5)', borderRadius: 8, border: '1px solid rgba(148,163,184,0.1)' }}>
+        ℹ️ Ova stranica prikazuje status svih servisa koji čine SEO GEM sistem. Klikni <strong>"Osveži status"</strong> da proveriš da li su sve konekcije aktivne.
+      </div>
       <div style={S.statusGrid}>
         {services.map(svc => {
           const svcData = data[svc.key] as Record<string, unknown> | undefined;
@@ -1080,6 +1104,7 @@ function StatusTab({ statusData, onSync }: { statusData: Record<string, unknown>
               }}>
                 {connected ? '● Povezan' : '○ Nepovezan'}
               </div>
+              <div style={{ color: '#64748b', fontSize: 11, marginTop: 8, lineHeight: 1.4 }}>{svc.desc}</div>
               {typeof svcData?.lastSync === 'string' && (
                 <div style={S.statusSync}>
                   Poslednji sync: {svcData.lastSync}
