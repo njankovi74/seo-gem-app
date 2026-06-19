@@ -620,17 +620,21 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      {/* Custom date picker */}
+      {/* Visual Calendar Picker */}
       {showCustom && (
-        <div style={S.customBar}>
-          <label style={S.dateLabel}>Od:
-            <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} style={S.dateInput} />
-          </label>
-          <label style={S.dateLabel}>Do:
-            <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} style={S.dateInput} />
-          </label>
-          <button onClick={applyCustom} style={S.applyBtn}>Primeni</button>
-        </div>
+        <CalendarPicker
+          startDate={customStart}
+          endDate={customEnd}
+          onApply={(s, e) => {
+            setCustomStart(s);
+            setCustomEnd(e);
+            setActivePreset(0);
+            setStartDate(s);
+            setEndDate(e);
+            setShowCustom(false);
+          }}
+          onClose={() => setShowCustom(false)}
+        />
       )}
 
       {/* Period info */}
@@ -1193,6 +1197,187 @@ function StatusTab({ statusData, onSync }: { statusData: Record<string, unknown>
       )}
 
       <button onClick={onSync} style={S.syncBtn}>🔄 Osveži status</button>
+    </div>
+  );
+}
+
+// ── Calendar Picker ──
+const MONTH_NAMES_SR = ['Januar', 'Februar', 'Mart', 'April', 'Maj', 'Jun', 'Jul', 'Avgust', 'Septembar', 'Oktobar', 'Novembar', 'Decembar'];
+const DAY_NAMES_SR = ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'];
+
+function CalendarPicker({ startDate, endDate, onApply, onClose }: {
+  startDate: string;
+  endDate: string;
+  onApply: (start: string, end: string) => void;
+  onClose: () => void;
+}) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().split('T')[0];
+
+  const initDate = startDate ? new Date(startDate + 'T00:00:00') : today;
+  const [viewYear, setViewYear] = useState(initDate.getFullYear());
+  const [viewMonth, setViewMonth] = useState(initDate.getMonth());
+  const [selStart, setSelStart] = useState<string | null>(startDate || null);
+  const [selEnd, setSelEnd] = useState<string | null>(endDate || null);
+  const [pickingEnd, setPickingEnd] = useState(false);
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  // Generate calendar grid
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const startDow = (firstDay.getDay() + 6) % 7; // Monday = 0
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+  const cells: Array<{ day: number; dateStr: string } | null> = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    cells.push({ day: d, dateStr: ds });
+  }
+
+  const handleDayClick = (dateStr: string) => {
+    if (!pickingEnd) {
+      // First click: set start
+      setSelStart(dateStr);
+      setSelEnd(null);
+      setPickingEnd(true);
+    } else {
+      // Second click: set end
+      if (dateStr < selStart!) {
+        // If clicked before start, swap
+        setSelEnd(selStart);
+        setSelStart(dateStr);
+      } else {
+        setSelEnd(dateStr);
+      }
+      setPickingEnd(false);
+    }
+  };
+
+  const isInRange = (ds: string) => {
+    if (!selStart || !selEnd) return false;
+    return ds >= selStart && ds <= selEnd;
+  };
+
+  const isStart = (ds: string) => ds === selStart;
+  const isEnd = (ds: string) => ds === selEnd;
+  const isToday = (ds: string) => ds === todayStr;
+  const isFuture = (ds: string) => ds > todayStr;
+
+  const canApply = selStart && (selEnd || !pickingEnd);
+
+  return (
+    <div style={{
+      background: '#1e293b', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 12,
+      padding: '16px 20px', margin: '8px 0', boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+      maxWidth: 380, position: 'relative' as const,
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <button onClick={prevMonth} style={{ background: 'none', border: 'none', color: '#a78bfa', fontSize: 18, cursor: 'pointer', padding: '4px 8px' }}>◀</button>
+        <span style={{ color: '#f1f5f9', fontWeight: 600, fontSize: 15 }}>
+          {MONTH_NAMES_SR[viewMonth]} {viewYear}
+        </span>
+        <button onClick={nextMonth} style={{ background: 'none', border: 'none', color: '#a78bfa', fontSize: 18, cursor: 'pointer', padding: '4px 8px' }}>▶</button>
+      </div>
+
+      {/* Day headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
+        {DAY_NAMES_SR.map(d => (
+          <div key={d} style={{ textAlign: 'center', fontSize: 10, color: '#64748b', fontWeight: 600, padding: '4px 0' }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Days grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+        {cells.map((cell, i) => {
+          if (!cell) return <div key={`e-${i}`} />;
+          const { day, dateStr } = cell;
+          const future = isFuture(dateStr);
+          const todayCell = isToday(dateStr);
+          const start = isStart(dateStr);
+          const end = isEnd(dateStr);
+          const inRange = isInRange(dateStr);
+
+          let bg = 'transparent';
+          let color = future ? '#475569' : '#e2e8f0';
+          let fontWeight = 400;
+          let border = 'none';
+
+          if (start || end) {
+            bg = '#8b5cf6';
+            color = '#ffffff';
+            fontWeight = 700;
+          } else if (inRange) {
+            bg = 'rgba(139,92,246,0.2)';
+            color = '#c4b5fd';
+          }
+          if (todayCell && !start && !end) {
+            border = '2px solid #a78bfa';
+          }
+
+          return (
+            <button
+              key={dateStr}
+              disabled={future}
+              onClick={() => !future && handleDayClick(dateStr)}
+              style={{
+                background: bg, color, fontWeight,
+                border, borderRadius: 6,
+                padding: '6px 2px', fontSize: 13,
+                cursor: future ? 'not-allowed' : 'pointer',
+                textAlign: 'center' as const,
+                transition: 'all 0.15s',
+                outline: 'none',
+              }}
+              title={todayCell ? 'Danas' : dateStr}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Selection info + actions */}
+      <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: 12, color: '#94a3b8' }}>
+          {pickingEnd ? (
+            <span>📅 Odaberite krajnji datum</span>
+          ) : selStart && selEnd ? (
+            <span>📅 {selStart} → {selEnd}</span>
+          ) : selStart ? (
+            <span>📅 {selStart} (1 dan)</span>
+          ) : (
+            <span>📅 Klikni na početni datum</span>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onClose} style={{
+            background: 'rgba(100,116,139,0.2)', border: '1px solid rgba(100,116,139,0.3)',
+            color: '#94a3b8', borderRadius: 6, padding: '6px 12px', fontSize: 12, cursor: 'pointer',
+          }}>Otkaži</button>
+          <button
+            disabled={!canApply}
+            onClick={() => {
+              if (selStart) onApply(selStart, selEnd || selStart);
+            }}
+            style={{
+              background: canApply ? '#8b5cf6' : 'rgba(139,92,246,0.2)',
+              border: 'none', color: canApply ? '#fff' : '#64748b',
+              borderRadius: 6, padding: '6px 16px', fontSize: 12, fontWeight: 600,
+              cursor: canApply ? 'pointer' : 'not-allowed',
+            }}
+          >Primeni</button>
+        </div>
+      </div>
     </div>
   );
 }
