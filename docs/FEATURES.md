@@ -129,25 +129,75 @@ Detalji u [CMS-INTEGRATION.md](CMS-INTEGRATION.md).
 ## 6. Admin Analytics Dashboard
 
 ### Opis:
-Interaktivni dashboard za praćenje performansi SEO GEM članaka.
+Interaktivni dashboard za praćenje performansi SEO GEM članaka sa 4 taba.
+
+### Autentifikacija:
+- Password-based login (`admin_key` parametar)
+- Auto-refresh podataka svakih 30 sekundi
+- Visibility API — pauzira refresh kad tab nije aktivan
 
 ### Tabovi:
 
-#### Overview:
-- **GSC metrike:** Impressions, Clicks, CTR, Discover
-- **GA4 ceo sajt:** Pregledi, sesije, angažman
-- **GA4 SEO GEM:** Pregledi samo GEM članaka + % sajta
-- **Organic + Direct:** Saobraćaj pripisiv SEO naslovu
+#### 🔄 Operacije (Tab 1):
+- **Metrike:** Ukupno generacija, Uspešnost (%), Greške, Avg Latency
+- **Stilovi generisanja:** Procenat po stilu (informativni, geo_pitanje, itd.) sa bar chartom
+- **RAG & Sugestije:** Procenat korišćenja RAG-a i Google Suggest-a
+- **Modeli:** Korišćeni LLM modeli sa brojem poziva
+- **Greške:** Lista nedavnih grešaka sa detaljima (tip, endpoint, poruka, URL)
 
-#### Članci:
+#### 📊 Analitika (Tab 2):
+- **GSC metrike:** Impressions, Clicks, CTR, Web Impressions, Discover — sa uporednim prikazom ceo sajt vs SEO GEM
+- **GA4 metrike:** Pregledi, Sesije, Angažman, Str/Sesija — ceo sajt vs GEM
+- **Traffic atribucija:** Organic, Direct, Social, Other — bar chart sa procentima
+
+#### 📝 Članci (Tab 3):
 - Samo SEO GEM članci (iz `title_history`)
-- Kolone sa source oznakom (GSC/GA4/GEM)
-- Organic% i Direct% po članku
-- Status: 🕐 Rani / ✅ OK / ⚠️ Nizak CTR / 🔥 Top
+- **Sticky zaglavlja** — kolone ostaju vidljive pri skrolovanju
+- **Grupni headeri:** "GOOGLE SEARCH CONSOLE" (žuto) i "GOOGLE ANALYTICS 4" (ljubičasto)
+- **Kolone:** Status, Objavljeno, SEO Naslov, Starost, Impr.(GSC), Klikovi(GSC), CTR(GSC), Pozicija(GSC), Discover(GSC), Pregledi(GA4), Organic%(GA4), Direct%(GA4), Angažman(GA4), Str/Sesija(GA4)
+- **Period indikator:** "Podaci za period: X → Y" u headeru i legendi
+- **Source tagovi:** GSC/GA4/GEM oznake na svakoj koloni
+- **Tooltip-ovi:** Hover objašnjenje svake kolone na srpskom
+- **Sortiranje:** Klik na zaglavlje za sortiranje (asc/desc)
+- **Status ikonice:** 🕐 Rani (<7d), ✅ OK, ⚠️ Nizak CTR, 🔥 Top performer
 
-### Period:
-- Preseti: Juče, 7 dana, 14 dana, 30 dana
-- Custom kalendar
+#### ⚙️ Status (Tab 4):
+- **Sistemski servisi:** GSC, GA4, CMS API, LLM (Gemini) — sa statusom (Povezan/Nepovezan), detaljima ("3/3 portala povezano"), i opisom funkcije
+- **Konekcije po portalu:** Za svaki portal prikazuje GSC/GA4 status i vreme poslednjeg sync-a
+- **Osveži status:** Dugme za ručno osvežavanje
+
+### Period selekcija:
+
+#### Preseti:
+| Dugme | Ponašanje |
+|---|---|
+| Danas | `startDate = endDate = danas` |
+| Juče | `startDate = juče, endDate = danas` |
+| 7 dana | `startDate = pre 7 dana, endDate = danas` |
+| 14 dana | `startDate = pre 14 dana, endDate = danas` |
+| 30 dana | `startDate = pre 30 dana, endDate = danas` |
+
+#### Vizuelni kalendar (📅 dugme):
+- Mesečni grid sa klikabilnim danima
+- ◀ ▶ navigacija mesecima
+- Srpski lokalizovan (Pon-Ned, Januar-Decembar)
+- Range selekcija: klik za start, klik za end
+- Ljubičasto obojeni start/end sa range highlighting
+- Budući datumi onemogućeni (sivi)
+- Danas obeležen okvirom
+- "Primeni"/"Otkaži" dugmad
+
+### Landing Page:
+- Grid svih portala sa zastavicama (🇷🇸, 🇵🇱, 🇦🇱)
+- Kartice: Ukupno članaka, Uspešnost, Danas generacija, Danas greške
+- Footer: Danas ukupno generacija, Današnje greške, Ukupna uspešnost (7d)
+
+### Fajlovi:
+- Frontend: `src/app/admin/page.tsx` (~1750 linija, sve-u-jednom React komponenta)
+- API Overview: `src/app/api/admin/analytics/overview/route.ts`
+- API Articles: `src/app/api/admin/analytics/articles/route.ts`
+- API Operations: `src/app/api/admin/analytics/operations/route.ts`
+- API Status: `src/app/api/admin/analytics/status/route.ts`
 
 Detalji u [ANALYTICS.md](ANALYTICS.md).
 

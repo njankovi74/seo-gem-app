@@ -68,6 +68,54 @@ function extractArticleId(url: string): string | null {
 
 ---
 
+### 5. Status tab prikazuje "Nepovezan" za sve servise (jun 2026)
+
+**Problem:** Na Status tabu svi servisi (GSC, GA4, CMS, LLM) prikazani kao "○ Nepovezan" iako dashboard koristi podatke sa svih servisa normalno.
+
+**Uzrok:** Frontend StatusTab tražio `data.gsc`, `data.ga4`, `data.cms`, `data.llm` u API odgovoru, ali API `/api/admin/analytics/status` vraća potpuno drugačiju strukturu: `{ success: true, portals: [{ portal_id, gsc_connected, ga4_connected, ... }], summary: { total, gsc_connected, ga4_connected } }`. Ovi ključevi nikad nisu postojali u odgovoru.
+
+**Rešenje:** Kompletno prepisan `StatusTab` da čita `data.portals[]` i `data.summary`. Dodata sekcija "Konekcije po portalu" sa GSC/GA4 statusom i vremenima poslednjeg sync-a po portalu.
+
+**Fajl:** `src/app/admin/page.tsx` (StatusTab komponenta)
+
+---
+
+### 6. Pogrešni nazivi portala i domen (jun 2026)
+
+**Problem:** Dashboard prikazivao pogrešne nazive portala: "Newsmax.rs", "Newsmax.pl", "Newsmax.al". Korisnik primetio da su domeni pogrešni. Takođe, embed link domen za Poljsku bio `newsmaxpolska.com` umesto `newsmaxpolska.pl`.
+
+**Uzrok:** Hardkodirani pogrešni nazivi u `PORTAL_DISPLAY` konstantama. Domen u `generate/route.ts` kopiran pogrešno.
+
+**Rešenje:**
+- `PORTAL_DISPLAY`: newsmax → "Newsmax Balkans SR", newsmax_pl → "Newsmax Polska", newsmax_al → "Newsmax Balkans AL"
+- `generate/route.ts`: `newsmaxpolska.com` → `newsmaxpolska.pl`
+
+**Fajlovi:** `src/app/admin/page.tsx`, `src/app/api/cms/generate/route.ts`
+
+---
+
+### 7. Date picker zahteva ručno kucanje datuma (jun 2026)
+
+**Problem:** Custom date picker koristio nativne `<input type="date">` elemente koji izgledaju kao obično tekstualno polje. Korisnici morali ručno da upisuju datum u format MM/DD/YYYY.
+
+**Uzrok:** Nativni date input na nekim sistemima ne prikazuje kalendar popup na klik, samo mali ikonu.
+
+**Rešenje:** Kreirana potpuno nova `CalendarPicker` komponenta sa vizuelnim mesečnim gridom. Klik na dan za selekciju, ◀ ▶ za mesece, range highlighting, srpski nazivi.
+
+**Fajl:** `src/app/admin/page.tsx` (CalendarPicker komponenta)
+
+---
+
+### 8. Preset "7 dana" ostaje aktivno kad se izabere custom datum (jun 2026)
+
+**Problem:** Korisnik je odabrao 12. jun ručno, ali dugme "7 dana" je i dalje prikazano kao aktivno (ljubičasto). Period je prikazivao tačan datum ali vizuelno zbunjuje jer preset ne odgovara.
+
+**Uzrok:** `activePreset` state se nije resetovao na 0 kad se primeni custom datum.
+
+**Rešenje:** `applyCustom()` i CalendarPicker `onApply()` postavljaju `setActivePreset(0)` što deaktivira sve preset dugmad.
+
+**Fajl:** `src/app/admin/page.tsx`
+
 ## Poznata ograničenja
 
 ### 1. GSC podaci kasne 2-3 dana
