@@ -4,6 +4,8 @@ Hronološki zapis svih promena u projektu.
 
 | Datum | Tip | Opis |
 |---|---|---|
+| 2026-06-19 | feat | Vizuelni kalendar — zamenjeni nativni date inputi sa interaktivnim kalendarom (klik na dane, range selekcija, srpski nazivi meseci) |
+| 2026-06-19 | fix | Status tab čita prave API podatke — prikazuje tačan status konekcija GSC/GA4 po portalu sa vremenima sync-a |
 | 2026-06-19 | fix | Dashboard UX — dodat "Danas" preset, sticky zaglavlja tabele, grupne kolone GSC/GA4, indikator perioda, opisi servisa u Status tabu |
 | 2026-06-19 | fix | Ispravljeni portal nazivi (Newsmax Balkans SR/AL, Newsmax Polska) i PL domen (.com → .pl) |
 | 2026-06-19 | feat | Admin Dashboard v3 — multi-view arhitektura, 4 taba (Operacije, Analitika, Članci, Status), operations API, auto-refresh 30s, premium dark tema |
