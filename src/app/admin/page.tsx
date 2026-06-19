@@ -272,6 +272,11 @@ export default function AdminDashboard() {
       {/* Period display */}
       <div style={S.periodInfo}>
         📅 Period: <strong>{startDate}</strong> → <strong>{endDate}</strong>
+        {activePreset <= 3 && activePreset > 0 && (
+          <span style={{ marginLeft: 12, fontSize: 11, color: '#fbbf24', opacity: 0.9 }}>
+            ⚠️ GSC kasni ~3 dana, GA4 kasni ~1 dan. Za potpune podatke koristite 7+ dana.
+          </span>
+        )}
       </div>
 
       {/* Tabs */}
