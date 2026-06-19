@@ -4,6 +4,7 @@ Hronološki zapis svih promena u projektu.
 
 | Datum | Tip | Opis |
 |---|---|---|
+| 2026-06-19 | feat | Info banner za kašnjenje GSC/GA4 podataka na dashboardu |
 | 2026-06-19 | docs | Kreirana kompletna dokumentacija projekta (docs/) |
 | 2026-06-19 | docs | Dodat AGENTS.md — automatsko ažuriranje dokumentacije |
 | 2026-06-15 | fix | Supabase paginacija (1000 redova/stranica) za analitičke upite |
