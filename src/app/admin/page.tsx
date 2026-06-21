@@ -515,31 +515,31 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div style={S.pcMetrics}>
-                      <div style={S.pcMetric}>
+                      <div style={S.pcMetric} title="Ukupan broj članaka koji su prošli kroz SEO GEM sistem">
                         <div style={S.pcMetricVal}>{isDisabled ? '—' : formatNum(totalArticlesCount)}</div>
-                        <div style={S.pcMetricLabel}>Ukupno članaka</div>
+                        <div style={S.pcMetricLabel}>Ukupno članaka ⓘ</div>
                       </div>
-                      <div style={S.pcMetric}>
+                      <div style={S.pcMetric} title="Procenat uspešno generisanih naslova — 100% = svi zahtevi uspeli">
                         <div style={{
                           ...S.pcMetricVal,
                           color: isDisabled ? '#475569' : successRate >= 90 ? '#10b981' : successRate >= 70 ? '#f59e0b' : '#ef4444',
                         }}>
                           {isDisabled ? '—' : `${successRate}%`}
                         </div>
-                        <div style={S.pcMetricLabel}>Uspešnost</div>
+                        <div style={S.pcMetricLabel}>Uspešnost ⓘ</div>
                       </div>
-                      <div style={S.pcMetric}>
+                      <div style={S.pcMetric} title="Koliko naslova je SEO GEM generisao danas">
                         <div style={S.pcMetricVal}>{isDisabled ? '—' : todayGen}</div>
-                        <div style={S.pcMetricLabel}>Danas gen.</div>
+                        <div style={S.pcMetricLabel}>Danas gen. ⓘ</div>
                       </div>
-                      <div style={S.pcMetric}>
+                      <div style={S.pcMetric} title="Neuspela generisanja danas — 0 je idealno">
                         <div style={{
                           ...S.pcMetricVal,
                           color: isDisabled ? '#475569' : todayErr > 0 ? '#ef4444' : '#10b981',
                         }}>
                           {isDisabled ? '—' : todayErr}
                         </div>
-                        <div style={S.pcMetricLabel}>Danas greške</div>
+                        <div style={S.pcMetricLabel}>Danas greške ⓘ</div>
                       </div>
                     </div>
                   </div>
@@ -808,13 +808,13 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
   );
 }
 
-function MetricCard({ icon, label, value, color, sub }: {
-  icon: string; label: string; value: string | number; color?: string; sub?: string;
+function MetricCard({ icon, label, value, color, sub, tip }: {
+  icon: string; label: string; value: string | number; color?: string; sub?: string; tip?: string;
 }) {
   return (
-    <div style={S.metricCard}>
+    <div style={S.metricCard} title={tip}>
       <div style={S.mcIcon}>{icon}</div>
-      <div style={S.mcLabel}>{label}</div>
+      <div style={S.mcLabel}>{label}{tip && <span style={{ marginLeft: 4, fontSize: 11, cursor: 'help', opacity: 0.5 }}>ⓘ</span>}</div>
       <div style={{ ...S.mcValue, ...(color ? { color } : {}) }}>{value}</div>
       {sub && <div style={S.mcSub}>{sub}</div>}
     </div>
@@ -839,15 +839,19 @@ function OpsTab({ opsData, portalId, currentOps }: {
       {/* Top metrics */}
       <div style={S.metricsGrid}>
         <MetricCard icon="📦" label="Ukupno generacija" value={currentOps?.total ?? summary.total}
-          sub={`Danas: ${currentOps?.today ?? '—'}`} />
+          sub={`Danas: ${currentOps?.today ?? '—'}`}
+          tip="Koliko puta je SEO GEM generisao naslove za članke u izabranom periodu" />
         <MetricCard icon="✅" label="Uspešnost" value={`${summary.successRate}%`}
-          color={summary.successRate >= 90 ? '#10b981' : '#f59e0b'} sub={`${summary.success} uspešnih`} />
+          color={summary.successRate >= 90 ? '#10b981' : '#f59e0b'} sub={`${summary.success} uspešnih`}
+          tip="Procenat uspešno generisanih naslova — 100% znači da nijedan zahtev nije vratio grešku" />
         <MetricCard icon="❌" label="Greške" value={currentOps?.error ?? summary.error}
           color={(currentOps?.error ?? summary.error) > 0 ? '#ef4444' : '#10b981'}
-          sub={`Danas: ${currentOps?.todayErrors ?? '—'}`} />
+          sub={`Danas: ${currentOps?.todayErrors ?? '—'}`}
+          tip="Broj neuspelih generisanja — npr. LLM greška, timeout, nevažeći URL" />
         <MetricCard icon="⚡" label="Avg Latency" value={`${Math.round(summary.avgLatencyMs)}ms`}
           color={summary.avgLatencyMs > 5000 ? '#ef4444' : '#10b981'}
-          sub={`Max: ${Math.round(summary.maxLatencyMs)}ms`} />
+          sub={`Max: ${Math.round(summary.maxLatencyMs)}ms`}
+          tip="Prosečno vreme odziva sistema — koliko ms traje generisanje naslova. Ispod 5000ms je dobro" />
       </div>
 
       <div style={S.opsGrid}>
@@ -877,14 +881,14 @@ function OpsTab({ opsData, portalId, currentOps }: {
         <div style={S.opsSection}>
           <h3 style={S.opsSectionTitle}>🧠 RAG & Sugestije</h3>
           <div style={S.ragGrid}>
-            <div style={S.ragCard}>
-              <div style={S.ragTitle}>RAG Korišćenje</div>
+            <div style={S.ragCard} title="RAG (Retrieval-Augmented Generation) — sistem uči iz prethodnih izbora novinara i koristi te primere da generiše bolje naslove">
+              <div style={S.ragTitle}>RAG Korišćenje ⓘ</div>
               <div style={S.ragValue}>{opsData.rag.usageRate}%</div>
               <div style={S.ragSub}>Avg primeri: {opsData.rag.avgExamples}</div>
               <div style={S.ragSub}>{opsData.rag.totalUsed} / {opsData.rag.totalCalls} poziva</div>
             </div>
-            <div style={S.ragCard}>
-              <div style={S.ragTitle}>Google Suggest</div>
+            <div style={S.ragCard} title="Google Suggest — sistem preuzima predloge iz Google pretrage za ključnu reč i koristi ih kao inspiraciju za naslove">
+              <div style={S.ragTitle}>Google Suggest ⓘ</div>
               <div style={S.ragValue}>{opsData.googleSuggest.usageRate}%</div>
               <div style={S.ragSub}>Avg sugestija: {opsData.googleSuggest.avgCount}</div>
               <div style={S.ragSub}>{opsData.googleSuggest.totalUsed} / {opsData.googleSuggest.totalCalls} poziva</div>
@@ -981,12 +985,17 @@ function AnalyticsTab({ portal }: { portal: PortalOverview }) {
             <div style={S.compCol}>Ceo sajt</div>
             <div style={{ ...S.compCol, color: '#a78bfa' }}>SEO GEM</div>
           </div>
-          <CompRow label="Impressions" whole={formatNum(p.gsc.total_impressions)} gem="—" />
-          <CompRow label="Clicks" whole={formatNum(p.gsc.total_clicks)} gem="—" />
+          <CompRow label="Impressions" whole={formatNum(p.gsc.total_impressions)} gem="—"
+            tip="Koliko puta se bilo koji članak sa ovog portala pojavio u Google pretrazi — više znači bolju vidljivost" />
+          <CompRow label="Clicks" whole={formatNum(p.gsc.total_clicks)} gem="—"
+            tip="Koliko puta su korisnici kliknuli na članak iz Google rezultata — direktni dolazak iz pretrage" />
           <CompRow label="CTR" whole={`${p.gsc.ctr}%`} gem="—"
-            wholeColor={p.gsc.ctr > 4 ? '#10b981' : undefined} />
-          <CompRow label="Web Impressions" whole={formatNum(p.gsc.web_impressions)} gem="—" />
-          <CompRow label="Discover" whole={formatNum(p.gsc.discover_impressions)} gem="—" />
+            wholeColor={p.gsc.ctr > 4 ? '#10b981' : undefined}
+            tip="Click-Through Rate — odnos klikova i prikaza. Iznad 4% je odlično, znači da naslovi privlače klikove" />
+          <CompRow label="Web Impressions" whole={formatNum(p.gsc.web_impressions)} gem="—"
+            tip="Prikazi samo iz klasične Google pretrage (ne uključuje Discover)" />
+          <CompRow label="Discover" whole={formatNum(p.gsc.discover_impressions)} gem="—"
+            tip="Prikazi iz Google Discover feed-a — personalizovani sadržaj koji se pojavljuje korisnicima na telefonu" />
         </div>
       </div>
 
@@ -1002,14 +1011,18 @@ function AnalyticsTab({ portal }: { portal: PortalOverview }) {
           </div>
           <CompRow label="Pageviews"
             whole={formatNum(p.ga4.pageviews)} gem={formatNum(p.ga4.gem_pageviews)}
-            pctVal={`${p.ga4.gem_pageviews_pct}%`} />
+            pctVal={`${p.ga4.gem_pageviews_pct}%`}
+            tip="Ukupan broj pregleda stranica — kolona '%' pokazuje koliki deo čine SEO GEM članci" />
           <CompRow label="Sessions"
             whole={formatNum(p.ga4.sessions)} gem={formatNum(p.ga4.gem_sessions)}
-            pctVal={`${p.ga4.gem_sessions_pct}%`} />
+            pctVal={`${p.ga4.gem_sessions_pct}%`}
+            tip="Posete sajtu — jedna sesija = jedan korisnik koji čita jedan ili više članaka" />
           <CompRow label="Engagement"
-            whole={formatSec(p.ga4.avg_engagement_sec)} gem={formatSec(p.ga4.gem_avg_engagement_sec)} />
+            whole={formatSec(p.ga4.avg_engagement_sec)} gem={formatSec(p.ga4.gem_avg_engagement_sec)}
+            tip="Prosečno vreme koje čitalac provede na stranici — duže vreme znači kvalitetniji sadržaj" />
           <CompRow label="Str/Sesija"
-            whole={String(p.ga4.pages_per_session)} gem={String(p.ga4.gem_pages_per_session)} />
+            whole={String(p.ga4.pages_per_session)} gem={String(p.ga4.gem_pages_per_session)}
+            tip="Prosečan broj stranica po poseti — viša vrednost znači da članci dobro vode ka daljem čitanju" />
         </div>
       </div>
 
@@ -1017,9 +1030,12 @@ function AnalyticsTab({ portal }: { portal: PortalOverview }) {
       <div style={S.analyticsSection}>
         <h3 style={S.analyticsSectionTitle}>🎯 SEO GEM — Atribucija saobraćaja</h3>
         <div style={S.attrGrid}>
-          <AttrBar label="Organic + Direct" value={od} color="#10b981" count={p.ga4.gem_organic_direct_views} />
-          <AttrBar label="Social" value={social} color="#3b82f6" count={0} />
-          <AttrBar label="Ostalo" value={other} color="#64748b" count={p.ga4.gem_pageviews - p.ga4.gem_organic_direct_views} />
+          <AttrBar label="Organic + Direct" value={od} color="#10b981" count={p.ga4.gem_organic_direct_views}
+            tip="Posete koje dolaze iz Google pretrage ili direktnog dolaska — ovo je saobraćaj na koji SEO naslov najviše utiče" />
+          <AttrBar label="Social" value={social} color="#3b82f6" count={0}
+            tip="Posete sa društvenih mreža (Facebook, X/Twitter, itd.)" />
+          <AttrBar label="Ostalo" value={other} color="#64748b" count={p.ga4.gem_pageviews - p.ga4.gem_organic_direct_views}
+            tip="Referral, email, kampanje i ostali izvori saobraćaja" />
         </div>
       </div>
 
@@ -1047,12 +1063,12 @@ function AnalyticsTab({ portal }: { portal: PortalOverview }) {
   );
 }
 
-function CompRow({ label, whole, gem, pctVal, wholeColor }: {
-  label: string; whole: string; gem: string; pctVal?: string; wholeColor?: string;
+function CompRow({ label, whole, gem, pctVal, wholeColor, tip }: {
+  label: string; whole: string; gem: string; pctVal?: string; wholeColor?: string; tip?: string;
 }) {
   return (
-    <div style={S.compRow}>
-      <div style={S.compRowLabel}>{label}</div>
+    <div style={S.compRow} title={tip}>
+      <div style={S.compRowLabel}>{label}{tip && <span style={{ marginLeft: 4, fontSize: 10, cursor: 'help', opacity: 0.5 }}>ⓘ</span>}</div>
       <div style={{ ...S.compRowVal, ...(wholeColor ? { color: wholeColor } : {}) }}>{whole}</div>
       <div style={{ ...S.compRowVal, color: '#a78bfa' }}>{gem}</div>
       {pctVal !== undefined && <div style={{ ...S.compRowVal, color: '#64748b' }}>{pctVal}</div>}
@@ -1060,12 +1076,12 @@ function CompRow({ label, whole, gem, pctVal, wholeColor }: {
   );
 }
 
-function AttrBar({ label, value, color, count }: { label: string; value: number; color: string; count: number }) {
+function AttrBar({ label, value, color, count, tip }: { label: string; value: number; color: string; count: number; tip?: string }) {
   return (
-    <div style={S.attrRow}>
+    <div style={S.attrRow} title={tip}>
       <div style={S.attrLabel}>
         <span style={{ ...S.attrDot, background: color }} />
-        {label}
+        {label}{tip && <span style={{ marginLeft: 4, fontSize: 9, cursor: 'help', opacity: 0.5 }}>ⓘ</span>}
       </div>
       <div style={S.attrBarBg}>
         <div style={{ ...S.attrBarFill, width: `${Math.max(value, 2)}%`, background: color }} />
