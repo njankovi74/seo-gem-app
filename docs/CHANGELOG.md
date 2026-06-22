@@ -14,6 +14,7 @@ Hronološki zapis svih promena u projektu.
 | 2026-06-22 | docs | **Prepisan CMS-INTEGRATION.md** — ispravljeni netačni podaci: auth header (`Authorization: Bearer` umesto `x-api-key`), API request format (`body` umesto `url`), tačan opis embed link modela |
 | 2026-06-22 | docs | **Priprema email drafta za Nikolu Jankovića (Appworks)** — objašnjenje SEO GEM sistema + zahtevi za mPanel integraciju (4 nova SEO polja + embed link) |
 | 2026-06-22 | docs | Ažuriran CHANGELOG i TROUBLESHOOTING sa novim problemima |
+| 2026-06-22 | status | **Mail poslat Nikoli Jankoviću (Appworks)** — čekamo odgovor sa CORS domenom i callback mehanizmom. Implementacija kreće čim stigne odgovor |
 
 ### Konstatovani problemi:
 
