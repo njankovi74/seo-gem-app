@@ -116,6 +116,49 @@ function extractArticleId(url: string): string | null {
 
 **Fajl:** `src/app/admin/page.tsx`
 
+---
+
+### 9. Dokumentacija o integraciji bila netačna — embed link konfuzija (jun 2026)
+
+**Problem:** Pri pripremi integracije za novi portal (Insajder.net), AI agent je 3 puta pogrešno opisao kako funkcioniše CMS integracija. Prvo tvrdio da CMS developer (Nikola/Appworks) treba da pravi dugme i piše fetch() pozive ka našem API-ju. Zatim pominjao iframe. Konačno, nakon pregleda `page.tsx` i `CMS-INTEGRATION.md`, utvrđeno je da mi isporučujemo embed link ka našem widgetu koji kompletno radi sve.
+
+**Uzrok:** `CMS-INTEGRATION.md` imao neprecizan opis u sekciji "Embed u CMS" — navodio da "Widget poziva `/api/cms/titles`" bez da jasno kaže da je widget **naš**, hostan na **našem** domenu. Takođe, agent nije pregledao `page.tsx` (koji je SAM widget) i oslanjao se samo na API route fajlove.
+
+**Rešenje:**
+1. Kreiran **PORTAL-ONBOARDING.md** — definitivna procedura sa dijagramom arhitekture
+2. Prepisan **CMS-INTEGRATION.md** — tačan opis embed link modela
+3. Dokumentovano da CMS developer NE piše logiku za generisanje — samo ugrađuje naš link
+
+**Pouka:** Uvek proveriti `page.tsx` (frontend widget) i `cms-auth.ts` (CORS + auth) pre opisivanja integracionog modela. Ne oslanjati se samo na API route fajlove.
+
+**Fajlovi:** `docs/PORTAL-ONBOARDING.md` (nov), `docs/CMS-INTEGRATION.md` (prepisan)
+
+---
+
+### 10. Auth header u dokumentaciji pogrešan (jun 2026)
+
+**Problem:** `CMS-INTEGRATION.md` navodio da je auth header `x-api-key`, ali kod u `cms-auth.ts` koristi `Authorization: Bearer <KEY>`.
+
+**Uzrok:** Dokumentacija pisana ručno i nikad sinhronizovana sa kodom.
+
+**Rešenje:** Ispravljen na `Authorization: Bearer <API_KEY>` u svim dokumentima. Dodata napomena u PORTAL-ONBOARDING.md.
+
+**Referentni fajl:** `src/lib/cms-auth.ts`, linije 33-36
+
+---
+
+### 11. API request format u dokumentaciji pogrešan (jun 2026)
+
+**Problem:** Dokumentacija navodila `url` kao primarni request parametar za `/api/cms/titles`, ali kod prima `body` (tekst članka) kao obavezno polje. URL je opcionalan parametar samo za logovanje.
+
+**Uzrok:** Isti kao #10 — dokumentacija nikad sinhronizovana sa kodom.
+
+**Rešenje:** Ispravljen request format u CMS-INTEGRATION.md sa tačnim obaveznim i opcionim parametrima.
+
+**Referentni fajl:** `src/app/api/cms/titles/route.ts`, linije 40-55
+
+---
+
 ## Poznata ograničenja
 
 ### 1. GSC podaci kasne 2-3 dana

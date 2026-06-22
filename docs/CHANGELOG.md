@@ -4,6 +4,44 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+## 2026-06-22 — Insajder.net integracija (početak) + Dokumentacija
+
+### Sesija: Komunikacija sa Appworks timom + procedura za nove portale
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-06-22 | docs | **Kreiran PORTAL-ONBOARDING.md** — kompletna procedura ubacivanja novih portala, korak po korak, sa checklist-om, dijagramom arhitekture, i referencom za sve postojeće portale |
+| 2026-06-22 | docs | **Prepisan CMS-INTEGRATION.md** — ispravljeni netačni podaci: auth header (`Authorization: Bearer` umesto `x-api-key`), API request format (`body` umesto `url`), tačan opis embed link modela |
+| 2026-06-22 | docs | **Priprema email drafta za Nikolu Jankovića (Appworks)** — objašnjenje SEO GEM sistema + zahtevi za mPanel integraciju (4 nova SEO polja + embed link) |
+| 2026-06-22 | docs | Ažuriran CHANGELOG i TROUBLESHOOTING sa novim problemima |
+
+### Konstatovani problemi:
+
+| # | Problem | Uzrok | Posledica | Status |
+|---|---|---|---|---|
+| 11 | AI agent nije znao kako funkcioniše embed link integracija | Dokumentacija (CMS-INTEGRATION.md) imala neprecizan opis: navodila "CMS poziva naš API" i "x-api-key", ali stvarni flow je da mi isporučujemo embed link ka našem widgetu koji radi sve | Draft maila za Appworks je 3 puta ispravljen pre nego što je tačno opisivao proces — prvo tvrdio da Nikola pravi dugme i API pozive, zatim da je iframe, konačno ispravno: mi dajemo embed link, naš widget radi kompletnu logiku | ✅ Ispravljen u PORTAL-ONBOARDING.md i CMS-INTEGRATION.md |
+| 12 | Auth header u dokumentaciji pogrešan | CMS-INTEGRATION.md navodio `x-api-key` header, ali kod koristi `Authorization: Bearer <KEY>` (cms-auth.ts:33-36) | Mogla je izazvati neuspelu integraciju sa novim portalom | ✅ Ispravljen u CMS-INTEGRATION.md |
+| 13 | API request format u dokumentaciji pogrešan | Dokumentacija navodila `url` kao primarni parametar, ali kod prima `body` (tekst članka) kao obavezan parametar | Mogla je izazvati neuspelu integraciju | ✅ Ispravljen u CMS-INTEGRATION.md |
+
+---
+
+## 2026-06-21 — Tooltip helperi za dashboard metrike
+
+### Sesija: UX poboljšanja — laička objašnjenja metrika
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-06-21 | feat | **Tooltip helperi (ⓘ)** — Dodati na SVE metrike u dashboardu: Landing page (4 metrike × 4 portala), Operacije tab (6 metrika), Analitika tab (GSC 5 + GA4 4 + Atribucija 3), sa laičkim objašnjenjima na srpskom |
+| 2026-06-21 | feat | `tip` prop dodat na `MetricCard` i `CompRow` komponente za konzistentne tooltipove |
+
+### Fajlovi izmenjeni 2026-06-21:
+
+| Fajl | Tip promene |
+|---|---|
+| `src/app/admin/page.tsx` | Dodati tooltip helperi na sve metrike (55 insertions, 39 deletions) |
+
+---
+
 ## 2026-06-19 — Veliki refaktoring Admin Dashboarda
 
 ### Sesija 1 (jutro): Dokumentacija i Dashboard v3
