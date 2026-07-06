@@ -2,7 +2,14 @@
  * GET /api/admin/analytics/articles
  * 
  * Returns ONLY SEO GEM articles with their GSC + GA4 metrics.
- * Data source: title_history (primary) → matched with analytics by article ID.
+ * 
+ * MATCHING STRATEGY (v2 - slug-based):
+ * Instead of trusting title_history.article_url (which was often wrong due to
+ * a bug in cms-embed.js that grabbed random links from the CMS page), we now:
+ * 1. Collect all unique article URLs from GSC/GA4 data
+ * 2. For each title_history record, find the GSC URL whose slug best matches
+ *    the selected_title keywords (slug-based matching)
+ * 3. This gives us the CORRECT article_url and article_id for each title
  * 
  * Query params:
  *   - portal: portal_id (required)
@@ -39,6 +46,63 @@ function extractArticleId(url: string): string | null {
   if (!url) return null;
   const match = url.match(/\/(\d{4,})\//);
   return match ? match[1] : null;
+}
+
+/** Extract slug from URL: /vesti/hronika/57081/slug-text-here/vest -> slug-text-here */
+function extractSlug(url: string): string {
+  if (!url) return '';
+  const match = url.match(/\/\d{4,}\/([^/]+)\//);
+  return match ? match[1].toLowerCase() : '';
+}
+
+/**
+ * Normalize text for slug matching:
+ * Remove diacritics, lowercase, split to words 4+ chars
+ */
+// Common Serbian/English words that appear in many slugs and cause false matches
+const STOP_WORDS = new Set([
+  'kako', 'kada', 'zasto', 'koji', 'koja', 'koje', 'ovaj', 'ova', 'ovo',
+  'srbija', 'srbiji', 'srbije', 'srpski', 'srpska', 'srpske',
+  'beograd', 'beogradu', 'beograda', 'novi', 'nova', 'novo', 'novu',
+  'vesti', 'vest', 'danas', 'posle', 'tokom', 'nakon', 'pred', 'prema',
+  'vise', 'manje', 'samo', 'koji', 'gde', 'sta', 'koliko',
+  'imate', 'imaju', 'imamo', 'moze', 'mogu', 'mora', 'treba',
+  'bilo', 'biti', 'jeste', 'nije', 'nece', 'hoce',
+  'ovde', 'tamo', 'gore', 'dole', 'levo', 'desno',
+  'from', 'with', 'that', 'this', 'what', 'when', 'where', 'which',
+]);
+
+function normalizeForMatch(text: string): string[] {
+  if (!text) return [];
+  return text
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u0111/g, 'd').replace(/\u0110/g, 'd')
+    .replace(/[^\w\s]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length > 4 && !STOP_WORDS.has(w)); // 5+ chars, no stop words
+}
+
+/**
+ * Score how well a title matches a URL slug. Returns 0-1.
+ */
+function slugMatchScore(title: string, slug: string): number {
+  if (!title || !slug) return 0;
+  const titleWords = normalizeForMatch(title);
+  if (titleWords.length === 0) return 0;
+  
+  const slugNorm = slug
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u0111/g, 'd');
+  
+  let matches = 0;
+  for (const word of titleWords) {
+    if (slugNorm.includes(word)) matches++;
+  }
+  // Require at least 2 word matches to avoid single-word false positives
+  if (matches < 2) return 0;
+  return matches / titleWords.length;
 }
 
 /** Paginated Supabase fetch (1000 rows per page) */
@@ -80,42 +144,10 @@ export async function GET(request: NextRequest) {
   const today = new Date().toISOString().split('T')[0];
 
   try {
-    // 1. PRIMARY: Get ALL title_history entries for this portal (paginated)
+    // 1. Get ALL title_history entries for this portal (paginated)
     const titleData = await fetchAll(sb, 'title_history',
       'id, article_url, selected_title, selection_type, offered_titles, created_at',
       { portal_id: portal });
-
-    // Build title map keyed by article ID
-    const titleMap = new Map<string, {
-      id: number;
-      article_url: string;
-      selected_title: string;
-      selection_type: string;
-      style: string;
-      created_at: string;
-    }>();
-
-    for (const t of titleData) {
-      const artId = extractArticleId(t.article_url);
-      if (!artId || titleMap.has(artId)) continue; // Keep most recent (already sorted desc)
-
-      let style = 'custom';
-      if (t.offered_titles && Array.isArray(t.offered_titles)) {
-        const match = t.offered_titles.find(
-          (o: { text: string; style: string }) => o.text === t.selected_title
-        );
-        if (match) style = match.style;
-      }
-
-      titleMap.set(artId, {
-        id: t.id,
-        article_url: t.article_url,
-        selected_title: t.selected_title,
-        selection_type: t.selection_type,
-        style,
-        created_at: t.created_at,
-      });
-    }
 
     // 2. Get GSC data (paginated)
     const gscData = await fetchAll(sb, 'article_gsc_metrics',
@@ -123,24 +155,24 @@ export async function GET(request: NextRequest) {
       { portal_id: portal },
       { start: startDate, end: endDate });
 
-    // Aggregate GSC per article ID
+    // 3. Get GA4 data (paginated)
+    const ga4Data = await fetchAll(sb, 'article_ga4_metrics',
+      'article_url, pageviews, sessions, avg_engagement_seconds, pages_per_session, organic_pct, direct_pct, social_pct',
+      { portal_id: portal },
+      { start: startDate, end: endDate });
+
+    // == Build GSC aggregation per article ID ==
     const gscMap = new Map<string, {
       impressions: number; clicks: number; avg_position: number; positionCount: number;
       web_impressions: number; discover_impressions: number;
       top_queries: Array<{ query: string; clicks: number; impressions: number }>;
     }>();
-    // Map article ID → first GSC URL (from Google, always correct)
     const gscUrlMap = new Map<string, string>();
 
     for (const row of gscData) {
       const artId = extractArticleId(row.article_url);
       if (!artId) continue;
-
-      // Store first GSC URL per article (from Google, always correct)
-      if (!gscUrlMap.has(artId) && row.article_url) {
-        gscUrlMap.set(artId, row.article_url);
-      }
-
+      if (!gscUrlMap.has(artId) && row.article_url) gscUrlMap.set(artId, row.article_url);
       if (!gscMap.has(artId)) {
         gscMap.set(artId, {
           impressions: 0, clicks: 0, avg_position: 0, positionCount: 0,
@@ -166,13 +198,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 3. Get GA4 data (paginated)
-    const ga4Data = await fetchAll(sb, 'article_ga4_metrics',
-      'article_url, pageviews, sessions, avg_engagement_seconds, pages_per_session, organic_pct, direct_pct, social_pct',
-      { portal_id: portal },
-      { start: startDate, end: endDate });
-
-    // Aggregate GA4 per article ID
+    // == Build GA4 aggregation per article ID ==
     const ga4Map = new Map<string, {
       pageviews: number; sessions: number;
       avg_engagement_seconds: number; engCount: number;
@@ -183,7 +209,6 @@ export async function GET(request: NextRequest) {
     for (const row of ga4Data) {
       const artId = extractArticleId(row.article_url);
       if (!artId) continue;
-
       if (!ga4Map.has(artId)) {
         ga4Map.set(artId, {
           pageviews: 0, sessions: 0,
@@ -205,7 +230,127 @@ export async function GET(request: NextRequest) {
       entry.srcCount += 1;
     }
 
-    // 4. Build articles list — ONLY from title_history (SEO GEM articles)
+    // == Build slug index from ALL known analytics URLs for smart matching ==
+    const allSlugs: Array<[string, string]> = []; // [slug, artId]
+    for (const [artId, gscUrl] of gscUrlMap) {
+      const slug = extractSlug(gscUrl);
+      if (slug) allSlugs.push([slug, artId]);
+    }
+    // Also index GA4 URLs (some articles may only have GA4 data)
+    for (const row of ga4Data) {
+      const artId = extractArticleId(row.article_url);
+      const slug = extractSlug(row.article_url);
+      if (artId && slug && !gscUrlMap.has(artId)) {
+        gscUrlMap.set(artId, row.article_url);
+        allSlugs.push([slug, artId]);
+      }
+    }
+
+    // == Build inverted index: word → Set<artId> for fast slug matching ==
+    // Pre-normalize all slugs into words once
+    const slugWordIndex = new Map<string, Set<string>>(); // word → set of artIds
+    const artIdToSlug = new Map<string, string>(); // artId → normalized slug
+    
+    for (const [slug, artId] of allSlugs) {
+      const slugNorm = slug
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\u0111/g, 'd');
+      artIdToSlug.set(artId, slugNorm);
+      
+      // Split slug into words and index each
+      const slugWords = slugNorm.split('-').filter(w => w.length > 4 && !STOP_WORDS.has(w));
+      for (const w of slugWords) {
+        if (!slugWordIndex.has(w)) slugWordIndex.set(w, new Set());
+        slugWordIndex.get(w)!.add(artId);
+      }
+    }
+
+    // == Smart title-to-article matching ==
+    const titleMap = new Map<string, {
+      id: number;
+      article_url: string;
+      selected_title: string;
+      selection_type: string;
+      style: string;
+      created_at: string;
+    }>();
+
+    const claimedIds = new Set<string>();
+
+    for (const t of titleData) {
+      let style = 'custom';
+      if (t.offered_titles && Array.isArray(t.offered_titles)) {
+        const match = t.offered_titles.find(
+          (o: { text: string; style: string }) => o.text === t.selected_title
+        );
+        if (match) style = match.style;
+      }
+
+      // Strategy 1: Validate stored article_url by checking slug match
+      const directId = extractArticleId(t.article_url);
+      const directSlug = extractSlug(t.article_url);
+      let matchedId: string | null = null;
+
+      if (directId && directSlug && !claimedIds.has(directId)) {
+        const score = slugMatchScore(t.selected_title, directSlug);
+        if (score >= 0.25) {
+          matchedId = directId;
+        }
+      }
+
+      // Strategy 2: Use inverted index to find candidate articles quickly
+      if (!matchedId) {
+        const titleWords = normalizeForMatch(t.selected_title);
+        
+        // Collect candidate artIds that share at least one word
+        const candidateCounts = new Map<string, number>();
+        for (const word of titleWords) {
+          const artIds = slugWordIndex.get(word);
+          if (artIds) {
+            for (const aid of artIds) {
+              if (!claimedIds.has(aid)) {
+                candidateCounts.set(aid, (candidateCounts.get(aid) || 0) + 1);
+              }
+            }
+          }
+        }
+
+        // Only evaluate candidates with 2+ word hits (our minimum threshold)
+        let bestScore = 0;
+        let bestId: string | null = null;
+        for (const [artId, hitCount] of candidateCounts) {
+          if (hitCount < 2) continue; // Skip single-word matches
+          const slugNorm = artIdToSlug.get(artId) || '';
+          // Quick score: hitCount / titleWords.length (avoids full re-normalization)
+          let verifiedMatches = 0;
+          for (const word of titleWords) {
+            if (slugNorm.includes(word)) verifiedMatches++;
+          }
+          if (verifiedMatches < 2) continue;
+          const score = verifiedMatches / titleWords.length;
+          if (score > bestScore && score >= 0.25) {
+            bestScore = score;
+            bestId = artId;
+          }
+        }
+        if (bestId) matchedId = bestId;
+      }
+
+      if (!matchedId) continue; // Cannot reliably match - skip
+      if (titleMap.has(matchedId)) continue;
+
+      claimedIds.add(matchedId);
+      titleMap.set(matchedId, {
+        id: t.id,
+        article_url: gscUrlMap.get(matchedId) || t.article_url,
+        selected_title: t.selected_title,
+        selection_type: t.selection_type,
+        style,
+        created_at: t.created_at,
+      });
+    }
+
+    // 4. Build articles list
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const articles: any[] = [];
 
@@ -220,7 +365,6 @@ export async function GET(request: NextRequest) {
       const clicks = gsc?.clicks || 0;
       const ctr = impressions > 0 ? clicks / impressions : 0;
 
-      // Status
       let status: 'early' | 'ok' | 'warning' | 'top' = 'ok';
       if (ageDays < 7) status = 'early';
       else if (impressions > 500 && ctr > 0.06) status = 'top';
@@ -232,8 +376,7 @@ export async function GET(request: NextRequest) {
 
       articles.push({
         article_id: artId,
-        // Prefer GSC URL (from Google, always correct) over title_history URL (may be mismatched)
-        url: gsc ? gscUrlMap.get(artId) || title.article_url : title.article_url,
+        url: gscUrlMap.get(artId) || title.article_url,
         seo_title: title.selected_title,
         style: title.style,
         selection_type: title.selection_type,
@@ -261,9 +404,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Sort by pageviews desc (most viewed SEO GEM articles first)
     articles.sort((a, b) => b.pageviews - a.pageviews);
-
     const withData = articles.filter(a => a.has_gsc || a.has_ga4);
 
     return NextResponse.json({
