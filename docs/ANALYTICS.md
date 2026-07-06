@@ -92,21 +92,40 @@ Za svaki portal prikazuje 4 sekcije:
 ## SEO GEM Article Matching
 
 ### Problem:
-`title_history` i `article_ga4_metrics` čuvaju URL-ove u različitim formatima.
+`title_history` čuva URL članaka, ali zbog buga u embed widgetu, ~45% starih zapisa ima pogrešan URL. Takođe, `title_history` i `article_ga4_metrics` čuvaju URL-ove u različitim formatima.
 
-### Rešenje — ID-based matching:
-Iz svakog URL-a se izvlači numerički article ID (4+ cifara):
+### Rešenje — 3-strategija matching (v3, jul 2026):
 
+**Strategy 0 — Direktni article_id (novi zapisi, 100% tačno):**
 ```
-title_history:        https://newsmaxbalkans.com/svet/vesti/51543/lek-za-dijabetes.../vest
-                                                          ^^^^^
-article_ga4_metrics:  /magazin/vesti/51543/lek-za-dijabetes.../vest
-                                     ^^^^^
-                                     
-Regex: /\/(\d{4,})\//  →  "51543"
+title_history.article_id = "57081"  →  direktan join sa GSC/GA4 po ID-u
+```
+Od jula 2026, `cms-embed.js` šalje `articleId` kao zasebno polje.
+
+**Strategy 1 — Slug validation (stari zapisi, ~75% tačno):**
+```
+title_history.article_url → extractSlug() → slugMatchScore(title, slug) ≥ 0.25
+```
+Validira stored URL tako što poredi ključne reči naslova sa slug-om.
+
+**Strategy 2 — Inverted index search (fallback, ~70%):**
+```
+titleWords → slugWordIndex → kandidati sa 2+ poklapanja → best score
+```
+Pretraga svih poznatih slugova iz GSC/GA4 podataka.
+
+### ID ekstrakcija:
+```
+Regex: /\/(\d{4,})\//  →  "57081"
 ```
 
-**Match rate:** 92% (695 od 756 SEO GEM članaka za Newsmax SR)
+### Portali i zapisi:
+| Portal | Zapisi | Opis |
+|---|---|---|
+| `newsmax` | 591 | Newsmax Balkans SR |
+| `newsmax_pl` | 247 | Newsmax Polska |
+| `newsmax_al` | 84 | Newsmax Balkans AL |
+| `web_app` | 78 | Admin web interfejs |
 
 ### Organic + Direct kalkulacija:
 ```typescript

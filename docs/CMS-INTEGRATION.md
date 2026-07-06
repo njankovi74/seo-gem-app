@@ -10,13 +10,12 @@ SEO GEM se integriše sa CMS sistemima novinskih portala putem **embed linka**. 
 
 ## Portali
 
-| Portal | portal_id | API ključ env | Jezik | Domen | CMS | CMS Developer |
+| Portal | portal_id | API ključ env | Jezik | Domen | Status | CMS Developer |
 |---|---|---|---|---|---|---|
-| 🇷🇸 Newsmax Balkans SR | `newsmax` | `CMS_API_KEY_NEWSMAX` | Srpski | newsmaxbalkans.com | Custom | Cubes d.o.o. |
-| 🇦🇱 Newsmax Balkans AL | `newsmax_al` | `CMS_API_KEY_NEWSMAX_AL` | Albanski | newsmaxbalkans.al | Custom | Cubes d.o.o. |
-| 🇵🇱 Newsmax Polska | `newsmax_pl` | `CMS_API_KEY_NEWSMAX_PL` | Poljski | newsmaxpolska.pl | Custom | Cubes d.o.o. |
-| 🇬🇧 Newsmax EN | `newsmax_en` | `CMS_API_KEY_NEWSMAX_EN` | Engleski | (nedefinisan) | Custom | Cubes d.o.o. |
-| 🇷🇸 Insajder.net | `insajder` | `CMS_API_KEY_INSAJDER` | Srpski | insajder.net | mPanel | Appworks |
+| 🇷🇸 Newsmax Balkans SR | `newsmax` | `CMS_API_KEY_NEWSMAX` | Srpski | newsmaxbalkans.com | ✅ Produkcija (591 zapis) | Cubes d.o.o. |
+| 🇦🇱 Newsmax Balkans AL | `newsmax_al` | `CMS_API_KEY_NEWSMAX_AL` | Albanski | newsmaxbalkans.al | ✅ Produkcija (84 zapisa) | Cubes d.o.o. |
+| 🇵🇱 Newsmax Polska | `newsmax_pl` | `CMS_API_KEY_NEWSMAX_PL` | Poljski | newsmaxpolska.pl | ✅ Produkcija (247 zapisa) | Cubes d.o.o. |
+| 🇷🇸 Insajder.net | `insajder` | `CMS_API_KEY_INSAJDER` | Srpski | insajder.net | ⏳ Čeka se odgovor klijenta | Appworks |
 
 ---
 

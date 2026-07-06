@@ -4,20 +4,41 @@
 
 ### 0. Article URL ↔ Title Mismatch u admin dashboardu (jul 2026)
 
-**Problem:** U admin dashboardu, SEO naslov članka se ne poklapa sa URL-om. Npr. naslov kaže "Odbor Skupštine ocenio uskladenost..." ali URL vodi na potpuno drugi članak.
+**Problem:** U admin dashboardu, SEO naslov članka se ne poklapa sa URL-om. Npr. naslov kaže "Odbor Skupštine ocenio uskladenost..." ali URL vodi na potpuno drugi članak. Mismatch rate bio 45%.
 
 **Uzrok:** `cms-embed.js` je koristio heuristiku koja pretražuje SVE linkove na CMS backoffice stranici i hvata prvi koji sadrži `/vest` pattern. U backoffice-u postoje linkovi ka drugim člancima (sidebar, lista nedavnih, related), pa widget hvata pogrešan link.
 
-**Rešenje (3 fajla):**
+**Rešenje (3 faze):**
+
+**Faza 1 — Sprečavanje budućih pogrešnih URL-ova:**
 1. **`public/cms-embed.js`** — Prepisana URL detekcija:
    - Izvlači article ID iz backoffice URL-a (`/articles/57081/edit` → `57081`)
    - Traži link na stranici koji sadrži TAJ ISTI ID i nije backoffice
    - Ako nema — šalje prazan string umesto pogrešnog URL-a
-   - Uklonjena heuristika sa random linkovima
 2. **`src/app/api/cms/generate/route.ts`** — Server-side sanitizacija URL-a
-3. **`src/app/api/admin/analytics/articles/route.ts`** — Dashboard koristi GSC URL (iz Google-a, uvek tačan) za prikaz
 
-**Fajlovi:** `public/cms-embed.js`, `src/app/api/cms/generate/route.ts`, `src/app/api/admin/analytics/articles/route.ts`
+**Faza 2 — Slug-based matching za stare zapise:**
+3. **`src/app/api/admin/analytics/articles/route.ts`** — Inverted index slug matching:
+   - Normalizuje naslove i URL slugove (uklanja dijakritike, stop-words)
+   - Poredi ključne reči iz naslova sa slug-om u URL-u
+   - Zahteva minimum 2 poklapanja reči i score ≥ 0.25
+   - Smanjuje mismatch sa 45% na ~15%
+
+**Faza 3 — Direktno ID matching (konačno rešenje):**
+4. **`cms-embed.js`** — Šalje `articleId` kao zasebno polje u API
+5. **`title-history.ts`** — Čuva `article_id` u novu kolonu u Supabase
+6. **`articles/route.ts`** — Tri strategije po prioritetu:
+   - Strategy 0: `article_id` kolona (novi zapisi) → **100% tačno**
+   - Strategy 1: Slug match stored URL-a (stari zapisi) → ~75%
+   - Strategy 2: Inverted index pretraga svih slugova → ~70%
+
+**Supabase migracija:**
+```sql
+ALTER TABLE public.title_history ADD COLUMN IF NOT EXISTS article_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_title_history_article_id ON public.title_history (article_id);
+```
+
+**Fajlovi:** `public/cms-embed.js`, `src/app/api/cms/generate/route.ts`, `src/lib/title-history.ts`, `src/app/api/admin/analytics/articles/route.ts`
 
 ### 1. Supabase vraća samo 1000 redova (jun 2026)
 

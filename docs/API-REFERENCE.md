@@ -83,8 +83,9 @@ Generiše meta opis, ključne reči i schema markup za izabrani naslov.
 {
   "url": "https://newsmaxbalkans.com/...",
   "selectedTitle": "Izabrani naslov članka",
-  "selection_type": "ai_selected",              // ili "custom_new"
-  "text": "Tekst članka..."                     // Opciono
+  "articleId": "57081",                           // Numerički ID članka (iz backoffice URL-a)
+  "selection_type": "ai_selected",                // ili "custom_new"
+  "text": "Tekst članka..."                       // Opciono
 }
 ```
 

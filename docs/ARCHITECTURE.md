@@ -120,9 +120,9 @@ Vercel Cron (3h UTC) → /api/admin/analytics/sync
 ```
 Admin → /admin (password auth)
   → /api/admin/analytics/overview
-    → Fetch ALL title_history (paginiran)
+    → Fetch ALL title_history (paginiran, uključuje article_id)
     → Fetch ALL ga4_metrics za period (paginiran)
-    → ID matching (regex /\d{4,}/)
+    → ID matching: article_id (direktno) > slug validation > inverted index search
     → Agregacija: site-wide + GEM-only + Organic+Direct
 ```
 
