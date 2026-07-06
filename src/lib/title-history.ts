@@ -14,6 +14,7 @@ export interface TitleOption {
 
 export interface TitleChoice {
   articleUrl: string;
+  articleId?: string; // Numeric article ID from backoffice URL (e.g. '57081')
   articleText: string;
   offeredTitles: TitleOption[];
   selectedTitle: string;
@@ -62,7 +63,7 @@ export async function saveTitleChoice(choice: TitleChoice): Promise<void> {
     console.log('🧮 Generated embedding:', embedding.length, 'dimensions');
 
     // Insert into Supabase
-    const { error } = await supabase.from('title_history').insert({
+    const insertData: Record<string, unknown> = {
       article_url: choice.articleUrl,
       article_text: choice.articleText,
       article_embedding: embedding,
@@ -72,7 +73,12 @@ export async function saveTitleChoice(choice: TitleChoice): Promise<void> {
       meta_description: choice.metaDescription,
       keywords: choice.keywords,
       portal_id: choice.portalId || 'web_app',
-    });
+    };
+    // Add article_id if provided (new field, column may not exist yet)
+    if (choice.articleId) {
+      insertData.article_id = choice.articleId;
+    }
+    const { error } = await supabase.from('title_history').insert(insertData);
 
     if (error) {
       console.error('❌ Failed to save title choice:', error);

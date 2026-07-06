@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
   try {
     // 1. Get ALL title_history entries for this portal (paginated)
     const titleData = await fetchAll(sb, 'title_history',
-      'id, article_url, selected_title, selection_type, offered_titles, created_at',
+      'id, article_id, article_url, selected_title, selection_type, offered_titles, created_at',
       { portal_id: portal });
 
     // 2. Get GSC data (paginated)
@@ -286,15 +286,21 @@ export async function GET(request: NextRequest) {
         if (match) style = match.style;
       }
 
-      // Strategy 1: Validate stored article_url by checking slug match
-      const directId = extractArticleId(t.article_url);
-      const directSlug = extractSlug(t.article_url);
+      // Strategy 0: Use article_id column directly (new records have this)
       let matchedId: string | null = null;
+      if (t.article_id && /^\d{4,}$/.test(String(t.article_id)) && !claimedIds.has(String(t.article_id))) {
+        matchedId = String(t.article_id);
+      }
 
-      if (directId && directSlug && !claimedIds.has(directId)) {
-        const score = slugMatchScore(t.selected_title, directSlug);
-        if (score >= 0.25) {
-          matchedId = directId;
+      // Strategy 1: Validate stored article_url by checking slug match (old records)
+      if (!matchedId) {
+        const directId = extractArticleId(t.article_url);
+        const directSlug = extractSlug(t.article_url);
+        if (directId && directSlug && !claimedIds.has(directId)) {
+          const score = slugMatchScore(t.selected_title, directSlug);
+          if (score >= 0.25) {
+            matchedId = directId;
+          }
         }
       }
 

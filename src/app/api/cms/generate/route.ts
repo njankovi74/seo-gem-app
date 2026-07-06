@@ -158,10 +158,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       title, selectedTitle, body: articleBody, lead, articleUrl,
+      articleId: rawArticleId,
       offeredTitles, language: reqLang,
       // New metadata fields from CMS embed
       authorName, articleSection,
     } = body;
+    // Clean article ID: must be numeric, 4+ digits
+    const articleId = (rawArticleId && /^\d{4,}$/.test(String(rawArticleId))) ? String(rawArticleId) : '';
     const language: SupportedLanguage = (reqLang && isValidLanguage(reqLang)) ? reqLang : 'sr';
 
     const errorMsgs: Record<string, { titleRequired: string; textTooShort: string }> = {
@@ -283,6 +286,7 @@ export async function POST(request: NextRequest) {
       try {
         await saveTitleChoice({
           articleUrl: cleanArticleUrl || '',
+          articleId: articleId,
           articleText: text.substring(0, 5000),
           offeredTitles: offeredTitles || [],
           selectedTitle,

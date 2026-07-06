@@ -714,6 +714,7 @@
         body: bodyText,
         lead,
         articleUrl: articleUrl,
+        articleId: articleId,
         authorName: authorName,
         articleSection: articleSection,
         offeredTitles: state.titles,
