@@ -4,6 +4,26 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+---
+
+## 2026-07-06 — Fix: Article URL ↔ Title Mismatch
+
+### Sesija: Rešavanje neslaganja URL-a i naslova u admin dashboardu
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-07-06 | fix | **cms-embed.js** — Prepisana logika detekcije article URL-a. Uklonjena heuristika koja je hvatala prvi `/vest` link na CMS stranici (hvata pogrešan članak). Nova logika: izvlači article ID iz backoffice URL-a (`/articles/57081/edit` → `57081`), pa traži javni link sa tim istim ID-om |
+| 2026-07-06 | fix | **cms/generate/route.ts** — Dodata server-side sanitizacija: odbacuje backoffice URL-ove, prepoznaje `article-id:` prefix |
+| 2026-07-06 | fix | **analytics/articles/route.ts** — Dashboard sada koristi GSC URL (iz Google-a, uvek tačan) za prikaz linka umesto `title_history.article_url` (koji može biti pogrešan) |
+| 2026-07-06 | feat | Urađena kompletna analiza saobraćaja Newsmax SR (jun 19 - jul 5): pad uzrokovan Google Discover sezonalnošću (-72%), Web Search stabilan (+6%/dan), CTR porastao 24% |
+
+### Root Cause:
+- `cms-embed.js` je tražio BILO KOJI link na CMS stranici sa `/vest` patternom
+- U backoffice-u postoje linkovi ka drugim člancima (sidebar, lista, related)
+- Widget je hvatao **prvi nađeni link** — koji obično NIJE trenutni članak
+
+---
+
 ## 2026-06-22 — Insajder.net integracija (početak) + Dokumentacija
 
 ### Sesija: Komunikacija sa Appworks timom + procedura za nove portale

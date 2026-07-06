@@ -641,61 +641,70 @@
     try { authorName = getFieldValue(CONFIG.fields.author) || ''; } catch(e) { /* field may not exist */ }
     var articleSection = '';
     try { articleSection = getFieldValue(CONFIG.fields.section) || ''; } catch(e) { /* field may not exist */ }
-    // Article URL: find the public URL from the backoffice page
+    // Article URL: find the public URL using article ID from backoffice URL
     var articleUrl = '';
 
-    // 1. Try dedicated config field (if CMS admin configured it)
+    // Extract article ID from backoffice URL (e.g. /articles/57081/edit → 57081)
+    var backofficeUrl = window.location.href || '';
+    var articleIdMatch = backofficeUrl.match(/\/articles\/(\d{4,})\//);
+    var articleId = articleIdMatch ? articleIdMatch[1] : '';
+    if (articleId) {
+      console.log('[SEO GEM] Detected article ID from backoffice URL:', articleId);
+    }
+
+    // 1. Try dedicated config field (if CMS admin configured data-field-article-url)
     if (CONFIG.fields.articleUrl) {
       try { articleUrl = getFieldValue(CONFIG.fields.articleUrl) || ''; } catch(e) { /* */ }
     }
 
-    // 2. PRIMARY: Find "View article" button/link (Cubes CMS has this on edit page)
-    if (!articleUrl) {
-      try {
-        var allLinks = document.querySelectorAll('a');
-        for (var li = 0; li < allLinks.length; li++) {
-          var linkText = (allLinks[li].textContent || '').trim().toLowerCase();
-          var linkHref = allLinks[li].href || '';
-          // Match "View article", "View", "Pregledaj" or similar
-          if ((linkText === 'view article' || linkText === 'view' || linkText === 'pregledaj članak' || linkText === 'shiko artikullin')
-              && linkHref && !linkHref.includes('backoffice') && linkHref.startsWith('http')) {
-            articleUrl = linkHref;
-            break;
-          }
-        }
-      } catch(e) { /* */ }
-    }
-
-    // 3. Find any link to the public domain with article pattern (/vest, /vesti/)
-    if (!articleUrl) {
-      try {
-        var pubLinks = document.querySelectorAll('a[href*="/vest"], a[href*="/lajm"], a[href*="/artikull"]');
-        for (var pi = 0; pi < pubLinks.length; pi++) {
-          var ph = pubLinks[pi].href || '';
-          if (ph && !ph.includes('backoffice') && (ph.includes('newsmaxbalkans.com') || ph.includes('newsmaxpolska.com') || ph.includes('newsmaxbalkans.al'))) {
-            articleUrl = ph;
-            break;
-          }
-        }
-      } catch(e) { /* */ }
-    }
-
-    // 4. Try CMS input fields (og_url, canonical_url, etc.)
+    // 2. Try CMS input fields (og_url, canonical_url — these are explicitly set by CMS)
     if (!articleUrl) {
       var urlSelectors = ['[name="og_url"]', '[name="canonical_url"]', '[name="article_url"]', '[name="permalink"]'];
       for (var si = 0; si < urlSelectors.length; si++) {
         try {
           var el = document.querySelector(urlSelectors[si]);
-          if (el && el.value && el.value.startsWith('http')) { articleUrl = el.value; break; }
+          if (el && el.value && el.value.startsWith('http') && !el.value.includes('backoffice')) {
+            articleUrl = el.value;
+            console.log('[SEO GEM] Found article URL from CMS field:', urlSelectors[si], articleUrl);
+            break;
+          }
         } catch(e) { /* */ }
       }
     }
 
-    // 5. Fallback: use current page URL
-    if (!articleUrl) { articleUrl = window.location.href || ''; }
+    // 3. If we have article ID — find the public link that contains THIS EXACT ID
+    if (!articleUrl && articleId) {
+      try {
+        var allLinks = document.querySelectorAll('a[href]');
+        for (var li = 0; li < allLinks.length; li++) {
+          var linkHref = allLinks[li].href || '';
+          // Must be public (not backoffice), must contain our exact article ID in path
+          if (linkHref
+              && !linkHref.includes('backoffice')
+              && linkHref.startsWith('http')
+              && linkHref.match(new RegExp('/' + articleId + '/'))) {
+            articleUrl = linkHref;
+            console.log('[SEO GEM] Found public URL matching article ID ' + articleId + ':', articleUrl);
+            break;
+          }
+        }
+      } catch(e) { /* */ }
+    }
+
+    // 4. NO fallback to random links or window.location — better empty than wrong
+    if (!articleUrl && articleId) {
+      // Store just the article ID so the server can at least log it
+      articleUrl = 'article-id:' + articleId;
+      console.log('[SEO GEM] No public URL found, sending article ID only:', articleId);
+    } else if (!articleUrl) {
+      console.warn('[SEO GEM] Could not determine article URL or ID');
+      articleUrl = '';
+    }
 
     // Strip ?preview=true from URL for schema
-    articleUrl = articleUrl.split('?')[0];
+    if (articleUrl.startsWith('http')) {
+      articleUrl = articleUrl.split('?')[0];
+    }
 
     // Inner function for calling generate API (used for auto-retry)
     async function callGenerate() {

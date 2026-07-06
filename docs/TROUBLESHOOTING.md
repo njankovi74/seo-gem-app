@@ -2,6 +2,23 @@
 
 ## Rešeni problemi
 
+### 0. Article URL ↔ Title Mismatch u admin dashboardu (jul 2026)
+
+**Problem:** U admin dashboardu, SEO naslov članka se ne poklapa sa URL-om. Npr. naslov kaže "Odbor Skupštine ocenio uskladenost..." ali URL vodi na potpuno drugi članak.
+
+**Uzrok:** `cms-embed.js` je koristio heuristiku koja pretražuje SVE linkove na CMS backoffice stranici i hvata prvi koji sadrži `/vest` pattern. U backoffice-u postoje linkovi ka drugim člancima (sidebar, lista nedavnih, related), pa widget hvata pogrešan link.
+
+**Rešenje (3 fajla):**
+1. **`public/cms-embed.js`** — Prepisana URL detekcija:
+   - Izvlači article ID iz backoffice URL-a (`/articles/57081/edit` → `57081`)
+   - Traži link na stranici koji sadrži TAJ ISTI ID i nije backoffice
+   - Ako nema — šalje prazan string umesto pogrešnog URL-a
+   - Uklonjena heuristika sa random linkovima
+2. **`src/app/api/cms/generate/route.ts`** — Server-side sanitizacija URL-a
+3. **`src/app/api/admin/analytics/articles/route.ts`** — Dashboard koristi GSC URL (iz Google-a, uvek tačan) za prikaz
+
+**Fajlovi:** `public/cms-embed.js`, `src/app/api/cms/generate/route.ts`, `src/app/api/admin/analytics/articles/route.ts`
+
 ### 1. Supabase vraća samo 1000 redova (jun 2026)
 
 **Problem:** Dashboard je prikazivao netačne podatke — samo 422 pregleda za 502 članaka. Supabase `select()` ima server-side limit od 1000 redova po zahtevu.

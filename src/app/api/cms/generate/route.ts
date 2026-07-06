@@ -186,8 +186,21 @@ export async function POST(request: NextRequest) {
 
     console.log(`🏢 [CMS/generate] Portal: ${auth.portalId}, lang: ${language}, selectedTitle: "${selectedTitle.substring(0, 50)}..."`);
 
+    // ── Sanitize articleUrl: reject backoffice URLs and handle article-id: prefix ──
+    let cleanArticleUrl = articleUrl || '';
+    if (cleanArticleUrl.includes('backoffice')) {
+      console.warn(`⚠️ [CMS/generate] Rejected backoffice URL: ${cleanArticleUrl.substring(0, 80)}`);
+      cleanArticleUrl = '';
+    }
+    if (cleanArticleUrl.startsWith('article-id:')) {
+      // Widget couldn't find public URL, only has the article ID
+      const artId = cleanArticleUrl.replace('article-id:', '');
+      console.log(`📋 [CMS/generate] Article ID only (no public URL): ${artId}`);
+      cleanArticleUrl = ''; // Don't use for metadata scrape, but save ID info
+    }
+
     // ── PARALLEL: Run metadata scrape AND TF-IDF/LSA analysis concurrently ──
-    const metadataPromise = fetchArticleMetadata(articleUrl);
+    const metadataPromise = fetchArticleMetadata(cleanArticleUrl || undefined);
 
     // TF-IDF + LSA for keyword extraction with language config
     const tfidfAnalyzer = new TFIDFAnalyzer(language);
@@ -236,7 +249,7 @@ export async function POST(request: NextRequest) {
           mainTopics,
           searchIntentType: searchIntent.type,
           textSample: text,
-          articleUrl: scraped.canonicalUrl || articleUrl || '',
+          articleUrl: scraped.canonicalUrl || cleanArticleUrl || '',
           articleMetadata: {
             publisherName: publisherInfo.name,
             publisherLogoUrl: publisherInfo.logoUrl,
@@ -269,7 +282,7 @@ export async function POST(request: NextRequest) {
     if (seoOutputs && !llmFailed) {
       try {
         await saveTitleChoice({
-          articleUrl: articleUrl || '',
+          articleUrl: cleanArticleUrl || '',
           articleText: text.substring(0, 5000),
           offeredTitles: offeredTitles || [],
           selectedTitle,

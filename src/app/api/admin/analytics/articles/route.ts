@@ -129,10 +129,17 @@ export async function GET(request: NextRequest) {
       web_impressions: number; discover_impressions: number;
       top_queries: Array<{ query: string; clicks: number; impressions: number }>;
     }>();
+    // Map article ID → first GSC URL (from Google, always correct)
+    const gscUrlMap = new Map<string, string>();
 
     for (const row of gscData) {
       const artId = extractArticleId(row.article_url);
       if (!artId) continue;
+
+      // Store first GSC URL per article (from Google, always correct)
+      if (!gscUrlMap.has(artId) && row.article_url) {
+        gscUrlMap.set(artId, row.article_url);
+      }
 
       if (!gscMap.has(artId)) {
         gscMap.set(artId, {
@@ -225,7 +232,8 @@ export async function GET(request: NextRequest) {
 
       articles.push({
         article_id: artId,
-        url: title.article_url,
+        // Prefer GSC URL (from Google, always correct) over title_history URL (may be mismatched)
+        url: gsc ? gscUrlMap.get(artId) || title.article_url : title.article_url,
         seo_title: title.selected_title,
         style: title.style,
         selection_type: title.selection_type,
