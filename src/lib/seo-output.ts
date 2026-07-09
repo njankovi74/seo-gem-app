@@ -416,7 +416,7 @@ export async function buildSEOWithLLM(
 
   try {
     // Determine which provider to use based on model name
-    const requestedModel = options?.model || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const requestedModel = options?.model || process.env.GEMINI_MODEL || 'gemini-3.5-flash';
     const isOpenAI = requestedModel.startsWith('gpt-') || requestedModel.startsWith('o1-') || requestedModel.startsWith('o3-');
 
     // OpenAI provider
@@ -471,9 +471,9 @@ export async function buildSEOWithLLM(
     // Literal dynamic import so serverless bundlers can trace the dependency
     const mod: any = await import('@google/generative-ai').catch(() => null);
     if (!mod || !mod.GoogleGenerativeAI) throw new Error('gemini sdk not installed');
-    // COST OPTIMIZATION: gemini-2.5-flash for A/B testing
+    // COST OPTIMIZATION: gemini-3.5-flash for A/B testing
     // gemini-2.5-pro: $10.00/M output tokens
-    // gemini-2.5-flash: $2.50/M output tokens  
+    // gemini-3.5-flash: $2.50/M output tokens  
     const primaryModel = requestedModel;
     const client = new mod.GoogleGenerativeAI(apiKey);
     // Force JSON output to reduce parsing ambiguity on Gemini 2.x
@@ -569,7 +569,7 @@ export async function buildSEOWithDualLLM(
     };
   }
 ): Promise<DualSEOOutputs> {
-  const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const geminiModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
   const openaiModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
   console.log('🔄 [DUAL MODE] Calling both Gemini and OpenAI in parallel...');
@@ -608,3 +608,4 @@ export async function buildSEOWithDualLLM(
     openaiError
   };
 }
+

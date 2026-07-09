@@ -156,7 +156,7 @@ ${articleText}
 }`;
 
     const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
       generationConfig: {
         temperature: 0.6,
         thinkingConfig: { thinkingBudget: 0 },
@@ -200,7 +200,7 @@ ${articleText}
     return NextResponse.json({
       success: true,
       titles,
-      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
       usedRAG: similarExamples.length > 0,
       similarCount: similarExamples.length,
     });
@@ -215,3 +215,4 @@ ${articleText}
     );
   }
 }
+

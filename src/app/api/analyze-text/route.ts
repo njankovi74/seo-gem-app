@@ -266,7 +266,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
           llm: {
             dualMode: false,
             configuredProvider: process.env.SEO_LLM_PROVIDER || 'gemini',
-            configuredModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+            configuredModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
             used: true,
             selectedTitleMode: true,
             savedToSupabase: true,
@@ -430,7 +430,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalysisR
         llm: {
           dualMode,
           ...(dualMode ? {
-            geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+            geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
             openaiModel: process.env.OPENAI_MODEL || 'gpt-4o-mini',
             geminiError,
             openaiError

@@ -125,7 +125,7 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
       styleAnalysis: styleAnalysis || undefined,
     });
 
-    const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const modelName = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
     const isThinkingModel = modelName.includes('2.5');
     const model = genAI.getGenerativeModel({
       model: modelName,
@@ -279,3 +279,4 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
     );
   }
 }
+
