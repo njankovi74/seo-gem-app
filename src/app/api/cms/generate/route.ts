@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
     deterministicSEO.title = selectedTitle;
 
     // LLM generation (meta desc + keywords + schema)
-    const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     const strictModel = (process.env.SEO_LLM_STRICT_MODEL || '').toLowerCase() === 'true';
 
     // Resolve publisher info from portal ID
@@ -350,4 +350,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

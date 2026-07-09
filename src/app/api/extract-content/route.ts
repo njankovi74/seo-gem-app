@@ -206,7 +206,7 @@ async function tryLLMExtraction(html: string): Promise<string> {
 
     const genAI = new mod.GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
       generationConfig: { temperature: 0.1, maxOutputTokens: 4000 },
     });
 
