@@ -4,16 +4,27 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
-## 2026-07-10 — Sistemska provera i Sync fix
+## 2026-07-10 — Sistemska provera, Sync backfill, Model incident
 
-### Sesija: Dijagnostika cron problema i backfill
+### Sesija 1: Dijagnostika i backfill (00:52 - 01:05)
 
 | Datum | Tip | Opis |
 |---|---|---|
-| 2026-07-10 | fix | **sync/route.ts** — Dodat `date` query parametar za manualni backfill. Omogućava sync specifičnog datuma: `?date=2026-07-04` |
-| 2026-07-10 | fix | **Cron sync** — Identifikovan 3.4-dnevni prekid sync-a (7-10 jul). Uzrok: Vercel cron nije radio posle deploy-a 6. jula. Pokrenuti manualni sync-ovi |
-| 2026-07-10 | fix | **newsmax_pl** — Identifikovan problem: ~81% PL zapisa nema `article_id` jer PL backoffice URL ima drugačiji format ili koristi cache-irani embed |
-| 2026-07-10 | feat | **Kompletna sistemska provera:** Vercel health OK, Supabase OK, sva 3 portala aktivna, article_id usvajanje 42% poslednjih 50 zapisa |
+| 2026-07-10 | fix | **sync/route.ts** — Dodat `date` query parametar za manualni backfill specifičnog datuma (`?date=2026-07-04`) |
+| 2026-07-10 | fix | **Cron sync** — Identifikovan 3.4-dnevni prekid sync-a (7-10 jul). Vercel cron nije radio posle deploy-a 6. jula |
+| 2026-07-10 | fix | **Backfill** — Manuelno popunjeni podaci za 7 datuma: jun 13, jul 4-9. Svi uspešni (GSC: 7,643 stranica, GA4: 17,442 stranica) |
+| 2026-07-10 | diag | **newsmax_pl** — 81% PL zapisa nema `article_id`. Uzrok: razlika u backoffice URL formatu |
+
+### Sesija 2: Model incident i analiza (01:06 - 01:31)
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-07-10 | diag | **Dashboard analiza** — Otkriveno 8 grešaka na dan 9. jul (19:11-19:38 UTC). Sve greške su Google API 404 za model `gemini-2.5-flash` |
+| 2026-07-10 | diag | **Model status** — `gemini-2.5-flash` je u procesu deprecation-a (gašenje 16. okt 2026). Povremeni 404 errori, ne potpuni outage |
+| 2026-07-10 | revert | **REVERT** — Pogrešno je urađena migracija na `gemini-3.5-flash` bez odobrenja i testiranja kvaliteta. Odmah vraćen `gemini-2.5-flash` |
+| 2026-07-10 | diag | **Analiza troškova** — gemini-3.5-flash je 4.6× skuplji ($12.40/mesec vs $2.70). gemini-3.1-flash-lite je 22% jeftiniji ($2.10/mesec) |
+| 2026-07-10 | diag | **Live test** — SEO GEM produkcija testirana: Health ✅, Generate ✅ (7.4s), model odgovara |
+| 2026-07-10 | diag | **7-dnevna statistika** — 384 generacije, 373 uspešnih (97.1%), RAG 60.9%, Google Suggest 58.3% |
 
 ---
 

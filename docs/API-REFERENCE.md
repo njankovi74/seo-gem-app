@@ -270,6 +270,7 @@ Pokreće sinhronizaciju GSC i GA4 podataka.
 | `admin_key` | string | — | Ili `CRON_SECRET` header |
 | `portal` | string | svi | Specifičan portal |
 | `days` | number | `1` | Broj dana za sync (max 30) |
+| `date` | string | — | Specifičan datum za backfill (YYYY-MM-DD). Ako je dat, GSC i GA4 sync-uju taj datum umesto relativnog izračuna |
 
 ---
 

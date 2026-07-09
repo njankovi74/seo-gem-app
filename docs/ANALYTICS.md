@@ -64,6 +64,18 @@ Za svaki portal:
 ### Ručni sync:
 ```
 GET /api/admin/analytics/sync?admin_key=<ADMIN_PASSWORD>
+GET /api/admin/analytics/sync?admin_key=<ADMIN_PASSWORD>&date=2026-07-04    // backfill specifičnog datuma
+GET /api/admin/analytics/sync?admin_key=<ADMIN_PASSWORD>&portal=newsmax     // samo 1 portal
+```
+
+> **NAPOMENA:** Vercel cron može da prestane da radi posle novog deploy-a. Proveriti u Vercel Dashboard → Cron Jobs → poslednje pokretanje. Ako je stao, pokrenuti manualni sync za propuštene datume.
+
+### Backfill procedura:
+Ako sync nije radio više dana, sync-ovati po 1 dan (Vercel 60s timeout ne dozvoljava `days=7`):
+```
+?admin_key=***&date=2026-07-04
+?admin_key=***&date=2026-07-05
+...
 ```
 
 ---

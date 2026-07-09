@@ -1,5 +1,63 @@
 # SEO GEM — Poznati problemi i rešenja
 
+## Aktivni problemi
+
+### A1. Gemini 2.5 Flash — Povremeni 404 errori (jul 2026)
+
+**Problem:** Model `gemini-2.5-flash` povremeno vraća `404 Not Found` sa porukom "This model is no longer available". Na dashboardu se prikazuje kao `server_error` na `titles` endpointu.
+
+**Uticaj:** 8 grešaka od 384 poziva (2.1%) u periodu 3-9. jul. Sve greške na 1 dan (9. jul), u prozoru od 27 minuta (19:11-19:38 UTC). Uspešnost: 97.1%.
+
+**Uzrok:** Google je objavio deprecation `gemini-2.5-flash` modela — potpuno gašenje zakazano za **16. oktobar 2026**. Tokom tranzicije, model ima intermitentne 404 greške.
+
+**Status:** Model i dalje radi u 97%+ slučajeva. Nema hitnosti, ali migracija je obavezna pre oktobra.
+
+**Opcije za migraciju:**
+
+| Model | Input cena | Output cena | Mesečni trošak (~1,650 gen) | Razlika |
+|---|---|---|---|---|
+| gemini-2.5-flash (trenutni) | $0.30/1M | $2.50/1M | ~$2.70 | baseline |
+| gemini-3.5-flash | $1.50/1M | $9.00/1M | ~$12.40 | **+360%** |
+| gemini-3.1-flash-lite | $0.25/1M | $1.50/1M | ~$2.10 | **-22%** |
+
+**Pre migracije OBAVEZNO:**
+1. Testirati kvalitet naslova na istom tekstu sa oba modela
+2. Proveriti da li prompt, thinking budget i temperature rade
+3. Uporediti latency
+4. Dobiti odobrenje za promenu
+
+---
+
+### A2. Vercel Cron — Zaustavljanje posle deploy-a (jul 2026)
+
+**Problem:** Vercel cron (`0 3 * * *`) je prestao da radi posle deploy-a 6. jula. Sync nije radio 3.4 dana (7-10. jul).
+
+**Uticaj:** Nedostajali GSC/GA4 podaci za jul 4-9. Manuelno popunjeni putem backfill-a.
+
+**Uzrok:** Vercel ponekad ne restartuje cron schedule posle novog deploy-a. Dokumentovano u Vercel community forumima.
+
+**Rešenje:** Dodat `date` parametar u sync route za manualni backfill:
+```
+GET /api/admin/analytics/sync?admin_key=***&date=2026-07-04
+```
+
+**Preventiva:** Potreban monitoring — proveriti u Vercel Dashboard → Cron Jobs → poslednje pokretanje.
+
+---
+
+### A3. newsmax_pl — article_id ne radi na 81% zapisa (jul 2026)
+
+**Problem:** Samo 19% zapisa sa newsmax_pl portala ima `article_id`. Polje `article_url` je takođe prazno.
+
+**Uzrok:** Mogući razlozi:
+- PL backoffice URL ima drugačiji format od SR portala
+- Novinari koriste cache-iranu verziju embed skripte
+- `cms-embed.js` regex `/\/articles\/(\d{4,})\//` ne odgovara PL URL formatu
+
+**Status:** Za istraživanje — potrebno proveriti PL backoffice URL format.
+
+---
+
 ## Rešeni problemi
 
 ### 0. Article URL ↔ Title Mismatch u admin dashboardu (jul 2026)
