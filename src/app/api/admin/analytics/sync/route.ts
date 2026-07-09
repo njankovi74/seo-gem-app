@@ -53,6 +53,8 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const specificPortal = url.searchParams.get('portal');
   const days = Math.min(parseInt(url.searchParams.get('days') || '1'), 30);
+  // Manual backfill: if 'date' is provided, sync that exact date for both GSC and GA4
+  const manualDate = url.searchParams.get('date'); // format: YYYY-MM-DD
 
   try {
     const sb = getSupabase();
@@ -92,10 +94,10 @@ export async function GET(request: NextRequest) {
       };
 
       for (let d = 0; d < days; d++) {
-        // GSC: data has 2-3 day delay, so offset by 3 + d days
-        const gscDate = getDaysAgo(3 + d);
-        // GA4: near real-time, offset by 1 + d days (yesterday + back)
-        const ga4Date = getDaysAgo(1 + d);
+        // If manual date is provided, use it directly (for backfill)
+        // Otherwise, use standard offsets (GSC: 3+d days ago, GA4: 1+d days ago)
+        const gscDate = manualDate || getDaysAgo(3 + d);
+        const ga4Date = manualDate || getDaysAgo(1 + d);
 
         // Pull GSC
         if (portal.gsc_refresh_token && portal.gsc_property) {
