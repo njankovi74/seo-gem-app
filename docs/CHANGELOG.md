@@ -4,6 +4,19 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+## 2026-07-10 — Sistemska provera i Sync fix
+
+### Sesija: Dijagnostika cron problema i backfill
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-07-10 | fix | **sync/route.ts** — Dodat `date` query parametar za manualni backfill. Omogućava sync specifičnog datuma: `?date=2026-07-04` |
+| 2026-07-10 | fix | **Cron sync** — Identifikovan 3.4-dnevni prekid sync-a (7-10 jul). Uzrok: Vercel cron nije radio posle deploy-a 6. jula. Pokrenuti manualni sync-ovi |
+| 2026-07-10 | fix | **newsmax_pl** — Identifikovan problem: ~81% PL zapisa nema `article_id` jer PL backoffice URL ima drugačiji format ili koristi cache-irani embed |
+| 2026-07-10 | feat | **Kompletna sistemska provera:** Vercel health OK, Supabase OK, sva 3 portala aktivna, article_id usvajanje 42% poslednjih 50 zapisa |
+
+---
+
 ---
 
 ## 2026-07-06 — Fix: Article URL ↔ Title Mismatch
