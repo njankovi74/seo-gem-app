@@ -4,7 +4,34 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
-## 2026-07-10 — Sistemska provera, Sync backfill, Model incident
+## 2026-07-11 — GA4 verifikacija, Article ID backfill, Kumulativna analitika
+
+### Sesija: Večernja (00:51 - 01:55)
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-07-11 | fix | **cms-embed.js** — Robust article ID extraction sa 5 fallback paterna (URL varijante, DOM hidden fields, form action) |
+| 2026-07-11 | fix | **Backfill article_id** — Retroaktivno povezivanje 2,993/3,402 zapisa u title_history (88%) putem title→slug matching sa transliteracijom srpskih slova |
+| 2026-07-11 | feat | **Kumulativna analitika** — Umesto samo članaka tog dana, broje se SVI SEO GEM članci ikad generisani. Rezultat: ~60% sajta umesto ranijih ~10% |
+| 2026-07-11 | fix | **GA4 re-sync jun+jul** — Svih 40 dana re-syncovano sa novim kodom koji popunjava `_pv` kolone |
+| 2026-07-11 | diag | **GA4 verifikacija** — 3 članka ručno verifikovana sa GA4 UI: 57176, 55643, 53227 — svi 100% poklapanje |
+| 2026-07-11 | diag | **Otkriven problem** — Pre 6. jula 0% članaka ima article_id. Uzrok: embed regex zahtevao trailing slash |
+
+### Ključni nalaz:
+- **~60% saobraćaja sajta** dolazi od članaka koji su prošli SEO GEM (kumulativno)
+- **14.7%** Organic Search + **17.7%** Direct = **32.4%** Org+Dir udeo u sajtu (jul 1-9)
+- **3,082** jedinstvenih članaka prošlo SEO GEM do 10. jula
+- **67** novih tekstova dnevno prosečno
+
+### TODO za sledeću sesiju:
+1. Embed URL monitor (PATCH posle čuvanja članka u CMS-u)
+2. Kumulativna junska tabela
+3. Dashboard implementacija sa kumulativnom logikom
+4. Dnevni cron za nepovezane zapise
+
+---
+
+
 
 ### Sesija 1: Dijagnostika i backfill (00:52 - 01:05)
 

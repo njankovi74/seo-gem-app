@@ -56,10 +56,11 @@ Za svaki portal:
    - Upsert u `article_gsc_metrics`
 
 2. **GA4 Pull** (`src/lib/ga4-pull.ts`):
-   - `fetchGA4Data()` — pageviews, sessions, engagement, bounce rate, pages/session
-   - `fetchGA4TrafficSources()` — organic_pct, direct_pct, social_pct per page
-   - `fetchGA4Countries()` — top 20 zemalja po sesijama
-   - Batch upsert u `article_ga4_metrics` (po 100 redova)
+    - `fetchGA4Data()` — pageviews (screenPageViews metrika), sessions, engagement, bounce rate, pages/session
+    - `fetchGA4TrafficSources()` — organic_pct, direct_pct, social_pct per page + apsolutne `_pv` kolone
+    - `fetchGA4Countries()` — top 20 zemalja po sesijama
+    - Batch upsert u `article_ga4_metrics` (po 100 redova)
+    - **VAŽNO:** Koristi `screenPageViews` (ne sessions) za tačne pageview brojeve. Verifikovano sa GA4 UI za 3 članka (jul 2026).
 
 ### Ručni sync:
 ```
@@ -104,46 +105,63 @@ Za svaki portal prikazuje 4 sekcije:
 ## SEO GEM Article Matching
 
 ### Problem:
-`title_history` čuva URL članaka, ali zbog buga u embed widgetu, ~45% starih zapisa ima pogrešan URL. Takođe, `title_history` i `article_ga4_metrics` čuvaju URL-ove u različitim formatima.
+`title_history` čuva URL članaka, ali embed widget nije hvatao article_id pre jula 2026. Takođe, novinari često koriste SEO GEM PRE čuvanja članka (URL je `/articles/new`), pa nema ID-a.
 
-### Rešenje — 3-strategija matching (v3, jul 2026):
+### Rešenje — 4-strategija matching (v4, jul 2026):
 
-**Strategy 0 — Direktni article_id (novi zapisi, 100% tačno):**
+**Strategy 0 — Direktni article_id (novi zapisi od jul 2026, 100% tačno):**
 ```
 title_history.article_id = "57081"  →  direktan join sa GSC/GA4 po ID-u
 ```
-Od jula 2026, `cms-embed.js` šalje `articleId` kao zasebno polje.
+`cms-embed.js` ima 5 fallback paterna za ID ekstrakciju (URL varijante, DOM fields, form action).
 
-**Strategy 1 — Slug validation (stari zapisi, ~75% tačno):**
+**Strategy 1 — Retroaktivni backfill putem title→slug matching (88% tačno):**
+```
+selected_title → transliteracija (š→s, đ→d, č→c, ć→c, ž→z) → slug → pretraga GA4 URL-ova
+```
+Skripta `backfill-article-ids.mjs` konvertuje naslov u URL slug, traži poklapanje u GA4 podacima.
+Izvršen jul 2026: **2,993/3,402 zapisa povezano (88%)**.
+
+**Strategy 2 — Slug validation (stari zapisi, ~75% tačno):**
 ```
 title_history.article_url → extractSlug() → slugMatchScore(title, slug) ≥ 0.25
 ```
-Validira stored URL tako što poredi ključne reči naslova sa slug-om.
 
-**Strategy 2 — Inverted index search (fallback, ~70%):**
+**Strategy 3 — Inverted index search (fallback, ~70%):**
 ```
 titleWords → slugWordIndex → kandidati sa 2+ poklapanja → best score
 ```
-Pretraga svih poznatih slugova iz GSC/GA4 podataka.
 
 ### ID ekstrakcija:
 ```
 Regex: /\/(\d{4,})\//  →  "57081"
 ```
 
-### Portali i zapisi:
-| Portal | Zapisi | Opis |
-|---|---|---|
-| `newsmax` | 591 | Newsmax Balkans SR |
-| `newsmax_pl` | 247 | Newsmax Polska |
-| `newsmax_al` | 84 | Newsmax Balkans AL |
-| `web_app` | 78 | Admin web interfejs |
+### CMS Embed ID Extraction (`cms-embed.js`, 5 paterna):
+1. `/articles/57081/edit` — sa trailing slash
+2. `/articles/57081` — bez trailing slash
+3. `/DIGITS/` — bilo gde u URL-u (4+ cifre)
+4. DOM hidden fields: `article_id`, `id`, `post_id`, `content_id`
+5. Form action URL: `form[action*="/articles/"]`
 
-### Organic + Direct kalkulacija:
+> **POZNATI PROBLEM:** Kad novinar koristi SEO GEM pre čuvanja članka, URL je `/articles/new` i nijedan patern ne hvata ID. Potreban URL monitor koji prati promenu URL-a posle čuvanja. **STATUS: TODO**
+
+### Organic + Direct kalkulacija (apsolutni PV, v2):
 ```typescript
-const orgDirectPct = ((row.organic_pct || 0) + (row.direct_pct || 0)) / 100;
-gemOrganicDirectViews += Math.round(row.pageviews * orgDirectPct);
+// Novi pristup — koristi apsolutne _pv kolone umesto procenata
+gemOrganicViews += row.organic_pv;
+gemDirectViews += row.direct_pv;
 ```
+
+### Kumulativni obračun SEO GEM doprinosa:
+```
+Za svaki dan D:
+1. Uzmi SVE title_history zapise gde created_at < D+1 (kumulativno od početka)
+2. Izvuči unique article_id-jeve
+3. Iz article_ga4_metrics za dan D, saberi PV/Organic/Direct za te članke
+4. Udeo = SEO_GEM_PV / SAJT_TOTAL_PV
+```
+**Rezultat (jul 1-9):** ~60% sajta, 14.7% Organic, 17.7% Direct
 
 ---
 
@@ -181,7 +199,7 @@ gemOrganicDirectViews += Math.round(row.pageviews * orgDirectPct);
 | portal_id | TEXT | Portal |
 | article_url | TEXT | URL članka |
 | date | DATE | Datum metrike |
-| pageviews | INT | Broj pregleda |
+| pageviews | INT | Broj pregleda (screenPageViews) |
 | sessions | INT | Broj sesija |
 | avg_engagement_seconds | FLOAT | Prosečno vreme na stranici |
 | bounce_rate | FLOAT | Bounce rate |
@@ -190,8 +208,14 @@ gemOrganicDirectViews += Math.round(row.pageviews * orgDirectPct);
 | direct_pct | FLOAT | % Direct saobraćaja |
 | social_pct | FLOAT | % Social saobraćaja |
 | discover_pct | FLOAT | % Discover saobraćaja |
+| **organic_pv** | **INT** | **Apsolutni Organic Search pageviews** |
+| **direct_pv** | **INT** | **Apsolutni Direct pageviews** |
+| **social_pv** | **INT** | **Apsolutni Social pageviews** |
+| **referral_pv** | **INT** | **Apsolutni Referral pageviews** |
 | country_breakdown | JSONB | Sesije po zemlji |
 | UNIQUE | — | `(portal_id, article_url, date)` |
+
+> **NAPOMENA:** `_pv` kolone dodate jul 2026. Popunjene za jun-jul 2026 putem re-sync-a. Verifikovane sa GA4 UI (3 članka, 100% poklapanje).
 
 ---
 
