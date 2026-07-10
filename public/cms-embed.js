@@ -644,12 +644,60 @@
     // Article URL: find the public URL using article ID from backoffice URL
     var articleUrl = '';
 
-    // Extract article ID from backoffice URL (e.g. /articles/57081/edit → 57081)
+    // Extract article ID — robust: tries multiple patterns and DOM fallbacks
     var backofficeUrl = window.location.href || '';
-    var articleIdMatch = backofficeUrl.match(/\/articles\/(\d{4,})\//);
-    var articleId = articleIdMatch ? articleIdMatch[1] : '';
-    if (articleId) {
-      console.log('[SEO GEM] Detected article ID from backoffice URL:', articleId);
+    var articleId = '';
+
+    // Pattern 1: /articles/57081/edit or /articles/57081/ (with trailing slash)
+    var match1 = backofficeUrl.match(/\/articles\/(\d{4,})\//);
+    if (match1) articleId = match1[1];
+
+    // Pattern 2: /articles/57081 (no trailing slash, end of URL or with query)
+    if (!articleId) {
+      var match2 = backofficeUrl.match(/\/articles\/(\d{4,})(?:\?|#|$)/);
+      if (match2) articleId = match2[1];
+    }
+
+    // Pattern 3: Any /DIGITS/ pattern in the URL (4+ digits)
+    if (!articleId) {
+      var match3 = backofficeUrl.match(/\/(\d{4,})(?:\/|$|\?)/);
+      if (match3) articleId = match3[1];
+    }
+
+    // Pattern 4: DOM fallback — check hidden fields commonly used by CMS
+    if (!articleId) {
+      var idSelectors = [
+        '[name="article_id"]', '[name="id"]', '[name="post_id"]', '[name="content_id"]',
+        '[name="articleId"]', 'input[type="hidden"][name="id"]',
+        '#article_id', '#articleId', '#post_id',
+        'form[action*="/articles/"] input[name="id"]'
+      ];
+      for (var isi = 0; isi < idSelectors.length; isi++) {
+        try {
+          var idEl = document.querySelector(idSelectors[isi]);
+          if (idEl && idEl.value && /^\d{4,}$/.test(idEl.value)) {
+            articleId = idEl.value;
+            console.log('[SEO GEM] Found article ID from DOM field:', idSelectors[isi], articleId);
+            break;
+          }
+        } catch(e) { /* */ }
+      }
+    }
+
+    // Pattern 5: Check form action URL
+    if (!articleId) {
+      try {
+        var forms = document.querySelectorAll('form[action]');
+        for (var fi = 0; fi < forms.length; fi++) {
+          var formAction = forms[fi].getAttribute('action') || '';
+          var match5 = formAction.match(/\/articles\/(\d{4,})/);
+          if (match5) {
+            articleId = match5[1];
+            console.log('[SEO GEM] Found article ID from form action:', articleId);
+            break;
+          }
+        }
+      } catch(e) { /* */ }
     }
 
     // 1. Try dedicated config field (if CMS admin configured data-field-article-url)
