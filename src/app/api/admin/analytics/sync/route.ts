@@ -129,6 +129,17 @@ export async function GET(request: NextRequest) {
     const totalGSCPages = results.reduce((sum, r) => sum + r.gsc.reduce((s, g) => s + g.pages, 0), 0);
     const totalGA4Pages = results.reduce((sum, r) => sum + r.ga4.reduce((s, g) => s + g.pages, 0), 0);
 
+    // ── Article ID backfill: match unlinked title_history records ──
+    let backfillResult = null;
+    try {
+      console.log('🔗 [Sync] Running article_id backfill...');
+      const { backfillArticleIds } = await import('@/lib/backfill-article-ids');
+      backfillResult = await backfillArticleIds();
+      console.log(`🔗 [Sync] Backfill: ${backfillResult.matched} matched of ${backfillResult.total_without_id}`);
+    } catch (backfillError) {
+      console.error('⚠️ [Sync] Backfill error (non-blocking):', backfillError);
+    }
+
     console.log(`✅ [Sync] Complete: ${totalGSCPages} GSC pages, ${totalGA4Pages} GA4 pages across ${results.length} portals`);
 
     return NextResponse.json({
@@ -139,6 +150,7 @@ export async function GET(request: NextRequest) {
         total_gsc_pages: totalGSCPages,
         total_ga4_pages: totalGA4Pages,
         days_synced: days,
+        backfill: backfillResult,
       },
       results,
     });
