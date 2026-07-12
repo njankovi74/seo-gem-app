@@ -4,6 +4,19 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+## 2026-07-12 — Generation log fix, URL monitor, Update endpoint
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-07-12 | fix | **generation-logger.ts** — Prebačen sa fire-and-forget na `await`. Na Vercel serverless ~75% logova se gubilo jer se funkcija gasila pre inserata |
+| 2026-07-12 | fix | **generate/route.ts, titles/route.ts** — Svi `logGeneration()` pozivi sada koriste `await` |
+| 2026-07-12 | feat | **update-article-id endpoint** [NEW] — `PATCH /api/cms/update-article-id` prima `title_history_id` + `article_id`, ažurira title_history |
+| 2026-07-12 | feat | **cms-embed.js — URL monitor** — Kad novinar koristi SEO GEM na `/articles/new`, posle čuvanja embed prati URL promenu i šalje PATCH sa article_id (svaki 5s, max 5 min) |
+| 2026-07-12 | feat | **generate/route.ts** — Response sada vraća `titleHistoryId` embed-u za URL monitor |
+| 2026-07-12 | feat | **title-history.ts** — `saveTitleChoice` sada vraća `id` insertovanog reda |
+
+---
+
 ## 2026-07-11 — GA4 verifikacija, Article ID backfill, Kumulativna analitika
 
 ### Sesija: Večernja (00:51 - 01:55)
