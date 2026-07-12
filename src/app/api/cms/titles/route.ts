@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
   // Authenticate
   const auth = authenticateCmsRequest(request);
   if (!auth.valid) {
-    logGeneration({ portal_id: 'unknown', endpoint: 'titles', status: 'error', latency_ms: timer(), error_message: auth.error || 'Unauthorized', error_type: 'auth_error' });
+    await logGeneration({ portal_id: 'unknown', endpoint: 'titles', status: 'error', latency_ms: timer(), error_message: auth.error || 'Unauthorized', error_type: 'auth_error' });
     return cmsErrorResponse(auth.error || 'Unauthorized', 401, origin);
   }
 
@@ -236,7 +236,7 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
     // Log successful generation (fire-and-forget)
     const styleBreakdown: Record<string, number> = {};
     titles.forEach(t => { styleBreakdown[t.style] = (styleBreakdown[t.style] || 0) + 1; });
-    logGeneration({
+    await logGeneration({
       portal_id: auth.portalId!,
       endpoint: 'titles',
       status: 'success',
@@ -265,7 +265,7 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
 
   } catch (error) {
     console.error('❌ [CMS/titles] Error:', error);
-    logGeneration({
+    await logGeneration({
       portal_id: auth.portalId || 'unknown',
       endpoint: 'titles',
       status: 'error',

@@ -807,6 +807,59 @@
 
       state.phase = 'done';
       state.error = null;
+
+      // ── URL Monitor: watch for article_id if we didn't have one ──
+      // When journalist creates a new article (/articles/new), saves it,
+      // and the URL changes to /articles/57081/edit — we catch that and PATCH.
+      if (data.titleHistoryId && !articleId) {
+        console.log('[SEO GEM] Starting URL monitor for article ID (TH#' + data.titleHistoryId + ')');
+        var monitorAttempts = 0;
+        var maxMonitorAttempts = 60; // 5 minutes (every 5 seconds)
+        var urlMonitorInterval = setInterval(function() {
+          monitorAttempts++;
+          var currentUrl = window.location.href || '';
+          // Try to extract article ID from current URL
+          var urlMatch = currentUrl.match(/\/articles\/(\d{4,})/);
+          if (!urlMatch) {
+            // Also check for any /DIGITS/ pattern
+            urlMatch = currentUrl.match(/\/(\d{4,})(?:\/|$|\?)/);
+          }
+          if (urlMatch) {
+            var newArticleId = urlMatch[1];
+            console.log('[SEO GEM] URL monitor detected article ID: ' + newArticleId);
+            clearInterval(urlMonitorInterval);
+            // Send PATCH to update title_history
+            try {
+              fetch(CONFIG.apiBase + '/api/cms/update-article-id', {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Bearer ' + CONFIG.apiKey
+                },
+                body: JSON.stringify({
+                  title_history_id: data.titleHistoryId,
+                  article_id: newArticleId,
+                  article_url: currentUrl
+                })
+              }).then(function(resp) {
+                return resp.json();
+              }).then(function(result) {
+                if (result.success) {
+                  console.log('[SEO GEM] ✅ Article ID updated: TH#' + data.titleHistoryId + ' → ' + newArticleId);
+                } else {
+                  console.warn('[SEO GEM] Article ID update failed:', result.error);
+                }
+              }).catch(function(err) {
+                console.warn('[SEO GEM] Article ID PATCH error:', err);
+              });
+            } catch(e) { console.warn('[SEO GEM] URL monitor PATCH error:', e); }
+          } else if (monitorAttempts >= maxMonitorAttempts) {
+            console.log('[SEO GEM] URL monitor stopped after 5 minutes, no article ID found');
+            clearInterval(urlMonitorInterval);
+          }
+        }, 5000); // Check every 5 seconds
+      }
+
     } catch (err) {
       state.error = err.message || t.errorGenerate;
       state.phase = 'titles'; // Go back to title selection

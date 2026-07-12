@@ -19,14 +19,14 @@ export interface GenerationLogEntry {
 }
 
 /**
- * Asinhrono loguje CMS generisanje u generation_log tabelu.
- * Fire-and-forget — NE blokira response klijentu.
- * Greške se loguju u console ali ne bacaju izuzetke.
+ * Loguje CMS generisanje u generation_log tabelu.
+ * MORA se await-ovati — na Vercel serverless, fire-and-forget Promise
+ * se gubi jer se funkcija gasi posle response-a.
+ * Greške se loguju u console ali ne bacaju izuzetke (non-blocking za response).
  */
-export function logGeneration(entry: GenerationLogEntry): void {
-  // Fire-and-forget: ne koristimo await, ne blokiramo caller
-  Promise.resolve(
-    supabase
+export async function logGeneration(entry: GenerationLogEntry): Promise<void> {
+  try {
+    const { error } = await supabase
       .from('generation_log')
       .insert({
         portal_id: entry.portal_id,
@@ -44,14 +44,14 @@ export function logGeneration(entry: GenerationLogEntry): void {
         primary_keyword: entry.primary_keyword || null,
         error_message: entry.error_message || null,
         error_type: entry.error_type || null,
-      })
-  ).then(({ error }) => {
+      });
+
     if (error) {
       console.error('[generation-logger] Insert failed:', error.message);
     }
-  }).catch((err) => {
+  } catch (err) {
     console.error('[generation-logger] Unexpected error:', err);
-  });
+  }
 }
 
 /**

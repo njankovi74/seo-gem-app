@@ -49,7 +49,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
 /**
  * Save title choice to Supabase with embedding for future RAG
  */
-export async function saveTitleChoice(choice: TitleChoice): Promise<void> {
+export async function saveTitleChoice(choice: TitleChoice): Promise<number | null> {
   try {
     console.log('💾 Saving title choice to Supabase...', {
       url: choice.articleUrl,
@@ -78,17 +78,19 @@ export async function saveTitleChoice(choice: TitleChoice): Promise<void> {
     if (choice.articleId) {
       insertData.article_id = choice.articleId;
     }
-    const { error } = await supabase.from('title_history').insert(insertData);
+    const { data, error } = await supabase.from('title_history').insert(insertData).select('id').single();
 
     if (error) {
       console.error('❌ Failed to save title choice:', error);
       throw error;
     }
 
-    console.log('✅ Title choice saved to Supabase successfully');
+    console.log('✅ Title choice saved to Supabase successfully, id:', data?.id);
+    return data?.id || null;
   } catch (error) {
     console.error('❌ Error in saveTitleChoice:', error);
     // Don't throw - we don't want to fail the whole request if saving fails
+    return null;
   }
 }
 

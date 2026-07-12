@@ -281,10 +281,11 @@ export async function POST(request: NextRequest) {
       llmFailed = true;
     }
 
+    let titleHistoryId: number | null = null;
     // Only save to Supabase when LLM succeeded (don't pollute DB with empty/bad data)
     if (seoOutputs && !llmFailed) {
       try {
-        await saveTitleChoice({
+        titleHistoryId = await saveTitleChoice({
           articleUrl: cleanArticleUrl || '',
           articleId: articleId,
           articleText: text.substring(0, 5000),
@@ -295,7 +296,7 @@ export async function POST(request: NextRequest) {
           keywords: seoOutputs.keywordsLine,
           portalId: auth.portalId,
         });
-        console.log(`✅ [CMS/generate] Saved to Supabase for portal: ${auth.portalId}`);
+        console.log(`✅ [CMS/generate] Saved to Supabase for portal: ${auth.portalId}, TH#${titleHistoryId}`);
       } catch (saveError) {
         console.error('⚠️ [CMS/generate] Supabase save failed (non-blocking):', saveError);
       }
@@ -303,7 +304,7 @@ export async function POST(request: NextRequest) {
 
     if (llmFailed) {
       console.warn(`⚠️ [CMS/generate] LLM failed for ${auth.portalId}, returning empty fields`);
-      logGeneration({
+      await logGeneration({
         portal_id: auth.portalId!,
         endpoint: 'generate',
         status: 'partial',
@@ -315,7 +316,7 @@ export async function POST(request: NextRequest) {
       });
     } else {
       console.log(`✅ [CMS/generate] Done for ${auth.portalId}`);
-      logGeneration({
+      await logGeneration({
         portal_id: auth.portalId!,
         endpoint: 'generate',
         status: 'success',
@@ -332,11 +333,12 @@ export async function POST(request: NextRequest) {
       metaDescription: llmFailed ? '' : (seoOutputs?.metaDescription || ''),
       keywords: llmFailed ? '' : (seoOutputs?.keywordsLine || ''),
       schemaMarkup: llmFailed ? '' : (seoOutputs?.schemaMarkup || ''),
+      titleHistoryId: titleHistoryId || null,
     }, { headers });
 
   } catch (error) {
     console.error('❌ [CMS/generate] Error:', error);
-    logGeneration({
+    await logGeneration({
       portal_id: auth.portalId || 'unknown',
       endpoint: 'generate',
       status: 'error',
