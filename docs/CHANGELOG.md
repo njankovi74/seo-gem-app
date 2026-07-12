@@ -14,6 +14,8 @@ Hronološki zapis svih promena u projektu.
 | 2026-07-12 | feat | **cms-embed.js — URL monitor** — Kad novinar koristi SEO GEM na `/articles/new`, posle čuvanja embed prati URL promenu i šalje PATCH sa article_id (svaki 5s, max 5 min) |
 | 2026-07-12 | feat | **generate/route.ts** — Response sada vraća `titleHistoryId` embed-u za URL monitor |
 | 2026-07-12 | feat | **title-history.ts** — `saveTitleChoice` sada vraća `id` insertovanog reda |
+| 2026-07-12 | feat | **backfill-article-ids.ts** [NEW] — Modul za title→slug matching, transliteracija SR/PL, 15K+ slug indeks |
+| 2026-07-12 | feat | **sync/route.ts** — Integrisao backfill u dnevni cron (pokreće se posle GSC/GA4 sync-a) |
 
 ---
 
