@@ -294,8 +294,10 @@ export default function AdminDashboard() {
       if (data.success) {
         setAuthed(true);
         setError('');
-      } else {
+      } else if (res.status === 401) {
         setError('Pogrešna lozinka');
+      } else {
+        setError(data.error || `Greška servera (${res.status})`);
       }
     } catch {
       setError('Connection error');
