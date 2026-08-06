@@ -4,6 +4,15 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+## 2026-08-07 — RAG: Custom naslovi imaju prioritet
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-08-07 | feat | RAG few-shot primeri sada prioritizuju custom (novinarov) naslove umesto round-robin po stilovima |
+| 2026-08-07 | feat | Dodat shuffle za RAG primere — "Ponovi generisanje" sada daje raznovrsnije rezultate |
+
+---
+
 ## 2026-07-12 — Generation log fix, URL monitor, Update endpoint
 
 | Datum | Tip | Opis |
