@@ -144,41 +144,50 @@ export async function getSimilarTitleExamples(
       return [];
     }
 
-    // Select diverse representatives: pick from different style preferences
-    const byPickedStyle: Record<string, any[]> = { informativni: [], geo_pitanje: [], discover_hook: [], custom_new: [] };
+    // Separate custom (journalist-written) titles from AI-picked titles
+    // Custom titles are the strongest signal — the journalist said "none of your suggestions,
+    // HERE is what I actually want". These teach style, tone, length, informativeness.
+    const customExamples: any[] = [];
+    const aiPickedExamples: any[] = [];
+
     validExamples.forEach((row: any) => {
       const match = row.offered_titles.find((t: any) => t?.text === row.selected_title);
-      const style = match?.style || 'custom_new';
-      if (byPickedStyle[style]) byPickedStyle[style].push(row);
-      else byPickedStyle[style] = [row];
+      if (match) {
+        aiPickedExamples.push(row);
+      } else {
+        customExamples.push(row);
+      }
     });
 
-    // Pick representatives: prioritize diversity across styles
-    const representatives: any[] = [];
-    const stylesPresent = Object.entries(byPickedStyle).filter(([, arr]) => arr.length > 0);
-    // Round-robin across styles up to limit
-    let round = 0;
-    while (representatives.length < limit && round < 10) {
-      for (const [, arr] of stylesPresent) {
-        if (round < arr.length && representatives.length < limit) {
-          const candidate = arr[round];
-          if (!representatives.find((r: any) => r.id === candidate.id)) {
-            representatives.push(candidate);
-          }
-        }
+    // Shuffle helper — ensures variety on repeated generations for the same article
+    const shuffle = <T,>(arr: T[]): T[] => {
+      const shuffled = [...arr];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
       }
-      round++;
+      return shuffled;
+    };
+
+    // Priority: custom titles first, then AI-picked to fill remaining slots
+    const shuffledCustom = shuffle(customExamples);
+    const shuffledAiPicked = shuffle(aiPickedExamples);
+
+    const representatives: any[] = [];
+
+    // 1. Fill with custom titles first (up to limit)
+    for (const row of shuffledCustom) {
+      if (representatives.length >= limit) break;
+      representatives.push(row);
     }
 
-    // If still under limit, fill from most recent
-    if (representatives.length < limit) {
-      for (const row of validExamples) {
-        if (representatives.length >= limit) break;
-        if (!representatives.find((r: any) => r.id === row.id)) {
-          representatives.push(row);
-        }
-      }
+    // 2. Fill remaining slots with AI-picked titles
+    for (const row of shuffledAiPicked) {
+      if (representatives.length >= limit) break;
+      representatives.push(row);
     }
+
+    console.log(`📊 [RAG] Selection: ${Math.min(shuffledCustom.length, limit)} custom + ${Math.max(0, representatives.length - Math.min(shuffledCustom.length, limit))} AI-picked = ${representatives.length} total`);
 
     // Map to SimilarExample interface
     const result: SimilarExample[] = representatives.map((row: any) => ({
