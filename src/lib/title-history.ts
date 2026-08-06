@@ -169,25 +169,42 @@ export async function getSimilarTitleExamples(
       return shuffled;
     };
 
-    // Priority: custom titles first, then AI-picked to fill remaining slots
+    // Priority: 3 custom + 2 AI-picked (with shuffle for variety)
+    // Custom = strongest signal (journalist wrote their own title)
+    // AI-picked = what AI suggestions the journalist found acceptable
     const shuffledCustom = shuffle(customExamples);
     const shuffledAiPicked = shuffle(aiPickedExamples);
 
+    const customSlots = Math.min(3, shuffledCustom.length);
+    const aiSlots = Math.min(2, shuffledAiPicked.length);
+
     const representatives: any[] = [];
 
-    // 1. Fill with custom titles first (up to limit)
-    for (const row of shuffledCustom) {
-      if (representatives.length >= limit) break;
-      representatives.push(row);
+    // 1. Fill custom slots (target: 3)
+    for (let i = 0; i < customSlots; i++) {
+      representatives.push(shuffledCustom[i]);
     }
 
-    // 2. Fill remaining slots with AI-picked titles
-    for (const row of shuffledAiPicked) {
-      if (representatives.length >= limit) break;
-      representatives.push(row);
+    // 2. Fill AI-picked slots (target: 2)
+    for (let i = 0; i < aiSlots; i++) {
+      representatives.push(shuffledAiPicked[i]);
     }
 
-    console.log(`📊 [RAG] Selection: ${Math.min(shuffledCustom.length, limit)} custom + ${Math.max(0, representatives.length - Math.min(shuffledCustom.length, limit))} AI-picked = ${representatives.length} total`);
+    // 3. If either group was short, fill remaining from the other
+    if (representatives.length < limit) {
+      const used = new Set(representatives.map((r: any) => r.id));
+      const remaining = [...shuffledCustom, ...shuffledAiPicked].filter((r: any) => !used.has(r.id));
+      for (const row of remaining) {
+        if (representatives.length >= limit) break;
+        representatives.push(row);
+      }
+    }
+
+    const actualCustom = representatives.filter((r: any) => {
+      const match = r.offered_titles?.find((t: any) => t?.text === r.selected_title);
+      return !match;
+    }).length;
+    console.log(`📊 [RAG] Selection: ${actualCustom} custom + ${representatives.length - actualCustom} AI-picked = ${representatives.length} total`);
 
     // Map to SimilarExample interface
     const result: SimilarExample[] = representatives.map((row: any) => ({
