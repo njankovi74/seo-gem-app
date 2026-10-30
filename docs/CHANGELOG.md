@@ -4,6 +4,40 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+## 2026-10-30 — Srpski: nova pravila za naslove, pametna autodopuna, GEO opcija C
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-10-30 | feat | SR prompt: ključna činjenica u svakom naslovu, jedna odluka o mestu za ceo članak, ime samo ako ga čitalac u Srbiji prepoznaje, bez preterivanja, bez praznih fraza i imperativa |
+| 2026-10-30 | feat | SR: dvotačka dozvoljena samo u opciji 6; kod (COLON GUARD) prepravlja naslove 1–5 koji je imaju |
+| 2026-10-30 | feat | SR GEO (opcija C): opcija 3 = pitanje, opcija 4 = izjavna rečenica-odgovor; labela u embed-u „🌍 GEO" |
+| 2026-10-30 | fix | SR Google autodopuna: višerečni upiti iz teksta + filter relevantnosti (`suggest-queries.ts`) umesto jedne „primarne ključne reči" koja je donosila šum |
+| 2026-10-30 | fix | Prompt više ne obavezuje model da ubaci frazu iz autodopune — samo kad se prirodno uklapa (opcije 1–4) |
+| 2026-10-30 | fix | `sr.json`: dodate 44 stop reči (nakon, tokom, prema, rekao…) |
+| 2026-10-30 | feat | Logovanje potrošnje tokena po pozivu (`📈 [Usage/...]`); thinking budget važi i za gemini-3* modele |
+| 2026-10-30 | feat | SR dorada posle testa 1 (krađa vina): preciznost mesta (grad vs. država, bez „u Srbiji" za domaće), brendovi kao imena, GEO pitanje bez kviza, najjača informacija, logika rečenice, „u vrednosti od", precizni glagoli, raznovrsnost, KORAK 3 završna provera |
+| 2026-10-30 | fix | `sr.json`: stop reči „ikada/ikad/nikada/nikad" (loši upiti za autodopunu) |
+| 2026-10-30 | feat | SR dorada posle testa 2 (Jovanović): stranka uz ime političara (skraćenica u zagradi), zabrana „nosilac liste" bez naziva liste, obavezno pripisivanje izjava i obećanja |
+| 2026-10-30 | feat | TITLE GUARD: kod proverava i dužinu > 70 znakova (pored dvotačke) i traži inteligentno skraćivanje; model ne broji karaktere pouzdano |
+| 2026-10-30 | fix | `sr.json`: glagoli izveštavanja kao stop reči (poručio, izjavio, saopštio…) |
+| 2026-10-30 | fix | SR (kod): uklanja tačku na kraju naslova i dodaje „?" pitanjima koja počinju upitnom reči; prompt: skraćenice (NPS, RIK…) umesto okrnjenih ključnih pojmova |
+| 2026-10-30 | feat | **SR naslovi prelaze na `gemini-3.8-flash`** (odluka posle 5 uporednih testova); PL/AL i meta/schema ostaju na 2.5 Flash |
+| 2026-10-30 | feat | **Automatska provera činjenica** naslova (SR) — `title-factcheck.ts`, model 3.8 Flash, samo jasne činjenične greške, minimalna ispravka |
+| 2026-10-30 | feat | TITLE GUARD: informativni naslov (1–2) ne sme biti pitanje; prompt: vlastita imena velikim slovom („Celzijusa") |
+| 2026-10-30 | fix | NFC normalizacija ulaznog teksta u `cms/titles` i `suggest-queries` (≈3% SR tekstova ima rastavljena slova) |
+
+---
+
+## 2026-10-29 — selection_type: server određuje da li je naslov AI predlog ili custom
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-10-29 | fix | `cms/generate`: `selection_type` se određuje na serveru poređenjem izabranog naslova sa ponuđenim (`ai_option_1..6` / `custom`). Embed ga nikad nije slao, pa je sve bilo `custom` |
+| 2026-10-29 | feat | Analiza stila: prvo custom naslovi iz poslednjih 500 izbora; ako ih je < 10, dopuna AI-izabranim (AL portal) |
+| 2026-10-29 | fix | Jednokratna ispravka istorijskih `selection_type` vrednosti u `title_history` |
+
+---
+
 ## 2026-08-07 — RAG: Custom naslovi imaju prioritet
 
 | Datum | Tip | Opis |

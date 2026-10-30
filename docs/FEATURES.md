@@ -36,8 +36,33 @@ AI generiše 6 varijanti naslova u 3 stila za svaki članak.
 | Stil | Br. | Opis | Format |
 |---|---|---|---|
 | `informativni` | 2 | Klasični SEO naslovi | Fluid rečenice, BEZ dvotačke |
-| `geo_pitanje` | 2 | Pitanja za AI Overviews / voice search | Pitanja sa "?" |
+| `geo_pitanje` | 2 | GEO naslovi za AI Overviews / ChatGPT / voice search | **SR (od 30.10.2026):** opcija 3 = pitanje sa "?", opcija 4 = izjavna rečenica-odgovor. Ostali jezici: oba pitanja |
 | `discover_hook` | 2 | E-E-A-T za Google Discover | Za poznate: "Ime: tvrdnja"; ostali: opis koristi |
+
+> Naziv stila `geo_pitanje` ostaje zbog baze i admin panela. U SR embed-u labela je sada „🌍 GEO".
+
+### Pravila za srpski (od 30.10.2026, `titles-prompt.ts`)
+| Pravilo | Kako radi |
+|---|---|
+| Ključna činjenica | Svaki naslov nosi KO + ŠTA iz teksta, ne samo temu |
+| Mesto | JEDNA odluka za ceo članak („da li bi čitalac u Srbiji bez mesta pogrešno razumeo vest?"). DA → mesto u svih 6, NE → ni u jednom. Odluka se upisuje u `reasoning` 1. naslova („MESTO: DA/NE — razlog") |
+| Ime osobe | Samo ako je čitalac u Srbiji prepoznaje; ako model nije siguran → funkcija + zemlja („jermenski poslanik"). Važi za sva 3 stila |
+| Bez preterivanja | „revolucija", „istorijski", „prvi u svetu"… samo ako tekst to doslovno tvrdi |
+| Bez praznih fraza | „važne odluke", „detalji o", „šta se dešava", „evo kako"… zabranjeno |
+| Bez imperativa | „Saznajte", „Otkrijte", „Smršajte", „Evo…" zabranjeno |
+| Jezik | Jednostavan i jasan, ali ne banalan; bez tačke na kraju |
+| Dvotačka | Dozvoljena SAMO u opciji 6. Kod proverava opcije 1–5 i, ako nađe dvotačku, traži od modela prepravku samo tih naslova (`COLON GUARD` u `cms/titles`) |
+| Preciznost mesta (30.10.) | Poznat grad (Firenca, Rim, Beč…) → grad, ne država; manje poznato mesto → država. Domaće vesti: bez „u Srbiji" |
+| Brendovi (30.10.) | Isto pravilo kao za imena: naziv proizvoda/brenda samo ako ga čitalac u Srbiji zna; nikada kao „X:" u opciji 6 |
+| GEO pitanje (30.10.) | Pitanje mora već da sadrži vest (ko, šta, gde) i da pita „kako/zašto"; zabranjena pitanja-kvizovi („Koliko je…?") |
+| Najjača informacija (30.10.) | Rekord/„najveći"/„prvi put" iz teksta mora biti u bar jednom naslovu; tvrdnja izvora formuliše se oprezno |
+| Logika i izrazi (30.10.) | Kradu se predmeti, ne vrednost; „u vrednosti od X" umesto „vrednih X"; precizni glagoli („ukrali") umesto kolokvijalnih („odneli") |
+| Raznovrsnost (30.10.) | 6 različitih formulacija; isti podatak ne mora u svaki naslov |
+| Završna provera (30.10.) | KORAK 3: model proverava padeže/slaganje, logiku i „da li bi urednik objavio bez ispravke" |
+| Političari i stranke (30.10.) | Uz ime političara stranka skraćenicom u zagradi („Miloš Jovanović (NDSS)"); „nosilac liste" nikad bez naziva liste |
+| Pripisivanje (30.10.) | Izjave, obećanja i najave uvek se pripisuju („Jovanović obećava…"), nikad kao činjenica |
+| TITLE GUARD (30.10.) | Kod (ne model) prvo uklanja tačku na kraju i dodaje „?" pitanjima koja počinju upitnom reči; zatim proverava dvotačku u opcijama 1–5 i dužinu > 70 znakova; prekršioce šalje na prepravku („BEZ DVOTAČKE" / „SKRATI" uz inteligentno skraćivanje). Prepravka se prihvata samo ako ispunjava pravila. Log: `📈 [Usage/titles-guard]` |
+| Skraćenice (30.10.) | Kad je naslov predug: skraćenica organizacije/stranke (NPS, RIK) umesto okrnjenog ključnog pojma („birački spisak", ne „spisak") |
 
 ### Ograničenja naslova:
 - Dužina: max **70 karaktera** (truncation u `seo-output.ts`)
@@ -45,11 +70,14 @@ AI generiše 6 varijanti naslova u 3 stila za svaki članak.
 - Imena: poznate ličnosti DA, eksperti/blogeri NE (u discover_hook stilu)
 
 ### LLM konfiguracija:
-- Model: `gemini-2.5-flash`
+- Model: **srpski naslovi: `gemini-3.8-flash`** (od 30.10.2026, posle uporednog testa 5 tekstova; env `TITLES_MODEL_SR` za promenu). Ostali jezici i meta/schema (`generate`): `GEMINI_MODEL` (trenutno `gemini-2.5-flash`)
+- **Provera činjenica (SR):** posle generisanja `src/lib/title-factcheck.ts` šalje 6 naslova + tekst modelu `gemini-3.8-flash` (env `FACTCHECK_MODEL`, isključenje `FACTCHECK_DISABLED=true`). Označava samo jasne činjenične greške (izmišljeno, izvrnuto, nepripisana tvrdnja, značajno preterivanje); stil nije razlog. Ispravka se prihvata samo ako je ≤ 70 znakova, bez dvotačke u 1–5, a #3 ostaje pitanje. Ispravljeni naslov dobija napomenu u `reasoning`. Log: `🔎 [FactCheck]`, `📈 [Usage/titles-factcheck]`. Trajanje ~2–4 s, ≈ \$0.002 po članku
+- Ulazni tekst se normalizuje u Unicode NFC (deo tekstova ima „rastavljena" slova č/ć/š/ž)
 - Temperature: `0.6`
-- Thinking budget: `4096` tokena
+- Thinking budget: `4096` tokena (od 30.10.2026 važi i za `gemini-3*` modele, ne samo za 2.5)
 - Max retries: `2` (na JSON parse failure)
 - Response format: `application/json`
+- Potrošnja tokena se loguje za svaki poziv: `📈 [Usage/titles]`, `📈 [Usage/generate]`, `📈 [Usage/titles-colonfix]`
 
 ### Jezička validacija:
 - 3-slojna validacija: franc trigram → word/char markers → fail-open
@@ -69,11 +97,13 @@ Sistem uči iz prethodnih izbora novinara i koristi te primere kao kontekst za b
 | Broj primera | **5** | `getSimilarTitleExamples(text, limit=5)` |
 | Pool za selekciju | **120** zapisa | `.limit(120)` u Supabase query |
 | Min validnih | **3** offered_titles sa style+text | filter u kodu |
-| Selekcija | Round-robin po stilovima | informativni → geo_pitanje → discover_hook |
+| Selekcija | **3 custom + 2 AI-izabrana**, sa shuffle-om (od avg 2026) | custom = izabrani naslov se ne poklapa ni sa jednim ponuđenim |
 | Embedding model | `text-embedding-3-small` | OpenAI |
 | Embedding input limit | **8000** karaktera | `text.substring(0, 8000)` |
-| Pattern analiza | **50** custom naslova | `.slice(0, 50)` |
-| Min za analizu | **10** custom naslova | `if (customs.length < 10) return ''` |
+| Analiza stila — pool | poslednjih **500** izbora | `STYLE_LOOKBACK` u `title-history.ts` |
+| Analiza stila — izbor | prvo **custom** (do 50); ako ih je < 10, dopuna AI-izabranim naslovima do 50 | `pickStyleTitles()` |
+| Min za analizu | **10** naslova ukupno | `if (customTitles.length < 10) return ''` |
+| `selection_type` | Server ga određuje sam: tačno poklapanje sa ponuđenim #N → `ai_option_N` (1–6), inače `custom` | `classifySelection()` u `cms/generate` |
 
 ### Detektovani obrasci:
 - Pitanja (?)
@@ -221,7 +251,19 @@ Detalji u [ANALYTICS.md](ANALYTICS.md).
 ## 8. Google Suggest integracija
 
 ### Opis:
-Sistem prikuplja Google Autocomplete predloge za primarnu ključnu reč i koristi ih kao dodatni kontekst za generisanje naslova.
+Sistem prikuplja Google Autocomplete predloge (stvarne pretrage korisnika) i koristi ih kao kontekst za generisanje naslova.
+
+### Srpski — „pametna" autodopuna (od 30.10.2026): `src/lib/suggest-queries.ts`
+| Korak | Pravilo |
+|---|---|
+| 1. Upiti | Samo **višerečni** pojmovi iz teksta (mid-tail 2–3 reči, long-tail do 4). Fraza počinje i završava se sadržajnom reči, max 1 veznik unutra („vodič za lečenje"). Mora da se ponavlja u tekstu ili da bude u lidu/naslovu. Duža fraza ima prednost nad svojim delom ako se javlja podjednako često. Do 3 osnovna upita + 2-rečni rezervni upit za long-tail (max 5, paralelno) |
+| 2. Google | `getGoogleSuggestions(q, 'sr', 10, includeQuery=true)` — zadržava i sam upit ako ga Google vrati (potvrda da ga ljudi kucaju); `ie/oe=utf-8` |
+| 3. Filter | Zadržava samo predloge sa **2+ reči** čije SVE reči postoje u tekstu (tolerantno na padeže i dijakritike: „lecenje" = „lečenje"). Dozvoljene su samo funkcijske i upitne reči (za, u, kako, šta…). Kratke reči/skraćenice (≤3 slova, npr. „sns") i brojevi moraju postojati tačno. Max 6 predloga |
+| 4. Prompt | Predlozi se koriste u opcijama 1–4 (informativni i GEO) **samo kada se prirodno uklapaju**; zabranjeno dodavanje informacija kojih nema u tekstu |
+
+**Zašto:** stari tok je slao jednu „primarnu ključnu reč" (često pomoćnu reč: „nakon", „tokom", „prekid") i model je bio obavezan da ubaci predlog → šum u naslovima („nakon svih ovih godina", „prekidači", „hipertenzija"). Vidi `TROUBLESHOOTING.md`.
+
+Ostali jezici (PL, AL, EN) i dalje koriste stari tok (jedna primarna ključna reč) — adaptacija kasnije.
 
 ### Implementacija: `src/lib/google-suggest.ts`
 - Šalje upit Google Suggest API-ju

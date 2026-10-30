@@ -60,6 +60,56 @@ GET /api/admin/analytics/sync?admin_key=***&date=2026-07-04
 
 ## Rešeni problemi
 
+### Rastavljena slova (č = c + kvačica) u delu tekstova (otkriveno 30. okt 2026)
+
+**Problem:** Oko 3% SR tekstova iz CMS-a sadrži slova č/ć/š/ž zapisana kao dva Unicode znaka (osnovno slovo + kvačica). Pretraga reči i tokenizacija ih ne prepoznaju (npr. „noću" se ne nalazi pretragom „noć").
+
+**Uticaj:** pogrešni rezultati provere (u testu 5 je pogrešno zaključeno da „glasaju noću" nije u tekstu), slabija ekstrakcija ključnih reči i autodopuna za te tekstove.
+
+**Rešenje:** `text.normalize('NFC')` na ulazu u `cms/titles` i u `suggest-queries`. TODO: isto uvesti u `cms/generate` i TF-IDF za sve jezike.
+
+---
+
+### Šum iz Google autodopune u naslovima (otkriveno i rešeno za SR 30. okt 2026)
+
+**Problem:** U naslovima su se pojavljivale fraze bez veze sa tekstom: „nakon svih ovih godina", „prekidaci reproduktivnih prava", „vodič za lečenje hipertenzije".
+
+**Uzrok:** Google Suggest je dobijao JEDNU „primarnu ključnu reč" iz TF-IDF-a, koja je često bila pomoćna ili okrnjena reč („nakon", „tokom", „prekid", „izbornu"). Google je vraćao nepovezane pretrage (stih pesme, prekidači za svetlo), a prompt je modelu NAREĐIVAO da ubaci bar jednu „TAČNU frazu". `nakon`/`tokom` nisu bile u SR stop listi.
+
+| Poslato Google-u | Vraćeno |
+|---|---|
+| nakon | nakon svih ovih godina |
+| prekid | prekidaci za svetlo |
+| vodič lečenje | vodič za lečenje hipertenzije |
+
+**Rešenje (SR):** `suggest-queries.ts` — višerečni upiti iz teksta, filter (sve reči predloga moraju postojati u tekstu), prompt „koristi samo ako se prirodno uklapa". Dodate stop reči u `sr.json`. PL/AL/EN još uvek koriste stari tok.
+
+**Napomena:** Ovaj šum je u testu 29–30. okt izgledao kao „izmišljanje" modela 3.5 Flash-Lite — zapravo je model poslušno pratio prompt; 2.5 Flash je iste predloge češće ignorisao.
+
+---
+
+### ISPRAVKA: gemini-2.5-flash NIJE ugašen (30. okt 2026)
+
+Napomena u A1 da se `gemini-2.5-flash` gasi 16. oktobra 2026 **nije tačna za Gemini API (AI Studio)**. Zvanična stranica Deprecations (proverena 30.10.2026): 2.5 modeli „nisu ukinuti i radiće do daljnjeg", ali je pristup ograničen na korisnike koji su ih aktivno koristili. Google za nove projekte preporučuje 3.5 Flash-Lite ili 3.8 Flash. Datum 20.10.2026 važi za Google Cloud (Vertex AI).
+
+Procena troška iz A1 (~$2.70/mes) je takođe bila preniska — nije računala tokene razmišljanja. Izmereno 30.10.2026: ≈ $73/mes za ~10,600 poziva (vidi izveštaj o izboru modela). Stvarni iznos potvrditi u AI Studio → Billing.
+
+---
+
+### selection_type je uvek bio `custom` (otkriveno 16. okt 2026, rešeno 29. okt 2026)
+
+**Problem:** U `title_history` je 100% zapisa sa portala imalo `selection_type = custom`, iako je izabrani naslov u ~95% slučajeva tačno jedan od 6 ponuđenih AI naslova.
+
+**Uzrok:** `cms/generate` je koristio `body.selection_type || 'custom'`, a `cms-embed.js` nikad ne šalje `selection_type`.
+
+**Uticaj:** RAG few-shot selekcija i `analyzePattern` NISU bili pogođeni (oni sami porede tekst). Pogođena je bila analiza stila (`analyzeStylePatterns`) i prikaz u admin panelu.
+
+**Rešenje:** `classifySelection()` u `title-history.ts` — server poredi izabrani naslov sa ponuđenim (trim, tačno poklapanje). Izmenjen AI naslov = `custom`. Zapisi bez ponuđenih naslova ostaju `custom` (ne može se utvrditi). Istorija ispravljena jednokratnim skriptom (backup ID-jeva sačuvan).
+
+**Stvarni odnos (cela istorija, okt 2026):** SR 152 custom / 10,092 AI · PL 693 / 7,269 · AL 3 / 4,348.
+
+---
+
 ### 0. Article URL ↔ Title Mismatch u admin dashboardu (jul 2026)
 
 **Problem:** U admin dashboardu, SEO naslov članka se ne poklapa sa URL-om. Npr. naslov kaže "Odbor Skupštine ocenio uskladenost..." ali URL vodi na potpuno drugi članak. Mismatch rate bio 45%.
