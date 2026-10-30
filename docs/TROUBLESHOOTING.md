@@ -60,6 +60,22 @@ GET /api/admin/analytics/sync?admin_key=***&date=2026-07-04
 
 ## Rešeni problemi
 
+### selection_type ai_option_4–6 odbijen od baze (30. okt 2026)
+
+**Problem:** Tabela `title_history` ima check constraint `title_history_selection_type_check` koji dozvoljava samo `ai_option_1`, `ai_option_2`, `ai_option_3` i `custom`. Nova klasifikacija (`classifySelection`) vraća `ai_option_1..6`, pa bi upis izbora opcija 4–6 pao i red bi bio izgubljen. Otkriveno tokom ispravke istorijskih zapisa (PATCH vratio 23514), pre nego što je ijedan novinarski zapis izgubljen.
+
+**Rešenje (hotfix):** `saveTitleChoice` na grešku 23514 ponovo upisuje red sa `ai_option_3` (ostaje „AI izbor"; tačna opcija se može izračunati iz `offered_titles`).
+
+**Trajno rešenje (SQL, Supabase SQL Editor):**
+```sql
+ALTER TABLE title_history DROP CONSTRAINT title_history_selection_type_check;
+ALTER TABLE title_history ADD CONSTRAINT title_history_selection_type_check
+  CHECK (selection_type IN ('ai_option_1','ai_option_2','ai_option_3','ai_option_4','ai_option_5','ai_option_6','custom'));
+```
+Posle toga ponovo pokrenuti ispravku istorije (backfill) bez mapiranja 4–6 → 3.
+
+---
+
 ### Rastavljena slova (č = c + kvačica) u delu tekstova (otkriveno 30. okt 2026)
 
 **Problem:** Oko 3% SR tekstova iz CMS-a sadrži slova č/ć/š/ž zapisana kao dva Unicode znaka (osnovno slovo + kvačica). Pretraga reči i tokenizacija ih ne prepoznaju (npr. „noću" se ne nalazi pretragom „noć").

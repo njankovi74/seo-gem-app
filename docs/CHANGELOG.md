@@ -24,6 +24,7 @@ Hronološki zapis svih promena u projektu.
 | 2026-10-30 | feat | **SR naslovi prelaze na `gemini-3.8-flash`** (odluka posle 5 uporednih testova); PL/AL i meta/schema ostaju na 2.5 Flash |
 | 2026-10-30 | feat | **Automatska provera činjenica** naslova (SR) — `title-factcheck.ts`, model 3.8 Flash, samo jasne činjenične greške, minimalna ispravka |
 | 2026-10-30 | feat | TITLE GUARD: informativni naslov (1–2) ne sme biti pitanje; prompt: vlastita imena velikim slovom („Celzijusa") |
+| 2026-10-30 | fix | HOTFIX: DB check constraint dozvoljava samo `ai_option_1..3` + `custom`; `saveTitleChoice` opcije 4–6 ponovo upisuje kao `ai_option_3` (bez gubitka reda) dok se constraint ne proširi |
 | 2026-10-30 | fix | NFC normalizacija ulaznog teksta u `cms/titles` i `suggest-queries` (≈3% SR tekstova ima rastavljena slova) |
 
 ---
