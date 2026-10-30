@@ -8,11 +8,14 @@ import { prioritizeKeywords } from '@/lib/keyword-prioritizer';
 import { type SupportedLanguage, isValidLanguage } from '@/lib/i18n';
 import { getTitlesPrompt } from '@/lib/prompts/titles-prompt';
 import { getGoogleSuggestions } from '@/lib/google-suggest';
+import { getRelevantSuggestions } from '@/lib/suggest-queries';
+import { factCheckTitles } from '@/lib/title-factcheck';
 import { validateTitleLanguage } from '@/lib/language-validator';
 import { logGeneration, startTimer } from '@/lib/generation-logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // generation + fact check + guard rewrite
 
 // Handle CORS preflight
 export async function OPTIONS(request: NextRequest) {
@@ -54,8 +57,9 @@ export async function POST(request: NextRequest) {
       return cmsErrorResponse('Tekst članka mora imati najmanje 100 karaktera.', 400, origin);
     }
 
-    const text = (lead ? lead + '\n\n' : '') + articleBody;
-    const effectiveTitle = title || '';
+    // NFC: some CMS texts contain decomposed letters (c + ́), which break tokenization and matching
+    const text = ((lead ? lead + '\n\n' : '') + articleBody).normalize('NFC');
+    const effectiveTitle = (title || '').normalize('NFC');
     const fullText = effectiveTitle ? `${effectiveTitle}. ${text}` : text;
 
     console.log(`🏢 [CMS/titles] Portal: ${auth.portalId}, lang: ${language}, title: "${effectiveTitle.substring(0, 50)}...", text: ${text.length} chars`);
@@ -86,8 +90,12 @@ export async function POST(request: NextRequest) {
     const [similarExamples, styleAnalysis] = await Promise.all([ragPromise, stylePromise]);
     const preferredPattern = analyzePattern(similarExamples, language);
 
-    // Fetch Google Suggest for primary keyword (runs after we know the keyword)
-    const googleSuggestions = await getGoogleSuggestions(primaryKW, language);
+    // Google Suggest:
+    // - sr: smart pipeline — 2–4 word queries from the article + relevance filter (no single-word noise)
+    // - other languages: legacy single primary keyword (to be adapted later)
+    const googleSuggestions = language === 'sr'
+      ? (await getRelevantSuggestions(fullText, effectiveTitle, language)).suggestions
+      : await getGoogleSuggestions(primaryKW, language);
 
     // Build few-shot examples with language-aware labels
     const ragLabels: Record<string, { header: string; example: string; textLabel: string; offered: string; selected: string }> = {
@@ -125,8 +133,11 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
       styleAnalysis: styleAnalysis || undefined,
     });
 
-    const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-    const isThinkingModel = modelName.includes('2.5');
+    // Serbian titles use the model chosen after the Oct 2026 comparison (3.8 Flash);
+    // other languages stay on GEMINI_MODEL until they are tested and adapted.
+    const modelName = (language === 'sr' ? (process.env.TITLES_MODEL_SR || 'gemini-3.8-flash') : '')
+      || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const isThinkingModel = modelName.includes('2.5') || modelName.startsWith('gemini-3');
     const model = genAI.getGenerativeModel({
       model: modelName,
       generationConfig: {
@@ -144,6 +155,7 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const result = await model.generateContent(prompt);
+        console.log(`📈 [Usage/titles] model=${modelName}`, JSON.stringify(result.response.usageMetadata || {}));
         const responseText = result.response.text();
 
         // Parse JSON — strip markdown fences if present
@@ -172,6 +184,71 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
 
     // Fix lengths
     titles.forEach(t => { t.length = t.text.length; });
+
+    // === FACT CHECK (sr): verify each title against the article; replace only factually wrong ones ===
+    if (language === 'sr' && process.env.FACTCHECK_DISABLED !== 'true') {
+      const fc = await factCheckTitles(genAI, titles, text);
+      console.log(`📈 [Usage/titles-factcheck] model=${fc.model}`, JSON.stringify(fc.usage || {}));
+      const bad = fc.results.filter((r) => r.ok === false);
+      console.log(`🔎 [FactCheck] checked=${fc.checked} flagged=${bad.map((r) => `#${r.i}: ${r.problem}`).join(' | ') || 'none'} replaced=${fc.replaced.join(',') || 'none'}`);
+    }
+
+    // === TITLE GUARD (sr): colon allowed only in option 6, max 70 chars — rewrite offenders ===
+    // LLMs do not count characters reliably, so length and colon rules are enforced in code.
+    if (language === 'sr') {
+      // Deterministic punctuation fixes: no trailing period; question words end with "?"
+      const QUESTION_START = /^(zašto|kako|šta|ko|koji|koja|koje|kada|gde|da li|koliko|čime|čemu|može li|hoće li|ima li)\b/i;
+      titles.forEach((t) => {
+        let txt = t.text.trim();
+        if (/[^.]\.$/.test(txt)) txt = txt.slice(0, -1).trim();
+        if (QUESTION_START.test(txt) && !/[?!]$/.test(txt)) txt = txt + '?';
+        if (txt !== t.text) { t.text = txt; t.length = txt.length; }
+      });
+
+      const MAX_LEN = 70;
+      const offending = titles
+        .map((t, i) => ({ t, i, colon: i < 5 && t.text.includes(':'), long: t.text.length > MAX_LEN, question: i < 2 && /\?$/.test(t.text) }))
+        .filter((o) => o.colon || o.long || o.question);
+      if (offending.length > 0) {
+        console.warn(`⚠️ [CMS/titles] Guard: ${offending.map(o => `#${o.i + 1}${o.colon ? ' dvotačka' : ''}${o.long ? ` ${o.t.text.length} znakova` : ''}${o.question ? ' pitanje u informativnom' : ''}`).join(', ')} — rewriting`);
+        try {
+          const fixModel = genAI.getGenerativeModel({
+            model: modelName,
+            generationConfig: {
+              temperature: 0.3,
+              responseMimeType: 'application/json',
+              ...(isThinkingModel ? { thinkingConfig: { thinkingBudget: 512 } } : {}),
+            } as any,
+          });
+          const fixPrompt = `Prepravi sledeće novinarske naslove prema napomeni u zagradi. Zadrži iste činjenice i isti smisao i ne dodaj ništa čega nema u originalu.
+- [BEZ DVOTAČKE]: fluidna rečenica (ili pitanje, ako je original pitanje), bez dvotačke (:).
+- [IZJAVNA REČENICA]: preformuliši u izjavnu rečenicu (NE pitanje) sa istom činjenicom.
+- [SKRATI]: najviše ${MAX_LEN} karaktera. Skraćuj inteligentno: izbaci suvišne reči, koristi ustaljene skraćenice stranaka i institucija (npr. NDSS, SNS, RIK, MUP), ne seci rečenicu i ne gubi ključnu činjenicu.
+Bez tačke na kraju, pravilan srpski jezik (latinica).
+Vrati isključivo JSON: {"titles": ["...", "..."]} istim redom.
+
+${offending.map((o, k) => `${k + 1}. [${[o.colon ? 'BEZ DVOTAČKE' : '', o.question ? 'IZJAVNA REČENICA' : '', o.long ? 'SKRATI' : ''].filter(Boolean).join(', ')}] ${o.t.text}`).join('\n')}`;
+          const fixResult = await fixModel.generateContent(fixPrompt);
+          console.log(`📈 [Usage/titles-guard] model=${modelName}`, JSON.stringify(fixResult.response.usageMetadata || {}));
+          const fixText = fixResult.response.text().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          const fixMatch = fixText.match(/\{[\s\S]*\}/);
+          const fixed: string[] = JSON.parse(fixMatch ? fixMatch[0] : fixText).titles || [];
+          offending.forEach((o, k) => {
+            const f = (fixed[k] || '').trim().replace(/\.$/, '');
+            const colonOk = !o.colon || !f.includes(':');
+            const statementOk = !o.question || !f.endsWith('?');
+            if (f && colonOk && statementOk && f.length <= MAX_LEN) {
+              titles![o.i].text = f;
+              titles![o.i].length = f.length;
+            } else {
+              console.warn(`⚠️ [CMS/titles] Guard rewrite rejected for #${o.i + 1}: "${f}" (${f.length})`);
+            }
+          });
+        } catch (fixError) {
+          console.error('⚠️ [CMS/titles] Guard rewrite failed (keeping originals):', fixError);
+        }
+      }
+    }
 
     // === LANGUAGE VALIDATION ===
     const langCheck = await validateTitleLanguage(

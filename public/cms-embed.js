@@ -59,7 +59,7 @@
       errorSelectTitle: 'Odaberite ili unesite naslov.',
       errorGenerate: 'Greška pri generisanju SEO polja.',
       errorTitles: 'Greška pri generisanju naslova.',
-      categories: { informativni: '📘 INFORMATIVNI', geo_pitanje: '🌍 GEO PITANJE', discover_hook: '📱 DISCOVER HOOK' },
+      categories: { informativni: '📘 INFORMATIVNI', geo_pitanje: '🌍 GEO', discover_hook: '📱 DISCOVER HOOK' },
       customLabel: '✏️ Sopstveni:',
       confirmButton: '✅ Potvrdi izbor',
       regenerateButton: '🔄 Novi predlozi',

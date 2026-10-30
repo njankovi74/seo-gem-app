@@ -33,14 +33,15 @@ const LANG_TO_GL: Record<string, string> = {
 export async function getGoogleSuggestions(
   keyword: string,
   language: string,
-  maxResults: number = 6
+  maxResults: number = 6,
+  includeQuery: boolean = false // keep the query itself if Google returns it (confirms people type it)
 ): Promise<string[]> {
   if (!keyword || keyword.trim().length < 3) return [];
 
   const normalizedKW = keyword.trim().toLowerCase();
   const hl = LANG_TO_HL[language] || 'sr';
   const gl = LANG_TO_GL[language] || 'RS';
-  const cacheKey = `${normalizedKW}:${hl}`;
+  const cacheKey = `${normalizedKW}:${hl}:${includeQuery ? 'q' : ''}`;
 
   // Check cache
   const cached = cache.get(cacheKey);
@@ -50,7 +51,7 @@ export async function getGoogleSuggestions(
 
   try {
     const encoded = encodeURIComponent(normalizedKW);
-    const url = `https://suggestqueries.google.com/complete/search?client=firefox&q=${encoded}&hl=${hl}&gl=${gl}`;
+    const url = `https://suggestqueries.google.com/complete/search?client=firefox&ie=utf-8&oe=utf-8&q=${encoded}&hl=${hl}&gl=${gl}`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2000);
@@ -72,7 +73,7 @@ export async function getGoogleSuggestions(
     const data = await response.json();
     const suggestions: string[] = Array.isArray(data[1])
       ? data[1]
-          .filter((s: string) => typeof s === 'string' && s !== normalizedKW)
+          .filter((s: string) => typeof s === 'string' && (includeQuery || s !== normalizedKW))
           .slice(0, maxResults)
       : [];
 

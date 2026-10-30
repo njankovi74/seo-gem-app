@@ -493,6 +493,7 @@ export async function buildSEOWithLLM(
         const model = client.getGenerativeModel({ model: modelName, generationConfig: genConfig });
         // Prefer JSON response; pass plain text prompt
         const result = await model.generateContent(prompt as any);
+        console.log(`📈 [Usage/generate] model=${modelName}`, JSON.stringify(result?.response?.usageMetadata || {}));
         const out = ensureText(result);
 
         console.log(`✅ [Gemini] Response:`, {

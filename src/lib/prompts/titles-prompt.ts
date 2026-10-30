@@ -122,9 +122,19 @@ PRE generisanja naslova, obavezno sprovedi sledeću analizu teksta:
 
 1. **Analiza formata i uloga (Subjekat vs. Izvor):** Da li je ovo opšta vest (gde stručnjaci samo komentarišu pojavu) ili je direktan intervju/ekskluzivna izjava? Ko je/šta je stvarna TEMA (Subjekat), a ko je samo STRUČNI IZVOR?
 
-2. **Pravilo eliminacije imena:** Ako osoba u tekstu samo daje stručno mišljenje i pojašnjava temu, ona je ISKLJUČIVO IZVOR. Njeno ime NE SME biti u klasičnim SEO i GEO naslovima. Ime može ići isključivo u E-E-A-T (Discover) naslove.
+2. **Ključna činjenica i najjača informacija:** Šta se konkretno dogodilo? Formuliši jednom rečenicom: KO je uradio ŠTA. Zatim odredi NAJJAČU informaciju u tekstu (rekord, „najveći", „prvi put", posledica po ljude). Ako je tekst navodi, bar jedan naslov mora da je koristi. Ako je to tvrdnja sagovornika ili medija, a ne utvrđena činjenica, formuliši je oprezno (npr. „najveća zabeležena") — ne predstavljaj je kao opštepoznatu činjenicu.
 
-3. **Definisanje namere:** Šta korisnik zaista ukucava u pretraživač kada ga zanima glavni Subjekat ovog teksta?`;
+3. **Odluka o mestu — JEDNA odluka za ceo članak:**
+   - **Strana vest:** postavi pitanje „Da li bi čitalac u Srbiji, bez navedenog mesta, pogrešno pomislio da se ovo dešava kod nas, ili ne bi razumeo vest?" DA (zakoni, politika, odluke vlasti, incidenti, kriminal, događaji u drugoj zemlji) → mesto MORA biti u SVIH 6 naslova. NE (univerzalna tema: naučna studija, zdravlje, saveti, tehnologija) → mesto se izostavlja u svih 6.
+   - **Preciznost mesta:** koristi NAJKONKRETNIJE mesto koje je čitaocima u Srbiji poznato. Poznat grad (npr. Firenca, Rim, Pariz, Beč, Berlin, London, Njujork, Varšava, Zagreb, Sarajevo) → navedi GRAD, ne državu. Manje poznato mesto → navedi DRŽAVU („u Italiji").
+   - **Domaća vest (Srbija):** „u Srbiji" se NE dodaje — čitaocu je jasno. Grad ili mesto navedi samo ako je deo vesti (npr. „u Nišu"); Srbiju navedi samo kada se poredi sa drugim zemljama.
+   NIKADA ne mešaj: ne sme da se desi da neki naslovi pominju mesto, a neki ne. Odluku upiši na početak \"reasoning\" polja prvog naslova u obliku „MESTO: DA/NE — razlog".
+
+4. **Imena ljudi i brendova — samo ako ih čitalac u Srbiji prepoznaje:** Ime osobe ili naziv brenda/proizvoda (vino, firma, aplikacija, model) sme u naslov SAMO ako ga prosečan čitalac u Srbiji prepoznaje bez objašnjenja (šefovi država i vlada, ministri i vodeći političari Srbije i regiona, poznate ličnosti iz javnog života Srbije i regiona, svetski poznate ličnosti i brendovi). Ako NISI SIGURAN — NE koristi ime, nego opis (npr. „jermenski poslanik", „skupoceno toskansko vino", „američki naučnici"). Ovo važi za SVA tri stila. Osoba koja samo daje stručno mišljenje je IZVOR i njeno ime ne ide u naslov.
+
+5. **Političari i stranke:** Kada je vest politička (izbori, kampanja, stranačke izjave), uz ime političara navedi stranku ili listu — najkraće ustaljenom skraćenicom u zagradi, npr. „Miloš Jovanović (NDSS)". Koristi samo skraćenice koje postoje u tekstu ili su opštepoznate (SNS, SPS, SSP, NDSS, DSS, ZLF, Dveri…); ako nisi siguran, napiši kraći naziv stranke. Funkciju poput „nosilac liste" NIKADA ne koristi bez naziva liste — bolje je ime + stranka.
+
+6. **Definisanje namere:** Šta korisnik zaista ukucava u pretraživač kada ga zanima glavni Subjekat ovog teksta?`;
   }
 }
 
@@ -179,16 +189,16 @@ B) Nëse në tekst paraqitet një ekspert/bloger/mjek që NUK është i njohur p
       return `**KORAK 2: GENERISANJE 6 NASLOVA**
 Na osnovu gornje analize, generiši po 2 unikatne varijacije za sledeća tri stila:
 
-**Opcija 1 i 2 (Stil: informativni):** Klasični SEO naslovi. Fokus na glavnom problemu (Subjekat). ZABRANJENA imena sagovornika. Naslovi MORAJU biti fluidne, prirodne rečenice — BEZ dvotačke (:). Piši kao što iskusan novinar piše privlačan naslov, ne kao "Etiketa: objašnjenje".
-**Opcija 3 i 4 (Stil: geo_pitanje):** Konverzacijska pitanja za AI Overviews i glasovnu pretragu. ZABRANJENA imena.
-**Opcija 5 i 6 (Stil: discover_hook):** E-E-A-T naslovi za Google Discover.
+**Opcija 1 i 2 (Stil: informativni):** Klasični SEO naslovi: ko je uradio šta (i gde, ako je odluka o mestu DA). Fluidne, prirodne IZJAVNE rečenice — NIKADA pitanja, BEZ dvotačke (:). Piši kao iskusan novinar, ne kao "Etiketa: objašnjenje". Dve opcije moraju imati različitu formulaciju.
+**Opcija 3 i 4 (Stil: geo_pitanje) — GEO naslovi za AI pretraživače (Google AI Overviews, ChatGPT) i glasovnu pretragu:**
+- **Opcija 3 — PITANJE:** pitanje sme biti naslov SAMO ako već SADRŽI vest (ko, šta, gde/odakle), a pita za ono što tekst objašnjava (kako, zašto, šta sledi). Primer DOBRO: „Kako su lopovi iz vinarije u Firenci ukrali 30.000 boca vina?". ZABRANJENA su pitanja-kvizovi čiji je odgovor sama vest (npr. „Koliko je boca vina ukradeno…?", „Ko je pobedio…?", „Šta je odlučio…?") — čitalac ne sme da pogađa šta je vest. NIKADA opšta pitanja tipa „Šta se dešava…", „Šta se desilo…". Završava se znakom pitanja.
+- **Opcija 4 — IZJAVNA REČENICA (odgovor):** jasna, direktna rečenica koja odgovara na ono što ljudi pitaju o ovoj temi (subjekat + ključna činjenica), tako da je AI pretraživač može citirati kao odgovor. NIJE pitanje.
+- Obe opcije: BEZ dvotačke (:).
+**Opcija 5 (Stil: discover_hook):** Naslov za Google Discover: najzanimljivija KONKRETNA činjenica iz teksta (po mogućstvu najjača informacija iz analize), fluidna rečenica — BEZ dvotačke (:).
+**Opcija 6 (Stil: discover_hook):** Naslov za Google Discover. Ovo je JEDINA opcija u kojoj je dvotačka dozvoljena (nije obavezna). Oblik „X: Y" koristi samo kada je X poznata osoba (prema pravilu o imenima) ili sam događaj/tema (npr. „Krađa vina u Firenci: …"), a Y konkretna činjenica iz teksta. NIKADA naziv proizvoda, brenda ili nepoznato ime kao X. Ako taj oblik nije prirodan, napiši fluidnu rečenicu.
 
-⚠️ LIMIT DVOTAČKE: Od svih 6 naslova, MAKSIMALNO 1 sme da koristi format sa dvotačkom (:) "X: Y". Preostalih 5 MORAJU biti fluidne, prirodne rečenice ili pitanja. Raznovrsnost struktura je KLJUČNA.
-
-PRAVILO ZA FORMAT DISCOVER HOOK:
-A) Ako je u tekstu JAVNO POZNATA ličnost (političar, sportista, celebrity, ministar, predsednik, direktor poznate kompanije) → Format: "Ime Prezime: udarna tvrdnja" (ovo se računa kao 1 dozvoljeni naslov sa dvotačkom)
-B) Ako je u tekstu stručnjak/bloger/lekar koji NIJE javno poznat čitaocima portala → Format: Fluidna, privlačna rečenica o benefitu. Primer: "Trik za kuhinju bez masnoće koji funkcioniše bez hemije"
-⚠️ NIKADA ne koristi ime osobe koja samo daje savete za svakodnevne teme (čišćenje, kuvanje, zdravlje, fitness) osim ako nije JAVNO POZNATA LIČNOST čitaocima portala.`;
+⚠️ DVOTAČKA: dozvoljena ISKLJUČIVO u opciji 6. U opcijama 1–5 dvotačka je ZABRANJENA.
+⚠️ RAZNOVRSNOST: 6 naslova = 6 različitih formulacija i uglova. Ne ponavljaj istu rečenicu sa sitnim izmenama. Isti broj ili podatak ne mora biti u svakom naslovu.`;
   }
 }
 
@@ -226,10 +236,26 @@ function getRules(lang: SupportedLanguage): string {
     default: // sr
       return `**PRAVILA:**
 - ❌ SVI naslovi MORAJU biti kraći od 70 karaktera!
-- ❌ ZABRANJENE clickbait reči (šokantno, neverovatno, haos)
-- ❌ MAKSIMALNO 1 naslov od 6 sme koristiti dvotačku (:)! Ostali moraju biti fluidne rečenice ili pitanja.
-- ✅ Puno ime + prezime u discover_hook naslovima
-- ✅ Završena rečenica`;
+- ❌ Dvotačka (:) dozvoljena SAMO u opciji 6.
+- ❌ BEZ PRETERIVANJA: nijedna tvrdnja ne sme biti jača od onoga što piše u tekstu. Zabranjeno: „revolucija", „istorijski", „menja sve", „svetski", „prvi u svetu" i slično — OSIM ako tekst to doslovno tvrdi.
+- ❌ BEZ PRAZNIH FRAZA koje ne nose informaciju: „važne odluke", „detalji o", „sve što treba da znate", „šta se dešava", „šta se desilo", „tajna", „otkrijte tajnu", „ovo je", „evo kako", „evo zašto".
+- ❌ BEZ IMPERATIVA i obraćanja čitaocu: „Saznajte", „Otkrijte", „Pogledajte", „Smršajte", „Evo…" i slično.
+- ❌ ZABRANJENE clickbait reči (šokantno, neverovatno, haos).
+- ❌ Ne izmišljaj: svaka činjenica, broj i ime u naslovu mora postojati u tekstu.
+- ❌ IZJAVE, OBEĆANJA I NAJAVE uvek pripiši onome ko ih daje („Jovanović obećava…", „najavio", „tvrdi") — NIKADA ih ne iznosi kao činjenicu koja se već dogodila ili je odlučena (pogrešno: „Žandarmerija više neće obezbeđivati utakmice").
+- ❌ LOGIKA REČENICE: glagol i predmet moraju logički da se slažu — kradu se predmeti, a ne vrednost („odneli 5 miliona evra vina" je POGREŠNO; ispravno: „ukradeno vino u vrednosti od 5 miliona evra").
+- ✅ SKRAĆENICE UMESTO OKRNJENIH POJMOVA: ako je naslov predug, koristi ustaljenu skraćenicu organizacije, stranke ili institucije (NPS, RIK, MUP, NDSS…) umesto da izbaciš deo ključnog pojma (npr. zadrži „birački spisak", ne samo „spisak").
+- ✅ Vrednost izražavaj sa „u vrednosti od X" (npr. „30.000 boca vina u vrednosti od pet miliona evra"); izbegavaj „vrednih X".
+- ✅ Precizni, neutralni glagoli („ukrali", „ukradeno", „uhapšen", „usvojen"); izbegavaj kolokvijalne („odneli", „zbrisali", „pokupili").
+- ✅ Jezik: jednostavan i jasan, razumljiv svakom čitaocu, ali ne banalan i ne detinjast. Ton ozbiljnog informativnog portala.
+- ✅ Svaki naslov nosi konkretnu činjenicu iz teksta (ko, šta), a ne samo temu.
+- ✅ Pravilan srpski jezik (latinica), gramatički ispravan, samo postojeće reči. Vlastita imena i nazivi velikim početnim slovom (npr. „stepeni Celzijusa", „Savet Evrope").
+- ✅ Bez tačke na kraju naslova; pitanja se završavaju znakom pitanja.
+
+**KORAK 3: ZAVRŠNA PROVERA (pre nego što vratiš JSON)** — za SVAKI naslov proveri:
+1. Padeži i slaganje reči (npr. ispravno: „Najveću krađu vina u Italiji izvela je grupa od sedam lopova"; pogrešno: „Najveća krađa vina u Italiji izvela grupa…").
+2. Logika i tačnost u odnosu na tekst (ništa izmišljeno, ništa izvrnuto).
+3. Da li bi iskusan urednik objavio naslov bez ispravke? Ako ne — prepravi ga pre nego što ga vratiš.`;
   }
 }
 
@@ -309,8 +335,8 @@ ${list}
 ⚠️ Përfshini të paktën një nga këto fraza të SAKTA në tituj — kjo është ajo që njerëzit VËRTET kërkojnë!\n`;
 
     default: // sr
-      return `\n**REALNE PRETRAGE KORISNIKA (Google Suggest):**
+      return `\n**REALNE PRETRAGE KORISNIKA (Google autodopuna, proverene u odnosu na tekst):**
 ${list}
-⚠️ Uključi barem jednu od ovih TAČNIH fraza u naslove — ovo je ono što ljudi ZAISTA pretražuju!\n`;
+⚠️ Ovo su fraze koje ljudi zaista kucaju u pretraživač. Koristi ih u opcijama 1–4 (informativni i GEO) kada se PRIRODNO uklapaju — po mogućstvu u obliku u kom ih ljudi kucaju. NIKADA ne dodaji informaciju koje nema u tekstu samo da bi ubacio frazu iz pretrage.\n`;
   }
 }

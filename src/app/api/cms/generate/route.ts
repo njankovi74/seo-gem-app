@@ -4,7 +4,7 @@ import { TFIDFAnalyzer } from '@/lib/tfidf-analyzer';
 import { LSAAnalyzer } from '@/lib/lsa-analyzer';
 import { buildDeterministicSEO, buildSEOWithLLM } from '@/lib/seo-output';
 import { prioritizeKeywords } from '@/lib/keyword-prioritizer';
-import { saveTitleChoice } from '@/lib/title-history';
+import { saveTitleChoice, classifySelection } from '@/lib/title-history';
 import { type SupportedLanguage, isValidLanguage } from '@/lib/i18n';
 import { logGeneration, startTimer } from '@/lib/generation-logger';
 
@@ -291,7 +291,8 @@ export async function POST(request: NextRequest) {
           articleText: text.substring(0, 5000),
           offeredTitles: offeredTitles || [],
           selectedTitle,
-          selectionType: body.selection_type || 'custom',
+          // Embed does not send selection_type — derive it by comparing with offered titles
+          selectionType: classifySelection(selectedTitle, offeredTitles) || body.selection_type || 'custom',
           metaDescription: seoOutputs.metaDescription,
           keywords: seoOutputs.keywordsLine,
           portalId: auth.portalId,

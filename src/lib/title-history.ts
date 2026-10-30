@@ -12,13 +12,18 @@ export interface TitleOption {
   reasoning: string;
 }
 
+export type SelectionType =
+  | 'ai_option_1' | 'ai_option_2' | 'ai_option_3'
+  | 'ai_option_4' | 'ai_option_5' | 'ai_option_6'
+  | 'custom';
+
 export interface TitleChoice {
   articleUrl: string;
   articleId?: string; // Numeric article ID from backoffice URL (e.g. '57081')
   articleText: string;
   offeredTitles: TitleOption[];
   selectedTitle: string;
-  selectionType: 'ai_option_1' | 'ai_option_2' | 'ai_option_3' | 'custom';
+  selectionType: SelectionType;
   metaDescription: string;
   keywords: string;
   portalId?: string; // Multi-tenant: 'newsmax', 'web_app', etc.
@@ -32,6 +37,22 @@ export interface SimilarExample {
   selected_title: string;
   selection_type: string;
   similarity: number; // kept for backward compat; set to 1.0 for style-based results
+}
+
+/**
+ * Determine how the journalist got the selected title, by comparing it with the offered AI titles.
+ * - Exact match (trimmed) with offered title #N → 'ai_option_N'
+ * - Anything else (own title, or an edited AI title) → 'custom'
+ *
+ * The CMS embed does not send selection_type, so the server must derive it.
+ * Returns null when there are no offered titles (cannot be determined).
+ */
+export function classifySelection(selectedTitle: string, offeredTitles: TitleOption[] | null | undefined): SelectionType | null {
+  if (!Array.isArray(offeredTitles) || offeredTitles.length === 0) return null;
+  const selected = (selectedTitle || '').trim();
+  const idx = offeredTitles.findIndex((t) => (t?.text || '').trim() === selected);
+  if (idx >= 0 && idx < 6) return `ai_option_${idx + 1}` as SelectionType;
+  return 'custom';
 }
 
 /**
@@ -333,12 +354,42 @@ export function analyzePattern(examples: SimilarExample[], language: string = 's
   return parts.join(' ');
 }
 
+const STYLE_LOOKBACK = 500;   // how many recent choices to scan
+const STYLE_MAX_TITLES = 50;  // max titles analyzed
+const STYLE_MIN_CUSTOM = 10;  // min journalist-written titles to rely on them alone
+
 /**
- * Analyze structural STYLE patterns from journalist's custom title choices.
+ * Pick the titles used for style analysis.
+ * Priority: journalist-written (custom) titles from the last STYLE_LOOKBACK choices.
+ * If there are fewer than STYLE_MIN_CUSTOM, fill up with AI-picked titles
+ * (e.g. Albanian portal, where journalists almost always pick an AI suggestion).
+ * Expects rows ordered newest first.
+ */
+export function pickStyleTitles(rows: { selected_title: string | null; selection_type: string | null }[]): {
+  titles: string[];
+  customCount: number;
+  aiCount: number;
+} {
+  const valid = rows.filter((r) => (r.selected_title || '').trim().length > 10);
+  const custom = valid.filter((r) => r.selection_type === 'custom').map((r) => r.selected_title!.trim());
+  const aiPicked = valid.filter((r) => r.selection_type !== 'custom').map((r) => r.selected_title!.trim());
+
+  const titles = custom.slice(0, STYLE_MAX_TITLES);
+  const customCount = titles.length;
+  if (customCount < STYLE_MIN_CUSTOM) {
+    titles.push(...aiPicked.slice(0, STYLE_MAX_TITLES - customCount));
+  }
+  return { titles, customCount, aiCount: titles.length - customCount };
+}
+
+/**
+ * Analyze structural STYLE patterns from journalist's title choices.
  * Returns a natural language summary that guides the AI to match the journalist's
  * preferred writing style (format, punctuation, length, voice, structure).
  * 
- * Requires min 10 custom titles to produce meaningful analysis.
+ * Custom (journalist-written) titles have priority; AI-picked titles fill in
+ * only when there are fewer than 10 custom titles (see pickStyleTitles).
+ * Requires min 10 titles in total to produce meaningful analysis.
  * Returns empty string if insufficient data (graceful degradation).
  */
 export async function analyzeStylePatterns(portalId: string, language: string = 'sr'): Promise<string> {
@@ -348,15 +399,12 @@ export async function analyzeStylePatterns(portalId: string, language: string = 
       .select('selected_title, selection_type')
       .eq('portal_id', portalId)
       .order('created_at', { ascending: false })
-      .limit(120);
+      .limit(STYLE_LOOKBACK);
 
     if (error || !data) return '';
 
-    // Focus on custom titles — these reveal the journalist's true preference
-    const customTitles = data
-      .filter((r: any) => r.selection_type === 'custom' && r.selected_title?.length > 10)
-      .map((r: any) => r.selected_title as string)
-      .slice(0, 50); // analyze last 50
+    const { titles: customTitles, customCount, aiCount } = pickStyleTitles(data as any[]);
+    console.log(`📊 [StyleAnalysis] Portal ${portalId}: ${customCount} custom + ${aiCount} AI-picked titles`);
 
     if (customTitles.length < 10) return ''; // not enough data
 

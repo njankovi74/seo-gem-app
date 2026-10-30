@@ -15,7 +15,8 @@
     "danas","sutra","juče","godina","godine","godinu","mesec","meseca","dan","dana","sat","sata","sati","minut","vreme","vremena",
     "nov","nova","novo","novi","stari","stara","staro","veliki","velika","veliko","mali","mala","dobar","dobra","loš","loša",
     "nula","dva","tri","četiri","pet","šest","sedam","osam","devet","deset","sto","hiljada","milion",
-    "dakle","inače","ipak","zapravo","naime","međutim","svega","najviše","najmanje","često","retko","ponekad"
+    "dakle","inače","ipak","zapravo","naime","međutim","svega","najviše","najmanje","često","retko","ponekad",
+    "nakon","tokom","prema","između","ispod","iznad","kod","pri","osim","umesto","kojoj","kojem","kojima","ove","ovih","svih","svi","ili","rekao","rekla","navodi","kaže","istakao","istakla","naveo","navela","dodao","dodala","nije","nisu","manje","veoma","putem","tako","time","tome","tim","toga","tog","svoj","svoja","svoje","sebe","sebi","ikada","ikad","poručio","poručila","poručili","izjavio","izjavila","izjavili","saopštio","saopštila","saopštili","naglasio","naglasila","ocenio","ocenila","objasnio","objasnila","smatra","tvrdi","dodaje","ističe","pojasnio","pojasnila"
   ],
   "intentIndicators": {
     "informational": ["kako","šta","gde","kada","zašto","vodič","objašnjenje","definicija","lista","saveti"],
