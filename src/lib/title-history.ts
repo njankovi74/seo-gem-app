@@ -99,7 +99,16 @@ export async function saveTitleChoice(choice: TitleChoice): Promise<number | nul
     if (choice.articleId) {
       insertData.article_id = choice.articleId;
     }
-    const { data, error } = await supabase.from('title_history').insert(insertData).select('id').single();
+    let { data, error } = await supabase.from('title_history').insert(insertData).select('id').single();
+
+    // DB check constraint may still allow only ai_option_1..3 + custom.
+    // Never lose the row: retry options 4–6 as 'ai_option_3' (still "AI pick"; exact option is
+    // recoverable later from offered_titles vs selected_title).
+    if (error && (error as any).code === '23514' && /^ai_option_[4-6]$/.test(String(insertData.selection_type))) {
+      console.warn(`⚠️ selection_type ${insertData.selection_type} rejected by DB constraint — saving as ai_option_3`);
+      insertData.selection_type = 'ai_option_3';
+      ({ data, error } = await supabase.from('title_history').insert(insertData).select('id').single());
+    }
 
     if (error) {
       console.error('❌ Failed to save title choice:', error);
