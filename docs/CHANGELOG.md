@@ -4,6 +4,14 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+## 2026-11-02 — Procedura vraćanja na stabilno stanje
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-11-02 | docs | Uvedena procedura vraćanja na stabilno stanje; tag stable-2026-11-02 na bd8d816 |
+
+---
+
 ## 2026-10-30 — Srpski: nova pravila za naslove, pametna autodopuna, GEO opcija C
 
 | Datum | Tip | Opis |
