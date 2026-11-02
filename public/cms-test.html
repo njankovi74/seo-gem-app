@@ -22,6 +22,21 @@
     .section-title { font-size: 14px; font-weight: 700; color: #1e3a5f; margin: 16px 0 8px; text-transform: uppercase; }
     #body-editor { min-height: 200px; border: 1px solid #ccc; border-radius: 4px; padding: 12px; font-size: 14px; line-height: 1.6; }
     .note { background: #fff3cd; padding: 10px 14px; border-radius: 6px; border: 1px solid #ffc107; font-size: 12px; color: #856404; margin-bottom: 16px; }
+    .test-settings { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 14px 16px; margin-bottom: 18px; }
+    .test-settings h3 { font-size: 14px; color: #1e3a5f; margin-bottom: 10px; }
+    .test-settings-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+    .test-settings-field { display: flex; flex-direction: column; gap: 4px; }
+    .test-settings-field--grow { flex: 1; min-width: 240px; }
+    .test-settings-field label { font-size: 12px; font-weight: 600; color: #475569; }
+    .test-settings-field input, .test-settings-field select {
+      padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; font-family: inherit;
+    }
+    .test-load-btn {
+      padding: 8px 16px; border: none; border-radius: 4px; background: #1e3a5f; color: #fff;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .test-load-btn:hover { background: #2c4a6e; }
+    .test-settings-note { font-size: 11px; color: #64748b; margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -31,6 +46,29 @@
 </div>
 
 <div class="cms-container">
+  <div class="test-settings" id="test-settings-panel">
+    <h3>⚙️ Test podešavanja</h3>
+    <div class="test-settings-row">
+      <div class="test-settings-field test-settings-field--grow">
+        <label for="test-api-key">API ključ</label>
+        <input type="password" id="test-api-key" placeholder="Unesite CMS API ključ..." autocomplete="off">
+      </div>
+      <div class="test-settings-field">
+        <label for="test-language">Jezik</label>
+        <select id="test-language">
+          <option value="sr" selected>sr (Srpski)</option>
+          <option value="pl">pl (Poljski)</option>
+          <option value="sq">sq (Albanski)</option>
+          <option value="en">en (Engleski)</option>
+        </select>
+      </div>
+      <button type="button" class="test-load-btn" id="load-seo-gem-btn">Učitaj SEO GEM</button>
+    </div>
+    <div class="test-settings-note">
+      🔒 Ključ se ne čuva na serveru i ne sme se upisivati u fajl.
+    </div>
+  </div>
+
   <div class="note">
     ⚠️ Ovo je simulacija Cubes CMS-a sa istim field name atributima. Unesite tekst u body editor i kliknite zeleno SEO GEM dugme.
   </div>
@@ -90,19 +128,61 @@ Vlada je najavila novi paket mera podrške koji bi trebalo da bude usvojen do kr
   </div>
 </div>
 
-<!-- SEO GEM Embed Script -->
-<script
-  src="/cms-embed.js"
-  data-api-key="sk_cms_newsmax_7f3a9e2b1c4d5f6a8b9c0d1e2f3a4b5c"
-  data-field-seo-title='[name="og_title"]'
-  data-field-meta-desc='[name="meta_description"]'
-  data-field-keywords='[name="keywords"]'
-  data-field-title='[name="heading"]'
-  data-field-lead='[name="lead"]'
-  data-editor-type="textarea"
-></script>
-
+<!-- Dynamic SEO GEM Embed Loader (no hardcoded API key) -->
 <script>
+  (function () {
+    const STORAGE_KEY = 'seoGemTestApiKey';
+    const STORAGE_LANG = 'seoGemTestLang';
+    const apiKeyInput = document.getElementById('test-api-key');
+    const langSelect = document.getElementById('test-language');
+    const loadBtn = document.getElementById('load-seo-gem-btn');
+
+    // Pre-fill from sessionStorage if present (do not auto-load script)
+    try {
+      const savedKey = sessionStorage.getItem(STORAGE_KEY);
+      if (savedKey && apiKeyInput) {
+        apiKeyInput.value = savedKey;
+      }
+      const savedLang = sessionStorage.getItem(STORAGE_LANG);
+      if (savedLang && langSelect) {
+        langSelect.value = savedLang;
+      }
+    } catch (e) { /* ignore storage errors */ }
+
+    if (loadBtn) {
+      loadBtn.addEventListener('click', function () {
+        const apiKey = (apiKeyInput ? apiKeyInput.value : '').trim();
+        const lang = (langSelect ? langSelect.value : 'sr') || 'sr';
+        if (!apiKey) {
+          alert('Unesite API ključ pre učitavanja SEO GEM skripte.');
+          return;
+        }
+
+        try {
+          sessionStorage.setItem(STORAGE_KEY, apiKey);
+          sessionStorage.setItem(STORAGE_LANG, lang);
+        } catch (e) { /* ignore storage errors */ }
+
+        // Remove any previous instance if re-loading
+        document.querySelectorAll('.seo-gem-btn, .seo-gem-panel, script[data-seo-gem-dynamic="true"]').forEach(el => el.remove());
+        window.__seoGemLoaded = false;
+
+        const s = document.createElement('script');
+        s.src = '/cms-embed.js';
+        s.setAttribute('data-seo-gem-dynamic', 'true');
+        s.setAttribute('data-api-key', apiKey);
+        s.setAttribute('data-language', lang);
+        s.setAttribute('data-field-seo-title', '[name="og_title"]');
+        s.setAttribute('data-field-meta-desc', '[name="meta_description"]');
+        s.setAttribute('data-field-keywords', '[name="keywords"]');
+        s.setAttribute('data-field-title', '[name="heading"]');
+        s.setAttribute('data-field-lead', '[name="lead"]');
+        s.setAttribute('data-editor-type', 'textarea');
+        document.body.appendChild(s);
+      });
+    }
+  })();
+
   // Update character counts on input
   document.querySelectorAll('input, textarea').forEach(el => {
     el.addEventListener('input', () => {
