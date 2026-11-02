@@ -45,7 +45,7 @@ SEO GEM je AI-powered SEO asistent za novinarske portale. Generiše optimizovane
 | LLM (embeddings) | OpenAI | text-embedding-3-small |
 | NLP | natural (TF-IDF), custom LSA | 8.1 |
 | Ekstrakcija | Cheerio + Axios + Readability | — |
-| Baza | Supabase (PostgreSQL) | Free Tier |
+| Baza | Supabase (PostgreSQL) | Pro |
 | Deploy | Vercel | Pro (Cron) |
 | OAuth | Google OAuth 2.0 | — |
 
@@ -144,6 +144,7 @@ Admin → /admin (password auth)
 | `CMS_API_KEY_NEWSMAX_AL` | CMS API ključ za Newsmax AL | ✅ |
 | `CMS_API_KEY_NEWSMAX_PL` | CMS API ključ za Newsmax PL | ✅ |
 | `APP_API_TOKEN` | Token za javne API-je | ✅ |
+| `CRON_SECRET` | Auth za Vercel Cron (sync) | ✅ |
 | `SEO_LLM_PROVIDER` | LLM provajder (`gemini`) | Opciona |
 | `SEO_LLM_REQUIRED` | Da li LLM mora uspeti (`true`) | Opciona |
 | `SEO_LLM_STRICT_MODEL` | Bez fallback modela (`true`) | Opciona |

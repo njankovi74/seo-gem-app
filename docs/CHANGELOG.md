@@ -4,6 +4,17 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+## 2026-10-30 → 2026-11-02 — Ispravke van repoa (Supabase, Vercel)
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-10-30 | fix | Supabase: constraint `title_history_selection_type_check` proširen na `ai_option_1..6` + `custom` (migracija `selection_type_allow_options_4_to_6`); istorija rekalkulisana iz `offered_titles` za 3.673 zapisa (837 → `ai_option_4`, 1.321 → 5, 1.515 → 6), backup u `title_history_selection_backup_20261030`; hotfix u `saveTitleChoice` više se ne aktivira (izvršio Claude (Cowork) direktno u Supabase/Vercel) |
+| 2026-10-30 | fix | Vercel: dodata env varijabla `CRON_SECRET` (sensitive); rešen zastoj dnevnog crona `/api/admin/analytics/sync` od 11.7. do 30.10. zbog 401; cron radi od noći 31.10. (izvršio Claude (Cowork) direktno u Supabase/Vercel) |
+| 2026-11-01 | data | Nadoknada analitike: ručni sync (`?date=YYYY-MM-DD`, dan po dan) za 9.7.–29.10.; GSC i GA4 kompletni za sva 3 portala za 14.6.–31.10. (`article_gsc_metrics` 38.418 → 219.105, `article_ga4_metrics` 78.432 → 407.263) (izvršio Claude (Cowork) direktno u Supabase/Vercel) |
+| 2026-11-02 | data | Povezivanje unazad (`title_history`): 9.305 zapisa bez `article_id` dobilo `article_id` + `article_url` tačnim poklapanjem sluga izabranog naslova sa GA4 URL-om (backup u `title_history_articleid_backup_20261102`); pokrivenost `article_id` kroz celu istoriju 42% → 82,5% (izvršio Claude (Cowork) direktno u Supabase/Vercel) |
+
+---
+
 ## 2026-11-02 — Procedura vraćanja na stabilno stanje
 
 | Datum | Tip | Opis |

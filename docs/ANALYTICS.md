@@ -70,6 +70,8 @@ GET /api/admin/analytics/sync?admin_key=<ADMIN_PASSWORD>&portal=newsmax     // s
 ```
 
 > **NAPOMENA:** Vercel cron može da prestane da radi posle novog deploy-a. Proveriti u Vercel Dashboard → Cron Jobs → poslednje pokretanje. Ako je stao, pokrenuti manualni sync za propuštene datume.
+>
+> **Cron autentifikacija:** Vercel šalje `Authorization: Bearer <CRON_SECRET>`; varijabla `CRON_SECRET` MORA postojati u Vercel env, inače sync vraća `401` i podaci se ne povlače (uzrok zastoja 12.7.–30.10.2026).
 
 ### Backfill procedura:
 Ako sync nije radio više dana, sync-ovati po 1 dan (Vercel 60s timeout ne dozvoljava `days=7`):
@@ -221,11 +223,13 @@ Za svaki dan D:
 
 ## Kapacitet i limiti
 
-| Parametar | Limit | Trenutno (jun 2026) |
-|---|---|---|
-| Supabase DB veličina | 500 MB (Free) | ~18 MB (3.6%) |
-| Redova u bazi | Nema limita | ~95.000 |
-| Rast/dan | — | ~5.300 redova |
-| Procena do limita | — | ~4 godine |
-| Supabase API zahtevi | Neograničeno | ~100/dan |
-| Supabase bandwidth | 5 GB/mesec | ~0.5 GB |
+| Parametar | Limit | Trenutno (jun 2026) | Trenutno (nov 2026) |
+|---|---|---|---|
+| Supabase DB veličina | 8 GB (Pro plan — org „MediaMatrix", ranije navedeno 500 MB Free) | ~18 MB (3.6%) | **758 MB (~9.5%)** |
+| Redova u bazi | Nema limita | ~95.000 | **~630.000** (`article_gsc_metrics`: 219.105, `article_ga4_metrics`: 407.263) |
+| Rast/dan | — | ~5.300 redova | ~5.300 redova |
+| Procena do limita | — | ~4 godine | Višegodišnji kapacitet (8 GB Pro) |
+| Supabase API zahtevi | Neograničeno | ~100/dan | ~100/dan |
+| Supabase bandwidth | 250 GB/mesec (Pro, ranije 5 GB) | ~0.5 GB | ~0.5 GB |
+
+> **Napomena o prostoru u bazi (nov 2026):** Supabase organizacija „MediaMatrix" je na **Pro** planu (8 GB). Od ukupnih 758 MB u bazi, **274 MB** zauzima vektorski indeks `title_history_embedding_idx` koji se trenutno ne koristi (samo zabeleženo, ne dirati).

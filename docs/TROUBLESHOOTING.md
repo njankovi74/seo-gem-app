@@ -28,24 +28,7 @@
 
 ---
 
-### A2. Vercel Cron — Zaustavljanje posle deploy-a (jul 2026)
-
-**Problem:** Vercel cron (`0 3 * * *`) je prestao da radi posle deploy-a 6. jula. Sync nije radio 3.4 dana (7-10. jul).
-
-**Uticaj:** Nedostajali GSC/GA4 podaci za jul 4-9. Manuelno popunjeni putem backfill-a.
-
-**Uzrok:** Vercel ponekad ne restartuje cron schedule posle novog deploy-a. Dokumentovano u Vercel community forumima.
-
-**Rešenje:** Dodat `date` parametar u sync route za manualni backfill:
-```
-GET /api/admin/analytics/sync?admin_key=***&date=2026-07-04
-```
-
-**Preventiva:** Potreban monitoring — proveriti u Vercel Dashboard → Cron Jobs → poslednje pokretanje.
-
----
-
-### A3. newsmax_pl — article_id ne radi na 81% zapisa (jul 2026)
+### A3. newsmax_pl — article_id ne radi na 81% zapisa (jul 2026; dopunjeno nov 2026 — svi portali)
 
 **Problem:** Samo 19% zapisa sa newsmax_pl portala ima `article_id`. Polje `article_url` je takođe prazno.
 
@@ -56,9 +39,36 @@ GET /api/admin/analytics/sync?admin_key=***&date=2026-07-04
 
 **Status:** Za istraživanje — potrebno proveriti PL backoffice URL format.
 
+**Dopuna (2. nov 2026):**
+- Problem važi za **SVE portale** (ne samo PL) — u poslednjih 30 dana pokrivenost `article_id` bila je ~34–42%.
+- Stvarni uzrok je u embed URL monitoru i backfill modulu (detalji slede u zadatku 2.3).
+- **Istorija delimično rešena 2.11.2026 povezivanjem unazad:** 9.305 zapisa u `title_history` bez `article_id` dobilo je `article_id` + `article_url` metodom tačnog poklapanja sluga izabranog naslova sa GA4 URL-om (isti portal, URL prvi put viđen u `[dan−1, dan+7]`, tačno jedan ID). Backup pre upisa: `title_history_articleid_backup_20261102`. Pokrivenost `article_id` kroz celu istoriju povećana sa **42% na 82,5%**.
+
 ---
 
 ## Rešeni problemi
+
+### A2. Vercel Cron — Zaustavljanje posle deploy-a (jul 2026; trajno rešeno 30. okt – 1. nov 2026)
+
+**Problem (jul 2026):** Vercel cron (`0 3 * * *`) je prestao da radi posle deploy-a 6. jula. Sync nije radio 3.4 dana (7-10. jul).
+
+**Uticaj (jul 2026):** Nedostajali GSC/GA4 podaci za jul 4-9. Manuelno popunjeni putem backfill-a.
+
+**Prvobitna pretpostavka uzroka (jul 2026):** Vercel ponekad ne restartuje cron schedule posle novog deploy-a. Dokumentovano u Vercel community forumima.
+
+**Rešenje (jul 2026):** Dodat `date` parametar u sync route za manualni backfill:
+```
+GET /api/admin/analytics/sync?admin_key=***&date=2026-07-04
+```
+
+**Preventiva:** Potreban monitoring — proveriti u Vercel Dashboard → Cron Jobs → poslednje pokretanje.
+
+**Stvarni uzrok i trajno rešenje (30. okt – 1. nov 2026):**
+- **Stvarni uzrok:** Nije bio u tome da „Vercel ne restartuje cron", već što `sync/route.ts` prihvata Vercel cron pozive samo uz `Authorization: Bearer <CRON_SECRET>`, a env varijabla `CRON_SECRET` nije postojala na Vercelu → svaki noćni poziv od 11.7. do 30.10.2026. vraćao je `401 Unauthorized`.
+- **Rešenje (30.10.2026):** U Vercel env dodata je varijabla `CRON_SECRET` (tip sensitive) i urađen redeploy. Dnevni cron radi uredno od noći 31.10.2026. (potvrđeno u bazi).
+- **Nadoknada podataka (1.11.2026):** Period bez podataka (12.7.–30.10.2026) nadoknađen ručnim sync-om (`?date=YYYY-MM-DD`, dan po dan, za 9.7.–29.10.). GSC i GA4 su kompletni za sva 3 portala od 14.6. do 31.10.2026. (osim GSC za poslednja 2–3 dana, što je normalno kašnjenje). Broj redova: `article_gsc_metrics` 38.418 → 219.105; `article_ga4_metrics` 78.432 → 407.263.
+
+---
 
 ### selection_type ai_option_4–6 odbijen od baze (30. okt 2026)
 
@@ -73,6 +83,8 @@ ALTER TABLE title_history ADD CONSTRAINT title_history_selection_type_check
   CHECK (selection_type IN ('ai_option_1','ai_option_2','ai_option_3','ai_option_4','ai_option_5','ai_option_6','custom'));
 ```
 Posle toga ponovo pokrenuti ispravku istorije (backfill) bez mapiranja 4–6 → 3.
+
+**Status:** ✅ TRAJNO REŠENO 30.10.2026 — constraint proširen (migracija `selection_type_allow_options_4_to_6`), istorija rekalkulisana (3.673 zapisa: 837 → `ai_option_4`, 1.321 → 5, 1.515 → 6), backup u `title_history_selection_backup_20261030`. Hotfix u `saveTitleChoice` (mapiranje 4–6 → 3 na grešku 23514) više se ne aktivira i ostaje u kodu do posebnog zadatka.
 
 ---
 
