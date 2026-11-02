@@ -2,18 +2,27 @@ import { supabase } from './supabase';
 
 /**
  * Backfill article_id za title_history zapise koji nemaju ID.
- * Koristi title→slug matching sa GA4 podacima.
- * 
+ * Koristi tačno poklapanje sluga izabranog naslova sa GA4 URL-ovima istog portala.
+ *
  * Logika:
- * 1. Nađi sve title_history zapise bez article_id (starije od 24h)
- * 2. Iz GA4 metrika izvuci sve poznate article URL-ove
- * 3. Za svaki naslov, napravi slug i traži poklapanje
- * 4. Ako nađe — ažuriraj title_history
- * 
- * Poziva se iz sync crona dnevno.
+ * 1. Kandidati: title_history bez article_id, created_at u poslednjih `days` (default 14) dana,
+ *    sortirano created_at DESC, limit 500.
+ * 2. URL indeks: article_ga4_metrics za date >= danas - (days + 7), paginirano po 1000.
+ *    Za svaki URL: match /\/(\d{4,})\/([^/]+)/ -> id = grupa 1, slug = grupa 2.
+ *    Ključ indeksa: `${portal_id}|${slug}`; vrednost { id, path, firstSeen }.
+ *    Ako isti ključ vodi na dva različita id-a -> označi kao ambiguous i preskoči.
+ * 3. Poklapanje: samo tačno (${portal}|${titleSlug}), nije ambiguous,
+ *    firstSeen u [created_at - 1 dan, created_at + 7 dana].
+ * 4. Upis (osim kad je dryRun=true): article_id = id, article_url = 'https://' + domen(portal) + path.
  */
 
-// Serbian transliteration map
+const PORTAL_DOMAINS: Record<string, string> = {
+  newsmax: 'newsmaxbalkans.com',
+  newsmax_al: 'newsmaxbalkans.al',
+  newsmax_pl: 'newsmaxpolska.pl',
+};
+
+// Transliteration map (Serbian, Polish, Albanian)
 const TRANSLITERATE: Record<string, string> = {
   // Serbian
   'š': 's', 'đ': 'd', 'č': 'c', 'ć': 'c', 'ž': 'z',
@@ -23,51 +32,75 @@ const TRANSLITERATE: Record<string, string> = {
   'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z',
   'Ą': 'a', 'Ę': 'e', 'Ł': 'l', 'Ń': 'n', 'Ó': 'o',
   'Ś': 's', 'Ź': 'z', 'Ż': 'z',
+  // Albanian
+  'ë': 'e', 'ç': 'c', 'Ë': 'e', 'Ç': 'c',
 };
 
 function transliterate(text: string): string {
-  return text.split('').map(c => TRANSLITERATE[c] || c).join('');
+  return text.normalize('NFC').split('').map(c => TRANSLITERATE[c] || c).join('');
 }
 
 function titleToSlug(title: string): string {
   return transliterate(title)
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .substring(0, 80);
+    .replace(/^-|-$/g, '');
 }
 
-function extractIdFromUrl(url: string): string | null {
-  const match = url.match(/\/(\d{4,})\//);
-  return match ? match[1] : null;
+function normalizePath(urlOrPath: string): string {
+  if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+    try {
+      return new URL(urlOrPath).pathname;
+    } catch {
+      // fallback below
+    }
+  }
+  return urlOrPath.startsWith('/') ? urlOrPath : '/' + urlOrPath;
 }
 
-interface BackfillResult {
+export interface BackfillExample {
+  title: string;
+  url: string;
+}
+
+export interface BackfillResult {
   total_without_id: number;
   matched: number;
-  failed: number;
+  ambiguous: number;
   skipped: number;
+  failed: number;
+  examples: BackfillExample[];
 }
 
-export async function backfillArticleIds(): Promise<BackfillResult> {
+export interface BackfillOptions {
+  dryRun?: boolean;
+  days?: number;
+}
+
+export async function backfillArticleIds(options?: BackfillOptions): Promise<BackfillResult> {
+  const dryRun = options?.dryRun ?? false;
+  const days = options?.days ?? 14;
+
   const result: BackfillResult = {
     total_without_id: 0,
     matched: 0,
-    failed: 0,
+    ambiguous: 0,
     skipped: 0,
+    failed: 0,
+    examples: [],
   };
 
   try {
-    // 1. Get title_history records without article_id (older than 24h)
-    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    
+    // 1. Kandidati: title_history bez article_id u poslednjih `days` dana, created_at DESC, limit 500
+    const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
     const { data: unmatched, error: thError } = await supabase
       .from('title_history')
-      .select('id, selected_title, portal_id, article_url')
+      .select('id, selected_title, portal_id, article_url, created_at')
       .is('article_id', null)
-      .lt('created_at', cutoff)
+      .gte('created_at', cutoffDate)
+      .order('created_at', { ascending: false })
       .limit(500);
 
     if (thError) {
@@ -81,92 +114,143 @@ export async function backfillArticleIds(): Promise<BackfillResult> {
     }
 
     result.total_without_id = unmatched.length;
-    console.log(`[backfill-ids] Found ${unmatched.length} records without article_id`);
+    console.log(`[backfill-ids] Found ${unmatched.length} records without article_id (days=${days}, dryRun=${dryRun})`);
 
-    // 2. Build slug→article_id index from GA4 metrics
-    const slugIndex = new Map<string, { id: string; url: string }>();
-    
+    // 2. URL indeks: article_ga4_metrics za date >= danas - (days + 7), paginirano po 1000
+    const ga4StartDate = new Date(Date.now() - (days + 7) * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
+
+    const slugIndex = new Map<string, { id: string; path: string; firstSeen: string; ambiguous?: boolean }>();
+
     let offset = 0;
+    const pageSize = 1000;
     while (true) {
       const { data: ga4Data, error: ga4Error } = await supabase
         .from('article_ga4_metrics')
-        .select('article_url')
+        .select('portal_id, article_url, date')
+        .gte('date', ga4StartDate)
         .not('article_url', 'is', null)
-        .range(offset, offset + 999);
+        .range(offset, offset + pageSize - 1);
 
-      if (ga4Error || !ga4Data || ga4Data.length === 0) break;
+      if (ga4Error) {
+        console.error('[backfill-ids] Error fetching article_ga4_metrics:', ga4Error.message);
+        break;
+      }
+      if (!ga4Data || ga4Data.length === 0) break;
 
       for (const row of ga4Data) {
-        const url = row.article_url;
-        const articleId = extractIdFromUrl(url);
-        if (articleId && url.includes('/')) {
-          // Extract slug from URL
-          const parts = url.split('/').filter(Boolean);
-          const slug = parts[parts.length - 1] || parts[parts.length - 2] || '';
-          if (slug && slug.length > 3) {
-            slugIndex.set(slug.toLowerCase(), { id: articleId, url });
+        if (!row.portal_id || !row.article_url || !row.date) continue;
+        const path = normalizePath(row.article_url);
+        const match = path.match(/\/(\d{4,})\/([^/]+)/);
+        if (!match) continue;
+
+        const id = match[1];
+        const slug = match[2].toLowerCase();
+        if (!slug) continue;
+
+        const key = `${row.portal_id}|${slug}`;
+        const existing = slugIndex.get(key);
+
+        if (!existing) {
+          slugIndex.set(key, { id, path, firstSeen: row.date });
+        } else if (existing.ambiguous) {
+          // Already marked ambiguous
+        } else if (existing.id !== id) {
+          existing.ambiguous = true;
+        } else {
+          if (row.date < existing.firstSeen) {
+            existing.firstSeen = row.date;
           }
         }
       }
 
-      if (ga4Data.length < 1000) break;
-      offset += 1000;
+      if (ga4Data.length < pageSize) break;
+      offset += pageSize;
     }
 
-    console.log(`[backfill-ids] Built slug index: ${slugIndex.size} entries`);
+    console.log(`[backfill-ids] Built slug index: ${slugIndex.size} keys (from date >= ${ga4StartDate})`);
 
-    // 3. Match each unmatched title_history record
+    // 3. Poklapanje kandidata (samo tačno poklapanje)
     for (const record of unmatched) {
-      if (!record.selected_title) {
+      if (!record.selected_title || !record.portal_id || !record.created_at) {
+        result.skipped++;
+        continue;
+      }
+
+      const domain = PORTAL_DOMAINS[record.portal_id];
+      if (!domain) {
         result.skipped++;
         continue;
       }
 
       const titleSlug = titleToSlug(record.selected_title);
-      if (!titleSlug || titleSlug.length < 5) {
+      if (!titleSlug) {
         result.skipped++;
         continue;
       }
 
-      // Try exact match first
-      let matched = slugIndex.get(titleSlug);
+      const key = `${record.portal_id}|${titleSlug}`;
+      const entry = slugIndex.get(key);
 
-      // Try partial match — check if any slug contains most words from title slug
-      if (!matched) {
-        const titleWords = titleSlug.split('-').filter(w => w.length > 2);
-        let bestScore = 0;
-        let bestEntry: { id: string; url: string } | null = null;
-
-        for (const [slug, entry] of slugIndex.entries()) {
-          let matchCount = 0;
-          for (const word of titleWords) {
-            if (slug.includes(word)) matchCount++;
-          }
-          const score = matchCount / Math.max(titleWords.length, 1);
-          if (score > bestScore && score >= 0.5 && matchCount >= 3) {
-            bestScore = score;
-            bestEntry = entry;
-          }
-        }
-        if (bestEntry) matched = bestEntry;
+      if (!entry) {
+        result.skipped++;
+        continue;
       }
 
-      if (matched) {
-        const { error: updateError } = await supabase
-          .from('title_history')
-          .update({ article_id: matched.id })
-          .eq('id', record.id);
+      if (entry.ambiguous) {
+        result.ambiguous++;
+        continue;
+      }
 
-        if (updateError) {
-          console.error(`[backfill-ids] Update failed for TH#${record.id}:`, updateError.message);
-          result.failed++;
-        } else {
-          result.matched++;
+      // Check that firstSeen is within [created_at - 1 day, created_at + 7 days]
+      const createdDate = new Date(record.created_at);
+      const minD = new Date(createdDate);
+      minD.setUTCDate(minD.getUTCDate() - 1);
+      const maxD = new Date(createdDate);
+      maxD.setUTCDate(maxD.getUTCDate() + 7);
+      const minDateStr = minD.toISOString().split('T')[0];
+      const maxDateStr = maxD.toISOString().split('T')[0];
+
+      if (entry.firstSeen < minDateStr || entry.firstSeen > maxDateStr) {
+        result.skipped++;
+        continue;
+      }
+
+      const fullUrl = 'https://' + domain + entry.path;
+
+      if (dryRun) {
+        result.matched++;
+        if (result.examples.length < 5) {
+          result.examples.push({ title: record.selected_title, url: fullUrl });
+          console.log(`[backfill-ids][dryRun] Match: "${record.selected_title}" → ${fullUrl} (id=${entry.id})`);
+        }
+        continue;
+      }
+
+      const { error: updateError } = await supabase
+        .from('title_history')
+        .update({
+          article_id: entry.id,
+          article_url: fullUrl,
+        })
+        .eq('id', record.id)
+        .is('article_id', null);
+
+      if (updateError) {
+        console.error(`[backfill-ids] Update failed for TH#${record.id}:`, updateError.message);
+        result.failed++;
+      } else {
+        result.matched++;
+        if (result.examples.length < 5) {
+          result.examples.push({ title: record.selected_title, url: fullUrl });
         }
       }
     }
 
-    console.log(`[backfill-ids] Done: ${result.matched} matched, ${result.failed} failed, ${result.skipped} skipped of ${result.total_without_id}`);
+    console.log(
+      `[backfill-ids] Done (dryRun=${dryRun}): ${result.matched} matched, ${result.ambiguous} ambiguous, ${result.skipped} skipped, ${result.failed} failed of ${result.total_without_id}`
+    );
     return result;
 
   } catch (error) {

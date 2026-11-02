@@ -117,12 +117,17 @@ title_history.article_id = "57081"  →  direktan join sa GSC/GA4 po ID-u
 ```
 `cms-embed.js` ima 5 fallback paterna za ID ekstrakciju (URL varijante, DOM fields, form action).
 
-**Strategy 1 — Retroaktivni backfill putem title→slug matching (88% tačno):**
+**Strategy 1 — Retroaktivni i dnevni backfill putem title→slug matching (`src/lib/backfill-article-ids.ts`):**
 ```
-selected_title → transliteracija (š→s, đ→d, č→c, ć→c, ž→z) → slug → pretraga GA4 URL-ova
+selected_title → NFC + transliteracija (SR: šđčćž, PL: ąęłńóśźż, AL: ëç) → slug (bez skraćivanja) → tačno poklapanje sa GA4 URL-om istog portala
 ```
-Skripta `backfill-article-ids.mjs` konvertuje naslov u URL slug, traži poklapanje u GA4 podacima.
-Izvršen jul 2026: **2,993/3,402 zapisa povezano (88%)**.
+- **Dnevni automatski backfill (`backfillArticleIds` u `src/lib/backfill-article-ids.ts`, revidirano nov 2026):**
+  - Uzima do **500 najnovijih** `title_history` zapisa bez `article_id` u poslednjih `days` (podrazumevano 14) dana (`created_at DESC`).
+  - Gradi indeks iz `article_ga4_metrics` za `date >= danas − (days + 7)` (paginirano po 1000 redova).
+  - Iz svakog GA4 URL-a vadi ID i slug odmah posle ID-a (`/\/(\d{4,})\/([^/]+)/` → grupa 1 = `id`, grupa 2 = `slug`, čime se ignoriše završni sufiks `/vest` ili `/news`).
+  - Ključ indeksa je `${portal_id}|${slug}` sa vrednošću `{ id, path, firstSeen }`. Ako isti ključ pokazuje na dva različita `id`-a, označava se kao `ambiguous` i preskače.
+  - Zahteva **isključivo tačno poklapanje** sluga u okviru istog portala i da je `firstSeen` u opsegu `[created_at − 1 dan, created_at + 7 dana]`. Upisuje `article_id` i pun javni `article_url` (`https://<domen_portala><path>`). Podržava `{ dryRun?: boolean, days?: number }`.
+- Jednokratni istorijski skript `backfill-article-ids.mjs` izvršen jul 2026: **2,993/3,402 zapisa povezano (88%)**; dodatno povezivanje unazad 2. nov 2026: **9.305 zapisa povezano (ukupna pokrivenost 42% → 82,5%)**.
 
 **Strategy 2 — Slug validation (stari zapisi, ~75% tačno):**
 ```
@@ -146,7 +151,7 @@ Regex: /\/(\d{4,})\//  →  "57081"
 4. DOM hidden fields: `article_id`, `id`, `post_id`, `content_id`
 5. Form action URL: `form[action*="/articles/"]`
 
-> **POZNATI PROBLEM:** Kad novinar koristi SEO GEM pre čuvanja članka, URL je `/articles/new` i nijedan patern ne hvata ID. Potreban URL monitor koji prati promenu URL-a posle čuvanja. **STATUS: TODO**
+> **POZNATI PROBLEM (jul 2026 → rešeno nov 2026):** Kad novinar koristi SEO GEM pre čuvanja članka, URL je `/articles/new` i nijedan patern ne hvata ID. Uveden je `localStorage` čekač (`seoGemPending`) u `cms-embed.js` koji preživi ponovno učitavanje stranice po čuvanju članka i na 1,5 s / 5 s proverava poklapanje SEO Title polja i šalje `PATCH /api/cms/update-article-id` (uz zadržan `setInterval` monitor za SPA promene URL-a).
 
 ### Organic + Direct kalkulacija (apsolutni PV, v2):
 ```typescript

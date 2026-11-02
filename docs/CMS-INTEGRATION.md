@@ -108,9 +108,35 @@ Novinar u CMS editoru
   "seoTitle": "Dijabetes tip 2: Lek Retatrutid efikasno topi kilograme",
   "metaDescription": "Klinička studija pokazala da lek Retatrutid pomaže pacijentima sa dijabetesom tip 2 da smršaju do 24 procenta telesne mase za godinu dana.",
   "keywords": "dijabetes, retatrutid, mršavljenje, lek za dijabetes, tip 2, klinička studija",
-  "schemaMarkup": "<script type=\"application/ld+json\">{ ... Article schema ... }</script>"
+  "schemaMarkup": "<script type=\"application/ld+json\">{ ... Article schema ... }</script>",
+  "titleHistoryId": 12345
 }
 ```
+
+### 3. Naknadno povezivanje ID-a članka: `PATCH /api/cms/update-article-id`
+
+Kada novinar generiše SEO na novom, još nesačuvanom članku (`/articles/new`), `cms-embed.js` čuva `{ th: titleHistoryId, seoTitle, ts }` u `localStorage` (`seoGemPending`). Kada novinar sačuva članak i CMS učita stranicu sa brojem članka (`/articles/{id}/edit`), skripta poredi SEO Title polje sa sačuvanim naslovom i pri poklapanju šalje `PATCH` zahtev:
+
+**Autentifikacija:** `Authorization: Bearer <API_KEY>` header (obavezno; ažurira se samo zapis koji pripada portalu tog ključa i čiji je `article_id` još uvek `null`).
+
+**Request:**
+```json
+{
+  "title_history_id": 12345,
+  "article_id": "57081",
+  "article_url": "https://newsmaxbalkans.com/vesti/..." // ili null (backoffice/cubesdev adrese se odbacuju)
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "updated": true
+}
+```
+
+**Greške:** `401` (neispravan/nedostajući API ključ), `400` (nedostaje parametar ili `article_id` nema 4+ cifre), `404` (`not found or already linked` — zapis ne pripada portalu ili već ima `article_id`).
 
 ---
 

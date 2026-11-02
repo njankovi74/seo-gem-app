@@ -74,14 +74,14 @@ export function corsHeaders(origin?: string | null): Record<string, string> {
 
   // Also allow localhost for development
   if (process.env.NODE_ENV === 'development') {
-    allowed.push('http://localhost:3000', 'http://localhost:8080', 'http://127.0.0.1:3000');
+    allowed.push('http://localhost:3000', 'http://localhost:3099', 'http://localhost:8080', 'http://127.0.0.1:3000', 'http://127.0.0.1:3099');
   }
 
   const effectiveOrigin = origin && allowed.includes(origin) ? origin : '';
 
   return {
     'Access-Control-Allow-Origin': effectiveOrigin,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
   };
