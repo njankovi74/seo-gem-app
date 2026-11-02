@@ -617,34 +617,8 @@
     render();
   }
 
-  async function handleConfirm() {
-    const selectedTitle = state.selectedIndex === 'custom'
-      ? state.customTitle.trim()
-      : (state.titles[state.selectedIndex]?.text || '');
-
-    if (!selectedTitle || selectedTitle.length < 5) {
-      state.error = t.errorSelectTitle;
-      render();
-      return;
-    }
-
-    const bodyText = getBodyText();
-    const title = getFieldValue(CONFIG.fields.title);
-    const lead = getFieldValue(CONFIG.fields.lead);
-
-    state.phase = 'loading-generate';
-    state.error = null;
-    render();
-
-    // Gather metadata from CMS fields
-    var authorName = '';
-    try { authorName = getFieldValue(CONFIG.fields.author) || ''; } catch(e) { /* field may not exist */ }
-    var articleSection = '';
-    try { articleSection = getFieldValue(CONFIG.fields.section) || ''; } catch(e) { /* field may not exist */ }
-    // Article URL: find the public URL using article ID from backoffice URL
-    var articleUrl = '';
-
-    // Extract article ID — robust: tries multiple patterns and DOM fallbacks
+  // ── Helper: extract article ID from page (5 patterns) ──
+  function extractArticleIdFromPage() {
     var backofficeUrl = window.location.href || '';
     var articleId = '';
 
@@ -700,6 +674,160 @@
       } catch(e) { /* */ }
     }
 
+    return articleId;
+  }
+
+  // ── Helper: find public link on page matching exact article ID ──
+  function findPublicUrlForId(id) {
+    if (!id) return '';
+    try {
+      var allLinks = document.querySelectorAll('a[href]');
+      for (var li = 0; li < allLinks.length; li++) {
+        var linkHref = allLinks[li].href || '';
+        // Must be public (not backoffice), must contain our exact article ID in path
+        if (linkHref
+            && !linkHref.includes('backoffice')
+            && !linkHref.includes('cubesdev')
+            && linkHref.startsWith('http')
+            && linkHref.match(new RegExp('/' + id + '/'))) {
+          console.log('[SEO GEM] Found public URL matching article ID ' + id + ':', linkHref);
+          return linkHref;
+        }
+      }
+    } catch(e) { /* */ }
+    return '';
+  }
+
+  // ── Pending article_id persistence across page reloads (localStorage) ──
+  var PENDING_STORAGE_KEY = 'seoGemPending';
+  var PENDING_MAX_AGE_MS = 60 * 60 * 1000; // 60 minutes
+  var PENDING_MAX_ITEMS = 5;
+  var pendingInFlight = {};
+
+  function getPendingItems() {
+    try {
+      var raw = localStorage.getItem(PENDING_STORAGE_KEY);
+      if (!raw) return [];
+      var parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      var now = Date.now();
+      var valid = parsed.filter(function(item) {
+        return item && item.th && typeof item.seoTitle === 'string' && typeof item.ts === 'number' && (now - item.ts <= PENDING_MAX_AGE_MS);
+      });
+      if (valid.length !== parsed.length) {
+        try { localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(valid)); } catch(e) { /* */ }
+      }
+      return valid;
+    } catch (e) {
+      console.warn('[SEO GEM] Failed to read seoGemPending:', e);
+      return [];
+    }
+  }
+
+  function addPendingItem(thId, seoTitle) {
+    try {
+      var items = getPendingItems().filter(function(item) { return String(item.th) !== String(thId); });
+      items.push({ th: thId, seoTitle: (seoTitle || '').trim(), ts: Date.now() });
+      if (items.length > PENDING_MAX_ITEMS) {
+        items = items.slice(items.length - PENDING_MAX_ITEMS);
+      }
+      localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(items));
+      console.log('[SEO GEM] Saved pending article ID item to localStorage (TH#' + thId + ')');
+    } catch (e) {
+      console.warn('[SEO GEM] Failed to save seoGemPending:', e);
+    }
+  }
+
+  function removePendingItem(thId) {
+    try {
+      var items = getPendingItems().filter(function(item) { return String(item.th) !== String(thId); });
+      localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(items));
+    } catch (e) {
+      console.warn('[SEO GEM] Failed to remove item from seoGemPending:', e);
+    }
+  }
+
+  function checkPendingArticleIds() {
+    try {
+      var items = getPendingItems();
+      if (!items || items.length === 0) return;
+
+      var pageArticleId = extractArticleIdFromPage();
+      if (!pageArticleId) return;
+
+      var pageSeoTitle = (getFieldValue(CONFIG.fields.seoTitle) || '').trim();
+      if (!pageSeoTitle) return;
+
+      items.forEach(function(item) {
+        if ((item.seoTitle || '').trim() !== pageSeoTitle) return;
+        if (pendingInFlight[item.th]) return;
+        pendingInFlight[item.th] = true;
+
+        var rawPublicUrl = findPublicUrlForId(pageArticleId);
+        var publicUrl = rawPublicUrl ? rawPublicUrl.split('?')[0] : null;
+        console.log('[SEO GEM] Matched pending TH#' + item.th + ' with article ID ' + pageArticleId + ', sending PATCH...');
+
+        fetch(CONFIG.apiBase + '/api/cms/update-article-id', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + CONFIG.apiKey
+          },
+          body: JSON.stringify({
+            title_history_id: item.th,
+            article_id: pageArticleId,
+            article_url: publicUrl
+          })
+        }).then(function(resp) {
+          return resp.json();
+        }).then(function(result) {
+          delete pendingInFlight[item.th];
+          if (result && result.success) {
+            removePendingItem(item.th);
+            console.log('[SEO GEM] ✅ Article ID updated from pending queue: TH#' + item.th + ' → ' + pageArticleId);
+          } else {
+            console.warn('[SEO GEM] Pending article ID update failed:', result && result.error);
+          }
+        }).catch(function(err) {
+          delete pendingInFlight[item.th];
+          console.warn('[SEO GEM] Pending article ID PATCH error:', err);
+        });
+      });
+    } catch (e) {
+      console.warn('[SEO GEM] checkPendingArticleIds error:', e);
+    }
+  }
+
+  async function handleConfirm() {
+    const selectedTitle = state.selectedIndex === 'custom'
+      ? state.customTitle.trim()
+      : (state.titles[state.selectedIndex]?.text || '');
+
+    if (!selectedTitle || selectedTitle.length < 5) {
+      state.error = t.errorSelectTitle;
+      render();
+      return;
+    }
+
+    const bodyText = getBodyText();
+    const title = getFieldValue(CONFIG.fields.title);
+    const lead = getFieldValue(CONFIG.fields.lead);
+
+    state.phase = 'loading-generate';
+    state.error = null;
+    render();
+
+    // Gather metadata from CMS fields
+    var authorName = '';
+    try { authorName = getFieldValue(CONFIG.fields.author) || ''; } catch(e) { /* field may not exist */ }
+    var articleSection = '';
+    try { articleSection = getFieldValue(CONFIG.fields.section) || ''; } catch(e) { /* field may not exist */ }
+    // Article URL: find the public URL using article ID from backoffice URL
+    var articleUrl = '';
+
+    // Extract article ID — robust: tries multiple patterns and DOM fallbacks
+    var articleId = extractArticleIdFromPage();
+
     // 1. Try dedicated config field (if CMS admin configured data-field-article-url)
     if (CONFIG.fields.articleUrl) {
       try { articleUrl = getFieldValue(CONFIG.fields.articleUrl) || ''; } catch(e) { /* */ }
@@ -722,21 +850,7 @@
 
     // 3. If we have article ID — find the public link that contains THIS EXACT ID
     if (!articleUrl && articleId) {
-      try {
-        var allLinks = document.querySelectorAll('a[href]');
-        for (var li = 0; li < allLinks.length; li++) {
-          var linkHref = allLinks[li].href || '';
-          // Must be public (not backoffice), must contain our exact article ID in path
-          if (linkHref
-              && !linkHref.includes('backoffice')
-              && linkHref.startsWith('http')
-              && linkHref.match(new RegExp('/' + articleId + '/'))) {
-            articleUrl = linkHref;
-            console.log('[SEO GEM] Found public URL matching article ID ' + articleId + ':', articleUrl);
-            break;
-          }
-        }
-      } catch(e) { /* */ }
+      articleUrl = findPublicUrlForId(articleId);
     }
 
     // 4. NO fallback to random links or window.location — better empty than wrong
@@ -808,55 +922,61 @@
       state.phase = 'done';
       state.error = null;
 
-      // ── URL Monitor: watch for article_id if we didn't have one ──
+      // ── URL Monitor & Pending Queue: watch for article_id if we didn't have one ──
       // When journalist creates a new article (/articles/new), saves it,
       // and the URL changes to /articles/57081/edit — we catch that and PATCH.
       if (data.titleHistoryId && !articleId) {
+        addPendingItem(data.titleHistoryId, data.seoTitle || selectedTitle);
         console.log('[SEO GEM] Starting URL monitor for article ID (TH#' + data.titleHistoryId + ')');
         var monitorAttempts = 0;
         var maxMonitorAttempts = 60; // 5 minutes (every 5 seconds)
         var urlMonitorInterval = setInterval(function() {
-          monitorAttempts++;
-          var currentUrl = window.location.href || '';
-          // Try to extract article ID from current URL
-          var urlMatch = currentUrl.match(/\/articles\/(\d{4,})/);
-          if (!urlMatch) {
-            // Also check for any /DIGITS/ pattern
-            urlMatch = currentUrl.match(/\/(\d{4,})(?:\/|$|\?)/);
-          }
-          if (urlMatch) {
-            var newArticleId = urlMatch[1];
-            console.log('[SEO GEM] URL monitor detected article ID: ' + newArticleId);
-            clearInterval(urlMonitorInterval);
-            // Send PATCH to update title_history
-            try {
-              fetch(CONFIG.apiBase + '/api/cms/update-article-id', {
-                method: 'PATCH',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': 'Bearer ' + CONFIG.apiKey
-                },
-                body: JSON.stringify({
-                  title_history_id: data.titleHistoryId,
-                  article_id: newArticleId,
-                  article_url: currentUrl
-                })
-              }).then(function(resp) {
-                return resp.json();
-              }).then(function(result) {
-                if (result.success) {
-                  console.log('[SEO GEM] ✅ Article ID updated: TH#' + data.titleHistoryId + ' → ' + newArticleId);
-                } else {
-                  console.warn('[SEO GEM] Article ID update failed:', result.error);
-                }
-              }).catch(function(err) {
-                console.warn('[SEO GEM] Article ID PATCH error:', err);
-              });
-            } catch(e) { console.warn('[SEO GEM] URL monitor PATCH error:', e); }
-          } else if (monitorAttempts >= maxMonitorAttempts) {
-            console.log('[SEO GEM] URL monitor stopped after 5 minutes, no article ID found');
-            clearInterval(urlMonitorInterval);
-          }
+          try {
+            monitorAttempts++;
+            var currentUrl = window.location.href || '';
+            // Try to extract article ID from current URL
+            var urlMatch = currentUrl.match(/\/articles\/(\d{4,})/);
+            if (!urlMatch) {
+              // Also check for any /DIGITS/ pattern
+              urlMatch = currentUrl.match(/\/(\d{4,})(?:\/|$|\?)/);
+            }
+            if (urlMatch) {
+              var newArticleId = urlMatch[1];
+              var rawPublicUrl = findPublicUrlForId(newArticleId);
+              var publicUrl = rawPublicUrl ? rawPublicUrl.split('?')[0] : null;
+              console.log('[SEO GEM] URL monitor detected article ID: ' + newArticleId);
+              clearInterval(urlMonitorInterval);
+              // Send PATCH to update title_history
+              try {
+                fetch(CONFIG.apiBase + '/api/cms/update-article-id', {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + CONFIG.apiKey
+                  },
+                  body: JSON.stringify({
+                    title_history_id: data.titleHistoryId,
+                    article_id: newArticleId,
+                    article_url: publicUrl
+                  })
+                }).then(function(resp) {
+                  return resp.json();
+                }).then(function(result) {
+                  if (result && result.success) {
+                    removePendingItem(data.titleHistoryId);
+                    console.log('[SEO GEM] ✅ Article ID updated: TH#' + data.titleHistoryId + ' → ' + newArticleId);
+                  } else {
+                    console.warn('[SEO GEM] Article ID update failed:', result && result.error);
+                  }
+                }).catch(function(err) {
+                  console.warn('[SEO GEM] Article ID PATCH error:', err);
+                });
+              } catch(e) { console.warn('[SEO GEM] URL monitor PATCH error:', e); }
+            } else if (monitorAttempts >= maxMonitorAttempts) {
+              console.log('[SEO GEM] URL monitor stopped after 5 minutes, no article ID found');
+              clearInterval(urlMonitorInterval);
+            }
+          } catch (e) { console.warn('[SEO GEM] URL monitor error:', e); }
         }, 5000); // Check every 5 seconds
       }
 
@@ -908,11 +1028,20 @@
     console.log('[SEO GEM] Initialized. Editor:', CONFIG.editorType, '| API:', CONFIG.apiBase, '| Language:', CONFIG.language);
   }
 
+  function schedulePendingChecks() {
+    setTimeout(checkPendingArticleIds, 1500);
+    setTimeout(checkPendingArticleIds, 5000);
+  }
+
   // Wait for DOM ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', function() {
+      init();
+      schedulePendingChecks();
+    });
   } else {
     // DOM already loaded, but wait a tick for CKEditor to initialize
     setTimeout(init, 500);
+    schedulePendingChecks();
   }
 })();
