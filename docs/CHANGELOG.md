@@ -4,6 +4,14 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+## 2026-11-03 — Bezbednost: uklonjen API ključ iz javne test-stranice
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-11-03 | fix | Bezbednost (`public/cms-test.html`): uklonjen statički `<script>` tag sa upisanim API ključem; dodat panel „Test podešavanja" gde se ključ (čuva se samo u `sessionStorage`) i jezik (`sr`/`pl`/`sq`/`en`) unose ručno, a `cms-embed.js` učitava tek na klik dugmeta „Učitaj SEO GEM" |
+
+---
+
 ## 2026-11-02 — Pouzdano hvatanje article_id (embed + ruta + dnevno povezivanje)
 
 | Datum | Tip | Opis |

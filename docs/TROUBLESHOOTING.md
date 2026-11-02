@@ -55,6 +55,14 @@
 
 ## Rešeni problemi
 
+### API ključ bio upisan u javnoj test-stranici (rešeno 3. nov 2026)
+
+**Problem:** U fajlu `public/cms-test.html` (javno dostupnom na `/cms-test.html`) u statičkom `<script>` tagu bio je upisan pravi API ključ portala.
+
+**Rešenje (3.11.2026):** API ključ bio upisan u javnoj test-stranici — uklonjen 3.11.2026; ključ se unosi ručno pri testu (u panelu „Test podešavanja", čuva se samo u `sessionStorage` trenutne sesije, a `cms-embed.js` se dinamički učitava tek na klik dugmeta „Učitaj SEO GEM").
+
+---
+
 ### A2. Vercel Cron — Zaustavljanje posle deploy-a (jul 2026; trajno rešeno 30. okt – 1. nov 2026)
 
 **Problem (jul 2026):** Vercel cron (`0 3 * * *`) je prestao da radi posle deploy-a 6. jula. Sync nije radio 3.4 dana (7-10. jul).

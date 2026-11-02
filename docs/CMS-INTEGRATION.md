@@ -205,3 +205,12 @@ Svaki CMS koji se integriše sa SEO GEM-om mora imati ova 4 polja:
 
 ### Fallback ponašanje:
 Ako novinar ne provuče članak kroz SEO GEM, polja ostaju prazna i postojeći sistem portala funkcioniše kao fallback. SEO GEM ne menja ništa automatski bez eksplicitne akcije novinara.
+
+---
+
+## Testiranje embeda (`public/cms-test.html`)
+
+Za lokalno i integraciono testiranje koristi se simulator `/cms-test.html` (`public/cms-test.html`):
+1. Otvoriti `http://localhost:3099/cms-test.html` (bez unetog ključa `cms-embed.js` se **ne** učitava automatski).
+2. U panelu **„Test podešavanja"** na vrhu stranice uneti odgovarajući CMS API ključ (polje `type="password"`), izabrati jezik (`sr`, `pl`, `sq` ili `en`, podrazumevano `sr`) i kliknuti **„Učitaj SEO GEM"**.
+3. Ključ se privremeno pamti samo u `sessionStorage` pregledača (pri sledećem osvežavanju stranice polje ostaje popunjeno, ali se skripta ponovo učitava tek na klik dugmeta). Ključ se nikada ne čuva na serveru i ne sme se upisivati u fajl.
