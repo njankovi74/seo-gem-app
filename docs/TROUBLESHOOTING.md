@@ -41,8 +41,15 @@
 
 **Dopuna (2. nov 2026):**
 - Problem važi za **SVE portale** (ne samo PL) — u poslednjih 30 dana pokrivenost `article_id` bila je ~34–42%.
-- Stvarni uzrok je u embed URL monitoru i backfill modulu (detalji slede u zadatku 2.3).
+- **Utvrđeni uzroci (zadatak 2.3):**
+  1. **Embed URL monitor (`cms-embed.js`):** ~2/3 novinara pokreće SEO GEM na novom, još nesačuvanom članku (`/articles/new`). Kada novinar sačuva članak, Cubes backoffice učita **novu stranicu** (`/articles/{id}/edit`), pa stari `setInterval` tajmer i `data.titleHistoryId` u memoriji nestaju sa starom stranicom (uspeo samo 19 puta od ~16.700, tj. 0,1%).
+  2. **Dnevni backfill (`src/lib/backfill-article-ids.ts`):** hvatao je 0–4 zapisa po pokretanju jer je (a) uzimao prvih 500 najstarijih bez ID-a umesto najnovijih, (b) čitao slug iz poslednjeg segmenta URL-a (a GA4 URL ima sufiks `/vest` za SR ili `/news` za PL/AL, pa je slug ispadao `"vest"`/`"news"`), i (c) nije filtrirao po portalu (isti brojčani ID-jevi postoje na različitim portalima).
+- **Rešenje u kodu (2.11.2026, grana `fix/article-id-capture`):**
+  1. `public/cms-embed.js`: neuspešno povezani zapisi čuvaju se u `localStorage` (`seoGemPending`, max 5 unosa, rok 60 min). Pri svakom učitavanju stranice (na 1,5 s i 5 s) proverava se da li stranica sada ima `article_id` i da li se vrednost SEO title polja poklapa sa sačuvanim `seoTitle`; pri poklapanju šalje se `PATCH /api/cms/update-article-id` sa javnim URL-om (`findPublicUrlForId`) ili `null` (nikad backoffice URL) i unos se briše iz `localStorage`.
+  2. `src/app/api/cms/update-article-id/route.ts`: dodata `Authorization: Bearer <API_KEY>` autentifikacija (`authenticateCmsRequest`), `corsHeaders(origin)`, provera `portal_id` i odbacivanje backoffice/cubesdev URL-ova.
+  3. `src/lib/backfill-article-ids.ts`: uzima najnovijih 500 kandidata (poslednjih 14 dana), izdvaja slug iz segmenta odmah posle ID-a (`/\/(\d{4,})\/([^/]+)/`), indeksira po `${portal_id}|${slug}`, traži tačno poklapanje u prozoru `[created_at − 1 dan, created_at + 7 dana]` i preskače višeznačne (`ambiguous`) ključeve.
 - **Istorija delimično rešena 2.11.2026 povezivanjem unazad:** 9.305 zapisa u `title_history` bez `article_id` dobilo je `article_id` + `article_url` metodom tačnog poklapanja sluga izabranog naslova sa GA4 URL-om (isti portal, URL prvi put viđen u `[dan−1, dan+7]`, tačno jedan ID). Backup pre upisa: `title_history_articleid_backup_20261102`. Pokrivenost `article_id` kroz celu istoriju povećana sa **42% na 82,5%**.
+- **Status:** ⏳ **Čeka verifikaciju u produkciji** (nakon deploya grane `fix/article-id-capture`).
 
 ---
 

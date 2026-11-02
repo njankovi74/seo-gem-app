@@ -105,6 +105,39 @@ Generiše meta opis, ključne reči i schema markup za izabrani naslov.
 
 ---
 
+### PATCH `/api/cms/update-article-id`
+
+Naknadno upisuje `article_id` (i javni `article_url`) u `title_history` zapis kada novinar sačuva prethodno kreiran članak.
+
+**Headers:**
+- `Authorization: Bearer <CMS_API_KEY>` (obavezno)
+- `Content-Type: application/json`
+
+**Body:**
+```json
+{
+  "title_history_id": 12345,
+  "article_id": "57081",
+  "article_url": "https://newsmaxbalkans.com/vesti/..." // Opciono (čuva se samo javni http(s) URL bez 'backoffice'/'cubesdev', inače null)
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "updated": true
+}
+```
+
+**Greške:**
+- `401` — Nedostaje ili je nevažeći `Authorization: Bearer <CMS_API_KEY>`
+- `400` — Nedostaju `title_history_id` ili `article_id`, ili `article_id` nije numerički ID (4+ cifara)
+- `404` — `{ "success": false, "error": "not found or already linked" }` (zapis ne postoji, ne pripada portalu iz API ključa, ili već ima upisan `article_id`)
+- `500` — Greška pri upisu u bazu
+
+---
+
 ## Analysis Endpoints
 
 ### POST `/api/analyze-text`

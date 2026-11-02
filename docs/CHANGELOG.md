@@ -4,6 +4,16 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+## 2026-11-02 — Pouzdano hvatanje article_id (embed + ruta + dnevno povezivanje)
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-11-02 | fix | `public/cms-embed.js`: čekač za `article_id` kroz `localStorage` (`seoGemPending`) koji preživi ponovno učitavanje stranice po čuvanju članka; provera na 1,5 s i 5 s po učitavanju; šalje javni URL (`findPublicUrlForId`) ili `null` umesto backoffice adrese |
+| 2026-11-02 | fix | `PATCH /api/cms/update-article-id` + `cms-auth.ts`: obavezna autentifikacija (`authenticateCmsRequest`, 401), standardni CORS (`corsHeaders`), provera pripadnosti portalu (`portal_id`) i 404 ako red ne postoji ili je već povezan, odbacivanje backoffice/cubesdev URL-ova |
+| 2026-11-02 | fix | `src/lib/backfill-article-ids.ts`: dnevno povezivanje uzima do 500 najnovijih zapisa (poslednjih 14 dana), izdvaja slug iz segmenta odmah posle ID-a (`/\/(\d{4,})\/([^/]+)/`), indeksira po `${portal_id}\|${slug}`, proverava vremenski okvir `[created_at − 1d, created_at + 7d]`, preskače višeznačne slugove (`ambiguous`) i podržava `dryRun` |
+
+---
+
 ## 2026-10-30 → 2026-11-02 — Ispravke van repoa (Supabase, Vercel)
 
 | Datum | Tip | Opis |
