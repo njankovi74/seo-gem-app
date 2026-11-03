@@ -1,8 +1,10 @@
 # SEO GEM — CMS Integracija
 
+> **Ažurirano 3.11.2026** — raniji opis „embed link" modela bio je netačan; stvarna integracija je script tag.
+
 ## Pregled
 
-SEO GEM se integriše sa CMS sistemima novinskih portala putem **embed linka**. Mi isporučujemo gotov URL ka našem SEO GEM widgetu. CMS developer ga ugradi kao dugme u editor članka. Kompletnu logiku (analiza teksta, generisanje naslova, meta opis, keywords, schema markup) radi naš widget — CMS developer ne piše svoju logiku za generisanje.
+SEO GEM se integriše sa CMS sistemima novinskih portala ugradnjom **jednog `<script>` taga** (`https://seo-gem-app.vercel.app/cms-embed.js`) sa `data-*` atributima u stranicu za uređivanje članka. Nema „embed linka ka widgetu", nema `iframe`-a i nema callback mehanizma koji CMS developer mora da piše. Kompletnu logiku (prikaz dugmeta i panela, čitanje teksta članka iz editora, analiza teksta, generisanje 6 naslova, generisanje i direktan upis SEO naslova, meta opisa, ključnih reči i Schema.org markupa u CMS polja, kao i naknadno hvatanje `article_id`-a za nove članke) obavlja sama skripta `public/cms-embed.js`.
 
 > **Za kompletnu proceduru ubacivanja novog portala videti: [PORTAL-ONBOARDING.md](PORTAL-ONBOARDING.md)**
 
@@ -12,37 +14,80 @@ SEO GEM se integriše sa CMS sistemima novinskih portala putem **embed linka**. 
 
 | Portal | portal_id | API ključ env | Jezik | Domen | Status | CMS Developer |
 |---|---|---|---|---|---|---|
-| 🇷🇸 Newsmax Balkans SR | `newsmax` | `CMS_API_KEY_NEWSMAX` | Srpski | newsmaxbalkans.com | ✅ Produkcija (591 zapis) | Cubes d.o.o. |
-| 🇦🇱 Newsmax Balkans AL | `newsmax_al` | `CMS_API_KEY_NEWSMAX_AL` | Albanski | newsmaxbalkans.al | ✅ Produkcija (84 zapisa) | Cubes d.o.o. |
-| 🇵🇱 Newsmax Polska | `newsmax_pl` | `CMS_API_KEY_NEWSMAX_PL` | Poljski | newsmaxpolska.pl | ✅ Produkcija (247 zapisa) | Cubes d.o.o. |
+| 🇷🇸 Newsmax Balkans SR | `newsmax` | `CMS_API_KEY_NEWSMAX` | Srpski | newsmaxbalkans.com | ✅ Produkcija (`<script>` tag od maja 2026) | Cubes d.o.o. |
+| 🇦🇱 Newsmax Balkans AL | `newsmax_al` | `CMS_API_KEY_NEWSMAX_AL` | Albanski | newsmaxbalkans.al | ✅ Produkcija (`<script>` tag od maja 2026) | Cubes d.o.o. |
+| 🇵🇱 Newsmax Polska | `newsmax_pl` | `CMS_API_KEY_NEWSMAX_PL` | Poljski | newsmaxpolska.pl | ✅ Produkcija (`<script>` tag od maja 2026) | Cubes d.o.o. |
 | 🇷🇸 Insajder.net | `insajder` | `CMS_API_KEY_INSAJDER` | Srpski | insajder.net | ⏳ Čeka se odgovor klijenta | Appworks |
 
 ---
 
-## Kako radi integracija (embed link model)
+## Kako radi integracija (`<script>` tag model)
+
+*(Zastarelo: ranija verzija ovog dokumenta pominjala je „embed link ka widgetu" i „callback za prihvat povratnih podataka" — to se ne koristi.)*
 
 ```
-Novinar u CMS editoru
+CMS stranica za uređivanje članka (<script src="https://seo-gem-app.vercel.app/cms-embed.js" data-*>)
         │
-        ▼ klikne "SEO GEM" dugme
+        ▼ cms-embed.js ubacuje dugme „✨ Generiši SEO sa SEO GEM" i panel u stranicu
         │
-        ▼ otvara se naš widget (embed link)
+        ▼ novinar klikne dugme → skripta čita naslov, lead i body iz editora (CKEditor 4/5, TinyMCE ili textarea)
         │
-        ▼ widget preuzima tekst članka
+        ▼ POST /api/cms/titles (Authorization: Bearer <API_KEY>) → vraća 6 predloga naslova
         │
-        ▼ analiza + generisanje 6 naslova
+        ▼ novinar bira jedan od 6 naslova ili upisuje sopstveni i klikne „Potvrdi izbor"
         │
-        ▼ novinar bira naslov (ili upisuje svoj)
+        ▼ POST /api/cms/generate → vraća seoTitle, metaDescription, keywords, schemaMarkup, titleHistoryId
         │
-        ▼ widget generiše meta description, keywords, schema
+        ▼ skripta direktno upisuje vrednosti u CMS polja i okida 'input' i 'change' događaje
         │
-        ▼ podaci se vraćaju u CMS SEO polja
+        ▼ ako je članak nov (nema article_id): čuva { th, seoTitle, ts } u localStorage ("seoGemPending")
+          i po čuvanju članka šalje PATCH /api/cms/update-article-id
 ```
 
-**Ključno:** Widget radi SVE. CMS developer samo:
-1. Dodaje 4 SEO polja u editor
-2. Ugrađuje naš embed link kao dugme
-3. Implementira callback za prihvat povratnih podataka
+**Ključno:** Skripta `cms-embed.js` radi SVE. CMS developer samo:
+1. Obezbeđuje 4 SEO polja u editoru i njihovo renderovanje u `<head>` objavljenog članka
+2. Ubacuje jedan `<script src="https://seo-gem-app.vercel.app/cms-embed.js" ...>` tag sa `data-*` selektorima polja
+3. Dostavlja nam tačne domene svog backoffice-a (radi CORS whitelist-a u `src/lib/cms-auth.ts`)
+
+### Primer `<script>` taga:
+```html
+<script
+  src="https://seo-gem-app.vercel.app/cms-embed.js"
+  data-api-key="sk_cms_newsmax_xxx"
+  data-language="sr"
+  data-field-seo-title='[name="og_title"]'
+  data-field-meta-desc='[name="meta_description"]'
+  data-field-keywords='[name="keywords"]'
+  data-field-schema='[name="schema_org"]'
+  data-field-title='[name="heading"]'
+  data-field-lead='[name="lead"]'
+  data-editor-type="ckeditor"
+></script>
+```
+
+### Tabela `data-*` atributa (`public/cms-embed.js`):
+
+| Atribut | Obavezan | Podrazumevana vrednost | Opis |
+|---|---|---|---|
+| `data-api-key` | ✅ Da | `''` | API ključ portala (`CMS_API_KEY_*`) za `Authorization: Bearer` |
+| `data-api-base` | Ne | Izvodi se iz `script.src` | Bazni URL SEO GEM servisa (npr. `https://seo-gem-app.vercel.app`) |
+| `data-language` | Ne | `sr` | Jezik interfejsa i generisanja (`sr`, `pl`, `sq`, `en`) |
+| `data-editor-type` | Ne | `ckeditor` | Tip editora za telo članka (`ckeditor`, `tinymce`, `textarea`) |
+| `data-field-seo-title` | Ne | `[name="og_title"]` | CSS selektor polja u koje se upisuje SEO naslov |
+| `data-field-meta-desc` | Ne | `[name="meta_description"]` | CSS selektor polja u koje se upisuje Meta Description |
+| `data-field-keywords` | Ne | `[name="keywords"]` | CSS selektor polja u koje se upisuju ključne reči |
+| `data-field-schema` | Ne | `[name="schema_org"]` | CSS selektor polja u koje se upisuje Schema.org JSON-LD markup |
+| `data-field-title` | Ne | `[name="heading"]` | CSS selektor postojećeg naslova članka u CMS-u |
+| `data-field-lead` | Ne | `[name="lead"]` | CSS selektor lead/uvodnog teksta članka |
+| `data-field-author` | Ne | `[name="author"]` | CSS selektor polja sa imenom autora (za Schema.org) |
+| `data-field-section` | Ne | `[name="article_section"]` | CSS selektor polja sa rubrikom/kategorijom (za Schema.org) |
+| `data-field-article-url` | Ne | `''` | CSS selektor polja sa javnim URL-om članka (ako postoji u formi) |
+
+### Podržani editori za čitanje teksta članka (`getBodyText()`):
+- **CKEditor 4:** čita HTML iz najveće `CKEDITOR.instances` instance i izvlači čist tekst.
+- **CKEditor 5:** čita `textContent` iz `.ck-editor__editable` elementa (`ClassicEditor` / `InlineEditor`).
+- **TinyMCE:** čita `editor.getContent({ format: 'text' })` iz `tinymce.activeEditor` ili `tinymce.editors[0]`.
+- **Textarea (i automatski fallback):** pronalazi `<textarea>` sa najdužim tekstom (> 100 znakova).
 
 ---
 
@@ -58,8 +103,7 @@ Novinar u CMS editoru
   "body": "(OBAVEZNO) tekst članka — min 100 karaktera",
   "title": "(opciono) postojeći naslov članka",
   "lead": "(opciono) lead/intro tekst",
-  "language": "(opciono) 'sr'|'en'|'pl'|'sq' — auto-detektuje se iz portala",
-  "articleUrl": "(opciono) URL za logovanje"
+  "language": "(opciono) 'sr'|'en'|'pl'|'sq' — ako je izostavljeno, određuje se iz portala (portalLangMap)"
 }
 ```
 
@@ -68,12 +112,12 @@ Novinar u CMS editoru
 {
   "success": true,
   "titles": [
-    { "text": "Dijabetes tip 2: Lek Retatrutid efikasno topi kilograme", "style": "informativni", "length": 56 },
-    { "text": "Dijabetes: Novi lek smanjuje težinu efikasnije od operacije", "style": "informativni", "length": 59 },
-    { "text": "Da li je Retatrutid lek koji će promeniti lečenje dijabetesa?", "style": "geo_pitanje", "length": 61 },
-    { "text": "Kako novi lek za dijabetes pomaže u mršavljenju?", "style": "geo_pitanje", "length": 49 },
-    { "text": "Lek koji topi kilograme: Naučnici tvrde da menja pravila igre", "style": "discover_hook", "length": 61 },
-    { "text": "Pacijenti sa dijabetesom smršali 24% — evo kako", "style": "discover_hook", "length": 48 }
+    { "text": "Dijabetes tip 2: Lek Retatrutid efikasno topi kilograme", "style": "informativni", "length": 56, "reasoning": "..." },
+    { "text": "Dijabetes: Novi lek smanjuje težinu efikasnije od operacije", "style": "informativni", "length": 59, "reasoning": "..." },
+    { "text": "Da li je Retatrutid lek koji će promeniti lečenje dijabetesa?", "style": "geo_pitanje", "length": 61, "reasoning": "..." },
+    { "text": "Kako novi lek za dijabetes pomaže u mršavljenju?", "style": "geo_pitanje", "length": 49, "reasoning": "..." },
+    { "text": "Lek koji topi kilograme: Naučnici tvrde da menja pravila igre", "style": "discover_hook", "length": 61, "reasoning": "..." },
+    { "text": "Pacijenti sa dijabetesom smršali 24% — evo kako", "style": "discover_hook", "length": 48, "reasoning": "..." }
   ],
   "usedRAG": true,
   "languageValidation": { "expected": "sr", "detected": "sr", "validated": true }
@@ -91,14 +135,15 @@ Novinar u CMS editoru
   "body": "(OBAVEZNO) tekst članka — min 100 karaktera",
   "title": "(opciono) originalni naslov",
   "lead": "(opciono) lead tekst",
-  "articleUrl": "(opciono) URL objavljenog članka — za metadata scraping",
-  "offeredTitles": "(opciono) niz ponuđenih naslova",
-  "language": "(opciono) 'sr'|'en'|'pl'|'sq'",
-  "selection_type": "(opciono) 'ai_selected' ili 'custom'",
+  "offeredTitles": "(opciono) niz od 6 ponuđenih naslova — server iz njega sam određuje selection_type (ai_option_1..6 ili custom)",
+  "articleId": "(opciono) numerički ID članka (4+ cifre) iz backoffice URL-a ili DOM-a",
+  "articleUrl": "(opciono) javni URL objavljenog članka — za metadata scraping (backoffice URL se odbacuje)",
   "authorName": "(opciono) ime autora — za schema markup",
-  "articleSection": "(opciono) kategorija — za schema markup"
+  "articleSection": "(opciono) kategorija — za schema markup",
+  "language": "(opciono) 'sr'|'en'|'pl'|'sq'"
 }
 ```
+> **Napomena za `selection_type`:** Embed skripta **ne šalje** `selection_type` — server ga automatski određuje funkcijom `classifySelection(selectedTitle, offeredTitles)` (`ai_option_1..6` ili `custom`).
 
 **Response:**
 ```json
@@ -124,7 +169,7 @@ Kada novinar generiše SEO na novom, još nesačuvanom članku (`/articles/new`)
 {
   "title_history_id": 12345,
   "article_id": "57081",
-  "article_url": "https://newsmaxbalkans.com/vesti/..." // ili null (backoffice/cubesdev adrese se odbacuju)
+  "article_url": "https://newsmaxbalkans.com/vesti/..." // opciono; čuva se samo javni http(s) URL bez 'backoffice'/'cubesdev', inače null
 }
 ```
 
@@ -147,10 +192,10 @@ SEO GEM generiše **6 varijanti** — 2 varijacije za svaki od 3 stila:
 | Stil | Opis | Primer |
 |---|---|---|
 | **informativni** | Klasični SEO naslovi. Fokus na glavnom problemu. Fluid, prirodne rečenice — BEZ dvotačke. | "Novi lek za dijabetes efikasno smanjuje telesnu težinu" |
-| **geo_pitanje** | Konverzacijska pitanja za AI Overviews i voice search. | "Da li novi lek za dijabetes može zameniti operaciju?" |
+| **geo_pitanje** | Konverzacijska pitanja i izjavni odgovori za AI Overviews i voice search (na SR labela u embedu je „🌍 GEO"). | "Da li novi lek za dijabetes može zameniti operaciju?" |
 | **discover_hook** | E-E-A-T naslovi za Google Discover. Za poznate ličnosti koristi "Ime: tvrdnja" format. | "Lek koji topi kilograme: Naučnici tvrde da menja pravila igre" |
 
-**Pravilo dvotačke:** Od 6 naslova, maksimum 1 sme koristiti format "X: Y". Ostalih 5 moraju biti fluid rečenice ili pitanja.
+**Pravilo dvotačke:** Od 6 naslova, maksimum 1 (opcija 6 na SR) sme koristiti format "X: Y". Ostalih 5 moraju biti fluid rečenice ili pitanja.
 
 **Pravilo poznatih ličnosti:** Discover hook koristi ime osobe SAMO ako je javno poznata ličnost (političar, sportista, ministar). Za eksperte/blogere — koristi se opis koristi bez imena.
 
@@ -159,14 +204,14 @@ SEO GEM generiše **6 varijanti** — 2 varijacije za svaki od 3 stila:
 ## RAG (Retrieval Augmented Generation)
 
 ### Kako radi:
-1. Kada widget pozove `/api/cms/titles`, sistem traži **5 sličnih primera** iz prethodnih izbora novinara
-2. Primeri se biraju **round-robin** po stilovima iz poslednjih **120 zapisa** za taj portal
+1. Kada skripta pozove `/api/cms/titles`, sistem traži **5 sličnih primera** iz prethodnih izbora novinara
+2. Primeri prioritizuju custom (novinarove) naslove, uz dopunu AI-izabranim naslovima po stilovima za taj portal
 3. Ovi primeri se šalju Gemini-ju kao few-shot kontekst
 4. Kada novinar izabere naslov, čuva se u `title_history` sa OpenAI embedding-om
 
 ### Analiza obrazaca:
-- `analyzePattern()` analizira poslednjih **50 izbora** za portal
-- Detektuje preferirane obrasce: pitanja, dvotačke, brojevi, emocionalni, imperativni
+- `analyzePattern()` i `analyzeStylePatterns()` analiziraju prethodne izbore za portal
+- Detektuju preferirane obrasce: pitanja, dvotačke, brojevi, dužina, struktura
 - Ova analiza se šalje kao deo prompta
 
 ### Embedding:
@@ -181,8 +226,9 @@ SEO GEM generiše **6 varijanti** — 2 varijacije za svaki od 3 stila:
 ### CMS API (`src/lib/cms-auth.ts`):
 - Header: **`Authorization: Bearer <API_KEY>`**
 - ⚠️ Starija dokumentacija navodila `x-api-key` — to je POGREŠNO
-- Mapiranje: ključ → portal_id (dinamički iz env varijabli `CMS_API_KEY_*`)
-- Ako ključ ne odgovara nijednom portalu → 401
+- Mapiranje: ključ → `portal_id` (dinamički iz env varijabli `CMS_API_KEY_*`)
+- Ako ključ ne odgovara nijednom portalu → `401`
+- **CORS (`corsHeaders()`):** proverava `Origin` prema whitelist-i dozvoljenih backoffice domena portala; `Access-Control-Allow-Methods` uključuje `GET, POST, PATCH, OPTIONS`
 
 ### Admin Dashboard (`src/lib/admin-auth.ts`):
 - Query param: `admin_key=<ADMIN_PASSWORD>`

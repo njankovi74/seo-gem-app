@@ -53,21 +53,24 @@ SEO GEM je AI-powered SEO asistent za novinarske portale. Generiše optimizovane
 
 ## Moduli i odgovornosti
 
-### API Routes (13):
+### API Routes (16):
 
 | Ruta | Metoda | Opis |
 |---|---|---|
 | `/api/extract-content` | POST | Ekstrakcija teksta iz URL-a (Cheerio/Readability) |
 | `/api/analyze-text` | POST | TF-IDF + LSA analiza + SEO generisanje |
-| `/api/generate-title-options` | POST | AI generisanje 6 varijanti naslova |
-| `/api/cms/titles` | POST | CMS endpoint — generisanje naslova za CMS |
-| `/api/cms/generate` | POST | CMS endpoint — kompletno SEO generisanje |
+| `/api/generate-title-options` | POST | AI generisanje 6 varijanti naslova (Web UI) |
+| `/api/cms/titles` | POST | CMS endpoint — generisanje 6 naslova za CMS (`Bearer` auth) |
+| `/api/cms/generate` | POST | CMS endpoint — kompletno SEO generisanje i upis u `title_history` (`Bearer` auth) |
+| `/api/cms/update-article-id` | PATCH | CMS endpoint — naknadno povezivanje `article_id` i `article_url` po čuvanju članka (`Bearer` auth) |
 | `/api/admin/analytics/overview` | GET | Pregled metrika po portalima |
 | `/api/admin/analytics/articles` | GET | Per-article analitika (samo SEO GEM) |
+| `/api/admin/analytics/operations` | GET | Operativne metrike iz `generation_log` (Operations tab) |
 | `/api/admin/analytics/status` | GET | Status konekcija i poslednji sync |
-| `/api/admin/analytics/sync` | GET | Pokretanje GSC + GA4 sinhronizacije |
+| `/api/admin/analytics/sync` | GET | Pokretanje GSC + GA4 sinhronizacije i dnevnog backfill-a `article_id` |
 | `/api/admin/oauth/start` | GET | Pokretanje Google OAuth flow-a |
 | `/api/admin/oauth/callback` | GET | OAuth callback — čuvanje tokena |
+| `/api/admin/migrate` | GET | Provera migracije `_pv` kolona u `article_ga4_metrics` |
 | `/api/health` | GET | Health check |
 | `/api/models` | GET | Lista dostupnih LLM modela |
 
@@ -97,14 +100,16 @@ SEO GEM je AI-powered SEO asistent za novinarske portale. Generiše optimizovane
 
 ### 1. Generisanje naslova (CMS flow):
 ```
-CMS → /api/cms/titles (x-api-key auth)
-  → Ekstrakcija teksta iz URL
+CMS (<script src="/cms-embed.js">) → POST /api/cms/titles (Authorization: Bearer <API_KEY> auth)
+  → Čitanje teksta članka (body, title, lead) iz CMS editora
   → TF-IDF + LSA analiza
-  → RAG: 5 sličnih primera iz title_history
+  → RAG: 5 sličnih primera iz title_history + analiza stila
   → Google Autocomplete suggestions
-  → Gemini 2.5 Flash prompt (6 varijanti)
-  → Novinar bira naslov
-  → Čuvanje u title_history + OpenAI embedding
+  → Gemini prompt (6 varijanti: 3.8 Flash za SR, 2.5 Flash za PL/AL + fact-check za SR)
+  → Novinar bira naslov → POST /api/cms/generate (Bearer auth)
+  → Server određuje selection_type (classifySelection) + čuva u title_history + OpenAI embedding
+  → Hvatanje article_id: direktno iz URL-a/DOM-a pri generate, ili (za nov članak /articles/new)
+    čuvanje u localStorage ("seoGemPending") → po čuvanju članka PATCH /api/cms/update-article-id
 ```
 
 ### 2. Analytics sync (dnevni cron):

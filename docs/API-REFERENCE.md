@@ -1,23 +1,25 @@
 # SEO GEM — API Reference
 
+> **Ažurirano 3.11.2026:** Usklađeno sa stvarnim kodom u `src/app/api/**` (ukupno **16 API ruta**).
+
 ## Autentifikacija
 
-### CMS API endpoints:
+### CMS API endpoints (`/api/cms/*`):
 ```
 Header: Authorization: Bearer <CMS_API_KEY>
 ```
-Ključevi su portal-specifični (env: `CMS_API_KEY_NEWSMAX`, `CMS_API_KEY_NEWSMAX_AL`, itd.)
+Ključevi su portal-specifični (env: `CMS_API_KEY_NEWSMAX`, `CMS_API_KEY_NEWSMAX_AL`, `CMS_API_KEY_NEWSMAX_PL`, itd.). CORS u `corsHeaders()` proverava origin prema whitelist-i backoffice domena i dozvoljava `GET, POST, PATCH, OPTIONS`.
 
-### Admin API endpoints:
+### Admin API endpoints (`/api/admin/*`):
 ```
 Query: ?admin_key=<ADMIN_PASSWORD>
 ```
 
-### Cron endpoint:
+### Cron endpoint (`/api/admin/analytics/sync`):
 ```
 Header: Authorization: Bearer <CRON_SECRET>
 ```
-Ili admin auth kao fallback.
+Ili admin auth (`?admin_key=<ADMIN_PASSWORD>`) kao fallback za ručni poziv.
 
 ---
 
@@ -25,7 +27,7 @@ Ili admin auth kao fallback.
 
 ### POST `/api/cms/titles`
 
-Generiše 6 SEO naslova za članak.
+Generiše 6 SEO naslova za članak na osnovu teksta članka iz CMS editora.
 
 **Headers:**
 - `Authorization: Bearer <CMS_API_KEY>` (obavezno)
@@ -34,11 +36,13 @@ Generiše 6 SEO naslova za članak.
 **Body:**
 ```json
 {
-  "url": "https://newsmaxbalkans.com/...",    // URL članka (obavezno)
-  "text": "Tekst članka...",                  // Opciono, koristi se ako URL ekstrakcija ne uspe
-  "language": "sr"                            // Opciono, auto-detect po portalu
+  "body": "Tekst članka (obavezno, min 100 karaktera)...",
+  "title": "Postojeći naslov članka (opciono)",
+  "lead": "Uvodni/lead tekst članka (opciono)",
+  "language": "sr" // Opciono ('sr'|'pl'|'sq'|'en'), podrazumevano po portalu iz API ključa
 }
 ```
+*(Napomena: Ranija dokumentacija pominjala je `"url"` i `"text"` kao parametre — to je zastarelo; endpoint čita `"body"`, `"title"`, `"lead"` i `"language"`.)*
 
 **Response (200):**
 ```json
@@ -49,9 +53,9 @@ Generiše 6 SEO naslova za članak.
     { "text": "Naslov opcija 1", "style": "informativni", "length": 56, "reasoning": "CoT..." },
     { "text": "Naslov opcija 2", "style": "informativni", "length": 58, "reasoning": "..." },
     { "text": "Pitanje za AI Overviews?", "style": "geo_pitanje", "length": 52, "reasoning": "..." },
-    { "text": "Još jedno pitanje?", "style": "geo_pitanje", "length": 54, "reasoning": "..." },
+    { "text": "Izjavni odgovor za AI Overviews", "style": "geo_pitanje", "length": 54, "reasoning": "..." },
     { "text": "Discover hook naslov", "style": "discover_hook", "length": 60, "reasoning": "..." },
-    { "text": "Još jedan Discover", "style": "discover_hook", "length": 62, "reasoning": "..." }
+    { "text": "Tema: Još jedan Discover", "style": "discover_hook", "length": 62, "reasoning": "..." }
   ],
   "usedRAG": true,
   "languageValidation": {
@@ -63,8 +67,8 @@ Generiše 6 SEO naslova za članak.
 ```
 
 **Greške:**
-- `401` — Nevažeći API ključ
-- `400` — Nedostaje URL ili tekst kraći od 100 karaktera
+- `401` — Nevažeći ili nedostajući API ključ (`Authorization: Bearer`)
+- `400` — Nedostaje `body` ili je tekst kraći od 100 karaktera
 - `422` — Jezička validacija neuspešna posle retry-a
 - `500` — LLM ili server greška
 
@@ -72,22 +76,28 @@ Generiše 6 SEO naslova za članak.
 
 ### POST `/api/cms/generate`
 
-Generiše meta opis, ključne reči i schema markup za izabrani naslov.
+Generiše meta opis, ključne reči i Schema.org markup za izabrani naslov i čuva izbor u `title_history`.
 
 **Headers:**
-- `Authorization: Bearer <CMS_API_KEY>`
+- `Authorization: Bearer <CMS_API_KEY>` (obavezno)
 - `Content-Type: application/json`
 
 **Body:**
 ```json
 {
-  "url": "https://newsmaxbalkans.com/...",
-  "selectedTitle": "Izabrani naslov članka",
-  "articleId": "57081",                           // Numerički ID članka (iz backoffice URL-a)
-  "selection_type": "ai_selected",                // ili "custom_new"
-  "text": "Tekst članka..."                       // Opciono
+  "selectedTitle": "Izabrani naslov članka (obavezno)",
+  "body": "Tekst članka (obavezno, min 100 karaktera)...",
+  "title": "Originalni naslov članka (opciono)",
+  "lead": "Uvodni/lead tekst (opciono)",
+  "offeredTitles": [ ... ],                       // Opciono: niz od 6 ponuđenih naslova
+  "articleId": "57081",                           // Opciono: numerički ID članka (4+ cifre)
+  "articleUrl": "https://newsmaxbalkans.com/...", // Opciono: javni URL članka (backoffice URL se odbacuje)
+  "authorName": "Ime autora (opciono)",
+  "articleSection": "Rubrika/kategorija (opciono)",
+  "language": "sr"                                // Opciono ('sr'|'pl'|'sq'|'en')
 }
 ```
+> **Napomena:** Parametar `selection_type` se **ne šalje** iz embed skripte — server ga automatski određuje preko `classifySelection(selectedTitle, offeredTitles)` kao `ai_option_1..6` ili `custom`.
 
 **Response (200):**
 ```json
@@ -97,7 +107,8 @@ Generiše meta opis, ključne reči i schema markup za izabrani naslov.
   "seoTitle": "Izabrani naslov članka",
   "metaDescription": "Meta opis do 160 karaktera...",
   "keywords": "ključna reč 1, ključna reč 2, ...",
-  "schemaMarkup": "{ \"@context\": \"https://schema.org\", ... }"
+  "schemaMarkup": "<script type=\"application/ld+json\">{ \"@context\": \"https://schema.org\", ... }</script>",
+  "titleHistoryId": 12345
 }
 ```
 
@@ -118,7 +129,7 @@ Naknadno upisuje `article_id` (i javni `article_url`) u `title_history` zapis ka
 {
   "title_history_id": 12345,
   "article_id": "57081",
-  "article_url": "https://newsmaxbalkans.com/vesti/..." // Opciono (čuva se samo javni http(s) URL bez 'backoffice'/'cubesdev', inače null)
+  "article_url": "https://newsmaxbalkans.com/vesti/..." // Opciono (čuva se samo javni http(s) URL bez 'backoffice'/'cubesdev', inače se ne menja)
 }
 ```
 
@@ -138,7 +149,7 @@ Naknadno upisuje `article_id` (i javni `article_url`) u `title_history` zapis ka
 
 ---
 
-## Analysis Endpoints
+## Analysis Endpoints (Web UI)
 
 ### POST `/api/analyze-text`
 
@@ -191,6 +202,12 @@ Kompletna SEO analiza teksta sa TF-IDF, LSA i LLM generisanjem.
 
 ---
 
+### POST `/api/generate-title-options`
+
+Generiše 6 varijanti naslova u Web UI interfejsu (`/`) i opciono čuva izbor u `title_history`.
+
+---
+
 ### POST `/api/extract-content`
 
 Ekstrakcija i čišćenje sadržaja sa URL-a.
@@ -220,7 +237,7 @@ Ekstrakcija i čišćenje sadržaja sa URL-a.
 
 ---
 
-## Admin Analytics Endpoints
+## Admin Analytics & OAuth Endpoints
 
 ### GET `/api/admin/analytics/overview`
 
@@ -273,6 +290,14 @@ Per-article analitika za SEO GEM članke.
 
 ---
 
+### GET `/api/admin/analytics/operations`
+
+Operativna analitika generisanja iz `generation_log` tabele (broj generisanja, uspešnost, latencija, greške po portalu) za Operations tab u Admin Dashboard-u.
+
+**Parametri:** `admin_key` (obavezno), `portal` (opciono), `days` (default `7`).
+
+---
+
 ### GET `/api/admin/analytics/status`
 
 Status konekcija i poslednji sync.
@@ -295,15 +320,27 @@ Status konekcija i poslednji sync.
 
 ### GET `/api/admin/analytics/sync`
 
-Pokreće sinhronizaciju GSC i GA4 podataka.
+Pokreće sinhronizaciju GSC i GA4 podataka i dnevni `backfillArticleIds()`.
 
 **Parametri:**
 | Param | Tip | Default | Opis |
 |---|---|---|---|
-| `admin_key` | string | — | Ili `CRON_SECRET` header |
+| `admin_key` | string | — | Ili `Authorization: Bearer <CRON_SECRET>` header |
 | `portal` | string | svi | Specifičan portal |
 | `days` | number | `1` | Broj dana za sync (max 30) |
 | `date` | string | — | Specifičan datum za backfill (YYYY-MM-DD). Ako je dat, GSC i GA4 sync-uju taj datum umesto relativnog izračuna |
+
+---
+
+### GET `/api/admin/oauth/start` i GET `/api/admin/oauth/callback`
+
+Pokretanje Google OAuth 2.0 toka (`?portal=<portal_id>&admin_key=...`) i callback ruta za čuvanje `refresh_token`-a u `portal_analytics_config`.
+
+---
+
+### GET `/api/admin/migrate`
+
+Pomoćna admin ruta (`?admin_key=...`) za proveru prisustva analitičkih `_pv` kolona u `article_ga4_metrics`.
 
 ---
 
@@ -316,3 +353,5 @@ Pokreće sinhronizaciju GSC i GA4 podataka.
 
 ### GET `/api/models`
 Lista dostupnih LLM modela po provajderu.
+
+*(Napomena: Rute `/api/llm-test` i `/api/self-check` pominjane u nekim starijim beleškama **ne postoje** u kodu.)*

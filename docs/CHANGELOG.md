@@ -8,6 +8,7 @@ Hronološki zapis svih promena u projektu.
 
 | Datum | Tip | Opis |
 |---|---|---|
+| 2026-11-03 | docs | Dokumentacija integracije usklađena sa kodom (script tag model, Bearer auth, update-article-id, tačan spisak ruta) |
 | 2026-11-03 | fix | Bezbednost (`public/cms-test.html`): uklonjen statički `<script>` tag sa upisanim API ključem; dodat panel „Test podešavanja" gde se ključ (čuva se samo u `sessionStorage`) i jezik (`sr`/`pl`/`sq`/`en`) unose ručno, a `cms-embed.js` učitava tek na klik dugmeta „Učitaj SEO GEM" |
 
 ---
