@@ -46,7 +46,9 @@ Podaci se sinhronizuju dnevno i prikazuju u Admin Dashboard-u (`/admin`).
 - **Svaki dan u 3:00 UTC** (5:00 po srpskom vremenu)
 - Sinhronizuje podatke za **prethodni dan** (GSC kasni 2-3 dana, GA4 1 dan)
 
-### Sync endpoint: `POST /api/admin/analytics/sync`
+### Sync endpoint: `GET /api/admin/analytics/sync` (`maxDuration = 300`)
+
+> **Ažurirano 4.11.2026:** Uklonjen limit od 500 GSC stranica (`rowLimit: 5000` za `web`, `2000` za `discover` uz `startRow` petlju do 25.000 i upsert chunk 500), dodat dnevni zbir celog sajta u `site_gsc_daily` (`fetchGSCSiteTotals`), povećan GA4 `runReport` limit na `50000` i dodat opcioni parametar `?only=site_totals`.
 
 Za svaki portal:
 1. **GSC Pull** (`src/lib/gsc-pull.ts`):
@@ -199,6 +201,22 @@ Za svaki dan D:
 | search_type | TEXT | `web` ili `discover` |
 | top_queries | JSONB | Top 5 upita za tu stranicu |
 | UNIQUE | — | `(portal_id, article_url, date, search_type)` |
+
+### `site_gsc_daily`
+Dnevni zbir Search Console metrika za ceo sajt (upit bez dimenzije `page`):
+| Kolona | Tip | Opis |
+|---|---|---|
+| portal_id | TEXT (PK) | Identifikator portala |
+| date | DATE (PK) | Datum metrike |
+| search_type | TEXT (PK) | `'web'` ili `'discover'` |
+| impressions | INT | Ukupan broj prikaza za ceo sajt |
+| clicks | INT | Ukupan broj klikova za ceo sajt |
+| ctr | FLOAT | Click-through rate za ceo sajt |
+| avg_position | FLOAT | Prosečna pozicija za ceo sajt (`0` za `discover`) |
+| pages_pulled | INT | Broj stranica povučenih u `article_gsc_metrics` tog dana za taj tip |
+| created_at | TIMESTAMPTZ | Vreme kreiranja zapisa |
+| updated_at | TIMESTAMPTZ | Vreme poslednjeg ažuriranja |
+| PK | — | `(portal_id, date, search_type)` |
 
 ### `article_ga4_metrics`
 | Kolona | Tip | Opis |

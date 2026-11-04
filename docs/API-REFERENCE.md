@@ -320,7 +320,7 @@ Status konekcija i poslednji sync.
 
 ### GET `/api/admin/analytics/sync`
 
-Pokreće sinhronizaciju GSC i GA4 podataka i dnevni `backfillArticleIds()`.
+Pokreće sinhronizaciju GSC i GA4 podataka, upis dnevnog zbira celog sajta u `site_gsc_daily` i dnevni `backfillArticleIds()` (`maxDuration = 300`).
 
 **Parametri:**
 | Param | Tip | Default | Opis |
@@ -328,7 +328,10 @@ Pokreće sinhronizaciju GSC i GA4 podataka i dnevni `backfillArticleIds()`.
 | `admin_key` | string | — | Ili `Authorization: Bearer <CRON_SECRET>` header |
 | `portal` | string | svi | Specifičan portal |
 | `days` | number | `1` | Broj dana za sync (max 30) |
-| `date` | string | — | Specifičan datum za backfill (YYYY-MM-DD). Ako je dat, GSC i GA4 sync-uju taj datum umesto relativnog izračuna |
+| `date` | string | — | Specifičan datum za backfill (`YYYY-MM-DD`). Ako je dat, GSC i GA4 sync-uju taj datum umesto relativnog izračuna |
+| `only` | string | — | Opciono: `site_totals` — izvršava SAMO `fetchGSCSiteTotals` + upsert u `site_gsc_daily` (bez stranica, bez GA4, bez backfill-a) |
+
+**Odgovor:** Uključuje `summary.duration_ms`, a u `results[]` za svaki portal `duration_ms` i u `gsc[]` polja `sitePages` (`{ web, discover }`) i `siteTotals` (`{ web, discover }`).
 
 ---
 

@@ -4,6 +4,14 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+## 2026-11-04 — GSC pun pull stranica + dnevni zbir celog sajta (`site_gsc_daily`)
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-11-04 | feat | `src/lib/gsc-pull.ts`, `src/lib/ga4-pull.ts`, `src/app/api/admin/analytics/sync/route.ts`: uklonjen limit od 500 GSC stranica (`rowLimit: 5000` za `web`, `2000` za `discover` uz `startRow` petlju do 25.000 i upsert chunk 500); dodat `fetchGSCSiteTotals` (upit bez `page` dimenzije za `web` i `discover`) i upsert u `site_gsc_daily` sa `pages_pulled`; GA4 `runReport` limit povećan sa `10000` na `50000`; u `sync/route.ts` dodat `maxDuration = 300`, opcioni parametar `?only=site_totals` i merenje trajanja po portalu (`duration_ms`) |
+
+---
+
 ## 2026-11-03 — Bezbednost: uklonjen API ključ iz javne test-stranice
 
 | Datum | Tip | Opis |
