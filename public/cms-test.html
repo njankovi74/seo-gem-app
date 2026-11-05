@@ -12,12 +12,15 @@
     h2 { color: #1e3a5f; margin-bottom: 16px; font-size: 18px; }
     .field { margin-bottom: 16px; }
     .field label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 4px; }
-    .field input, .field textarea {
+    .field input[type="text"], .field textarea, .field select {
       width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px;
       font-size: 14px; font-family: inherit;
     }
     .field textarea { resize: vertical; }
     .field .char-count { font-size: 11px; color: #999; text-align: right; margin-top: 2px; }
+    .field-row-inline { display: flex; gap: 16px; flex-wrap: wrap; }
+    .field-row-inline .field { flex: 1; min-width: 200px; }
+    .checkbox-label { display: inline-flex !important; align-items: center; gap: 6px; font-weight: 500 !important; cursor: pointer; }
     .field-separator { border-top: 1px solid #eee; margin: 20px 0; }
     .section-title { font-size: 14px; font-weight: 700; color: #1e3a5f; margin: 16px 0 8px; text-transform: uppercase; }
     #body-editor { min-height: 200px; border: 1px solid #ccc; border-radius: 4px; padding: 12px; font-size: 14px; line-height: 1.6; }
@@ -31,12 +34,14 @@
     .test-settings-field input, .test-settings-field select {
       padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; font-family: inherit;
     }
-    .test-load-btn {
+    .test-load-btn, .save-btn {
       padding: 8px 16px; border: none; border-radius: 4px; background: #1e3a5f; color: #fff;
       font-size: 13px; font-weight: 600; cursor: pointer;
     }
-    .test-load-btn:hover { background: #2c4a6e; }
+    .test-load-btn:hover, .save-btn:hover { background: #2c4a6e; }
     .test-settings-note { font-size: 11px; color: #64748b; margin-top: 8px; }
+    .save-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; padding-top: 14px; border-top: 1px solid #e2e8f0; }
+    .save-status { font-size: 12px; color: #059669; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -75,22 +80,56 @@
 
   <h2>Uređivanje članka</h2>
 
-  <div class="field">
-    <label>Title — maximum 120 characters</label>
-    <input type="text" name="heading" maxlength="120"
-      value="Ministar poljoprivrede tvrdi da se tržište mleka oporavlja, proizvođači poručuju da problemi ostaju">
-    <div class="char-count">97/120</div>
-  </div>
+  <form id="entity-form" method="POST" enctype="multipart/form-data" action="/articles/edit">
+    <input type="hidden" name="image_og" value="/data/images/2026-11/04/15/mleko-proizvodnja_og.jpg">
 
-  <div class="field">
-    <label>Lead — maximum 300 characters</label>
-    <textarea name="lead" maxlength="300" rows="2">Ministar poljoprivrede Aleksandar Glamočić izjavio je da se tržište mleka stabilizuje, ali proizvođači kažu da se suočavaju sa niskim otkupnim cenama i sivim tržištem.</textarea>
-    <div class="char-count">168/300</div>
-  </div>
+    <div class="field-row-inline">
+      <div class="field">
+        <label>Category (`category_id`)</label>
+        <select name="category_id">
+          <option value="4" selected>MAGAZIN</option>
+          <option value="1">VESTI</option>
+          <option value="2">SVET</option>
+          <option value="3">EKONOMIJA</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Author (`author_id`)</label>
+        <select name="author_id">
+          <option value="" selected>None</option>
+          <option value="1">Newsmax Balkans</option>
+          <option value="42">Nikola Kojić</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Publish at (`publish_at`)</label>
+        <input type="text" name="publish_at" value="2026-11-04 15:23">
+      </div>
+    </div>
 
-  <div class="field">
-    <label>Body (tekst članka)</label>
-    <textarea id="body-editor" rows="10">Otkupna cena mleka u Srbiji ponovo je u fokusu javnosti nakon što je ministar poljoprivrede Aleksandar Glamočić na sednici Vlade izjavio da se tržište postepeno oporavlja. Prema njegovim rečima, prosečna otkupna cena mleka porasla je za 5 odsto u odnosu na prethodni kvartal.
+    <div class="field">
+      <label class="checkbox-label">
+        <input type="checkbox" name="dont_change_time" value="1">
+        Ne menjaj vreme (`dont_change_time`)
+      </label>
+    </div>
+
+    <div class="field">
+      <label>Title — maximum 120 characters</label>
+      <input type="text" name="heading" maxlength="120"
+        value="Ministar poljoprivrede tvrdi da se tržište mleka oporavlja, proizvođači poručuju da problemi ostaju">
+      <div class="char-count">97/120</div>
+    </div>
+
+    <div class="field">
+      <label>Lead — maximum 300 characters</label>
+      <textarea name="lead" maxlength="300" rows="2">Ministar poljoprivrede Aleksandar Glamočić izjavio je da se tržište mleka stabilizuje, ali proizvođači kažu da se suočavaju sa niskim otkupnim cenama i sivim tržištem.</textarea>
+      <div class="char-count">168/300</div>
+    </div>
+
+    <div class="field">
+      <label>Body (tekst članka)</label>
+      <textarea id="body-editor" rows="10">Otkupna cena mleka u Srbiji ponovo je u fokusu javnosti nakon što je ministar poljoprivrede Aleksandar Glamočić na sednici Vlade izjavio da se tržište postepeno oporavlja. Prema njegovim rečima, prosečna otkupna cena mleka porasla je za 5 odsto u odnosu na prethodni kvartal.
 
 Međutim, udruženja proizvođača mleka imaju potpuno drugačiju sliku. Predrag Veljković, predsednik Udruženja proizvođača mleka Srbije, tvrdi da je situacija na terenu daleko teža nego što to brojke pokazuju.
 
@@ -101,31 +140,42 @@ Problem sivog tržišta mlečnih proizvoda ostaje nerešen. Prema procenama stru
 Profesor Ekonomskog fakulteta dr Mirjana Nikolić ističe da bez sistemskog rešenja problema otkupnih cena, srpsko mlekarstvo rizikuje dalju devastaciju. "Potrebne su subvencije koje će biti dovoljne da pokriju razliku između troškova i tržišne cene," navela je Nikolić.
 
 Vlada je najavila novi paket mera podrške koji bi trebalo da bude usvojen do kraja meseca, ali konkretni iznosi još uvek nisu poznati.</textarea>
-  </div>
+    </div>
 
-  <div class="field-separator"></div>
+    <div class="field-separator"></div>
 
-  <!-- SEO GEM button will be inserted here by the embed script -->
+    <!-- SEO GEM button will be inserted here by the embed script -->
 
-  <div class="section-title">SEO polja</div>
+    <div class="section-title">SEO polja</div>
 
-  <div class="field">
-    <label>Keywords — maximum 300 characters</label>
-    <input type="text" name="keywords" maxlength="300" class="select-keywords" placeholder="ključne reči...">
-    <div class="char-count">0/300</div>
-  </div>
+    <div class="field">
+      <label>Keywords — maximum 300 characters</label>
+      <input type="text" name="keywords" maxlength="300" class="select-keywords" placeholder="ključne reči...">
+      <div class="char-count">0/300</div>
+    </div>
 
-  <div class="field">
-    <label>Meta description — maximum 160 characters</label>
-    <input type="text" name="meta_description" maxlength="160" class="select-meta-description" placeholder="meta opis...">
-    <div class="char-count">0/160</div>
-  </div>
+    <div class="field">
+      <label>Meta description — maximum 160 characters</label>
+      <input type="text" name="meta_description" maxlength="160" class="select-meta-description" placeholder="meta opis...">
+      <div class="char-count">0/160</div>
+    </div>
 
-  <div class="field">
-    <label>SEO Title — maximum 75 characters</label>
-    <input type="text" name="og_title" maxlength="75" placeholder="SEO naslov...">
-    <div class="char-count">0/75</div>
-  </div>
+    <div class="field">
+      <label>SEO Title — maximum 75 characters</label>
+      <input type="text" name="og_title" maxlength="75" placeholder="SEO naslov...">
+      <div class="char-count">0/75</div>
+    </div>
+
+    <div class="field">
+      <label>Schema.org (`schema_org`)</label>
+      <textarea name="schema_org" rows="6" placeholder="JSON-LD Schema Markup..."></textarea>
+    </div>
+
+    <div class="save-bar">
+      <span class="save-status" id="save-status-msg"></span>
+      <button type="submit" name="save" value="save" class="save-btn" id="entity-save-btn">💾 Snimi (Save)</button>
+    </div>
+  </form>
 </div>
 
 <!-- Dynamic SEO GEM Embed Loader (no hardcoded API key) -->
@@ -136,6 +186,18 @@ Vlada je najavila novi paket mera podrške koji bi trebalo da bude usvojen do kr
     const apiKeyInput = document.getElementById('test-api-key');
     const langSelect = document.getElementById('test-language');
     const loadBtn = document.getElementById('load-seo-gem-btn');
+    const entityForm = document.getElementById('entity-form');
+    const saveStatusMsg = document.getElementById('save-status-msg');
+
+    // Intercept form submit in bubbling phase (after SEO GEM capture listener runs)
+    if (entityForm) {
+      entityForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (saveStatusMsg) {
+          saveStatusMsg.textContent = '✅ Forma snimljena (submit presretnut u simulatoru u ' + new Date().toLocaleTimeString() + ')';
+        }
+      });
+    }
 
     // Pre-fill from sessionStorage if present (do not auto-load script)
     try {
@@ -175,6 +237,7 @@ Vlada je najavila novi paket mera podrške koji bi trebalo da bude usvojen do kr
         s.setAttribute('data-field-seo-title', '[name="og_title"]');
         s.setAttribute('data-field-meta-desc', '[name="meta_description"]');
         s.setAttribute('data-field-keywords', '[name="keywords"]');
+        s.setAttribute('data-field-schema', '[name="schema_org"]');
         s.setAttribute('data-field-title', '[name="heading"]');
         s.setAttribute('data-field-lead', '[name="lead"]');
         s.setAttribute('data-editor-type', 'textarea');

@@ -82,6 +82,10 @@ CMS stranica za uređivanje članka (<script src="https://seo-gem-app.vercel.app
 | `data-field-lead` | Ne | `[name="lead"]` | CSS selektor lead/uvodnog teksta članka |
 | `data-field-author` | Ne | `[name="author"]` | CSS selektor polja sa imenom autora (za Schema.org) |
 | `data-field-section` | Ne | `[name="article_section"]` | CSS selektor polja sa rubrikom/kategorijom (za Schema.org) |
+| `data-field-published` | Ne | `[name="publish_at"], [name="published_at"], [name="time_created"]` | CSS selektor polja sa datumom objave (`YYYY-MM-DD HH:mm` u lokalnom vremenu → ISO) |
+| `data-field-image` | Ne | `[name="image_og"], [name="og_image"], [name="image_orig"]` | CSS selektor polja sa putanjom glavne slike (relativna ili apsolutna) |
+| `data-field-author` | Ne | `select[name="author_id"], [name="author"], select[name="authors[]"]` | CSS selektor polja sa imenom autora (za `<select>` čita tekst opcije) |
+| `data-field-section` | Ne | `select[name="category_id"], [name="article_section"], select[name="categories[]"]` | CSS selektor polja sa rubrikom/kategorijom (za `<select>` čita tekst opcije) |
 | `data-field-article-url` | Ne | `''` | CSS selektor polja sa javnim URL-om članka (ako postoji u formi) |
 
 ### Podržani editori za čitanje teksta članka (`getBodyText()`):

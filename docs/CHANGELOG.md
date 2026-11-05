@@ -4,6 +4,14 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+## 2026-11-05 — Schema.org učvršćivanje „srca" (deterministički kostur + čuvar sheme u embedu)
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-11-05 | feat | `src/lib/portal-config.ts`, `src/lib/seo-output.ts` (`finalizeSchema`), `src/app/api/cms/generate/route.ts`, `src/lib/backfill-article-ids.ts`, `public/cms-embed.js` (v2.3), `public/cms-test.html`: deterministički kostur `NewsArticle` sheme posle `cleanSchemaMarkup` (`@context`, `@type`, `headline`, `inLanguage`, `articleSection` Title Case, `publisher+logo`, `author` Person ili Organization, nepromenljivi `datePublished` iz `publish_at` ili postojeće sheme, `image` sa apsolutnim URL-om iz `image_og`, `mainEntityOfPage`/`url` sa novim slugom iz `og_title` samo kada postoji javni link članka); u `cms-embed.js` dodati Cubes fallback selektori (`publish_at`, `image_og`, `author_id`, `category_id`) sa prolaskom redom po zarezu (prvi neprazan selektor pobeđuje), čitanje teksta iz `<select>` opcija, čuvar sheme na `submit` događaj forme sa `schema_org` (ažurira `headline`, `mainEntityOfPage`/`url`, `image` i `dateModified` osim kad je čekiran `dont_change_time`) i natpis dugmeta „Izaberi naslov ↓" tokom izbora naslova; u `fetchArticleMetadata` dodat `X-SEO-GEM-Token` header i logovanje statusa pri `!res.ok` |
+
+---
+
 ## 2026-11-05 — Izgled SEO GEM boksa u CMS-u: `hint` iza ⓘ, obrazloženja van ekrana, bez skrola
 
 | Datum | Tip | Opis |
