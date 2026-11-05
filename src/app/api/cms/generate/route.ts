@@ -7,34 +7,11 @@ import { prioritizeKeywords } from '@/lib/keyword-prioritizer';
 import { saveTitleChoice, classifySelection } from '@/lib/title-history';
 import { type SupportedLanguage, isValidLanguage } from '@/lib/i18n';
 import { logGeneration, startTimer } from '@/lib/generation-logger';
+import { PUBLISHER_INFO, buildCanonicalUrlFromPublicUrl } from '@/lib/portal-config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 55; // Allow up to 55s for LLM generation (Vercel Pro limit: 60s)
-
-// ── Per-portal publisher info (known constants) ──
-const PUBLISHER_INFO: Record<string, { name: string; logoUrl: string; domain: string }> = {
-  newsmax: {
-    name: 'Newsmax Balkans',
-    logoUrl: 'https://newsmaxbalkans.com/files/img/logo.png',
-    domain: 'newsmaxbalkans.com',
-  },
-  newsmax_en: {
-    name: 'Newsmax Balkans',
-    logoUrl: 'https://newsmaxbalkans.com/files/img/logo.png',
-    domain: 'newsmaxbalkans.com',
-  },
-  newsmax_al: {
-    name: 'Newsmax Balkans',
-    logoUrl: 'https://newsmaxbalkans.al/files/img/logo.png',
-    domain: 'newsmaxbalkans.al',
-  },
-  newsmax_pl: {
-    name: 'Newsmax Polska',
-    logoUrl: 'https://newsmaxpolska.pl/files/img/logo.png',
-    domain: 'newsmaxpolska.pl',
-  },
-};
 
 // Handle CORS preflight
 export async function OPTIONS(request: NextRequest) {
@@ -64,13 +41,28 @@ async function fetchArticleMetadata(articleUrl?: string): Promise<ScrapedMeta> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000); // 3s timeout
+    const reqHeaders: Record<string, string> = {
+      'User-Agent': 'SEO-GEM-Bot/1.0 (metadata-scraper)',
+    };
+    if (process.env.SCRAPER_TOKEN) {
+      reqHeaders['X-SEO-GEM-Token'] = process.env.SCRAPER_TOKEN;
+    }
+
     const res = await fetch(articleUrl, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'SEO-GEM-Bot/1.0 (metadata-scraper)' },
+      headers: reqHeaders,
+      redirect: 'follow',
     });
     clearTimeout(timeout);
 
-    if (!res.ok) return {};
+    if (!res.ok) {
+      let domain = articleUrl;
+      try { domain = new URL(articleUrl).hostname; } catch { /* */ }
+      console.warn(`⚠️ [CMS/generate] Metadata scrape HTTP ${res.status} for domain ${domain}`);
+      return {};
+    }
+
+    const finalUrl = (res.url && res.url.startsWith('http')) ? res.url.split('?')[0] : '';
     const html = await res.text();
 
     // ── 1. Try to extract from existing JSON-LD script block (primary source) ──
@@ -99,7 +91,7 @@ async function fetchArticleMetadata(articleUrl?: string): Promise<ScrapedMeta> {
       return m?.[1]?.trim() || '';
     })();
 
-    // ── 3. Merge: JSON-LD takes priority, then meta tags ──
+    // ── 3. Merge: JSON-LD takes priority, then meta tags, then redirected finalUrl ──
     const result: ScrapedMeta = {
       publishedTime:
         jsonLd?.datePublished ||
@@ -112,7 +104,7 @@ async function fetchArticleMetadata(articleUrl?: string): Promise<ScrapedMeta> {
         getMeta('og:image') || '',
       canonicalUrl:
         jsonLd?.mainEntityOfPage?.['@id'] ||
-        canonical || getMeta('og:url') || '',
+        canonical || getMeta('og:url') || finalUrl || '',
       articleSection:
         jsonLd?.articleSection ||
         getMeta('article:section') || '',
@@ -160,8 +152,9 @@ export async function POST(request: NextRequest) {
       title, selectedTitle, body: articleBody, lead, articleUrl,
       articleId: rawArticleId,
       offeredTitles, language: reqLang,
-      // New metadata fields from CMS embed
+      // Metadata fields from CMS embed
       authorName, articleSection,
+      publishedAt, imageUrl, existingSchema, publicUrl,
     } = body;
     // Clean article ID: must be numeric, 4+ digits
     const articleId = (rawArticleId && /^\d{4,}$/.test(String(rawArticleId))) ? String(rawArticleId) : '';
@@ -191,7 +184,7 @@ export async function POST(request: NextRequest) {
 
     // ── Sanitize articleUrl: reject backoffice URLs and handle article-id: prefix ──
     let cleanArticleUrl = articleUrl || '';
-    if (cleanArticleUrl.includes('backoffice')) {
+    if (cleanArticleUrl.includes('backoffice') || cleanArticleUrl.includes('cubesdev')) {
       console.warn(`⚠️ [CMS/generate] Rejected backoffice URL: ${cleanArticleUrl.substring(0, 80)}`);
       cleanArticleUrl = '';
     }
@@ -202,8 +195,28 @@ export async function POST(request: NextRequest) {
       cleanArticleUrl = ''; // Don't use for metadata scrape, but save ID info
     }
 
+    let cleanPublicUrl = (typeof publicUrl === 'string' ? publicUrl.trim() : '') || cleanArticleUrl || '';
+    if (cleanPublicUrl.includes('backoffice') || cleanPublicUrl.includes('cubesdev') || !cleanPublicUrl.startsWith('http')) {
+      cleanPublicUrl = '';
+    } else {
+      cleanPublicUrl = cleanPublicUrl.split('?')[0];
+    }
+
+    // Parse existingSchema if provided to preserve datePublished
+    let existingDatePublished = '';
+    if (existingSchema) {
+      try {
+        const parsedExisting = typeof existingSchema === 'string'
+          ? JSON.parse(existingSchema)
+          : existingSchema;
+        if (parsedExisting && typeof parsedExisting.datePublished === 'string' && parsedExisting.datePublished.trim()) {
+          existingDatePublished = parsedExisting.datePublished.trim();
+        }
+      } catch { /* ignore invalid JSON in existingSchema */ }
+    }
+
     // ── PARALLEL: Run metadata scrape AND TF-IDF/LSA analysis concurrently ──
-    const metadataPromise = fetchArticleMetadata(cleanArticleUrl || undefined);
+    const metadataPromise = fetchArticleMetadata(cleanPublicUrl || undefined);
 
     // TF-IDF + LSA for keyword extraction with language config
     const tfidfAnalyzer = new TFIDFAnalyzer(language);
@@ -241,6 +254,21 @@ export async function POST(request: NextRequest) {
     // Await metadata (already running in parallel, should be done by now)
     const scraped = await metadataPromise;
 
+    const resolvedPublishedAt = (typeof publishedAt === 'string' && publishedAt.trim())
+      ? publishedAt.trim()
+      : (existingDatePublished || scraped.publishedTime || '');
+    const resolvedImageUrl = (typeof imageUrl === 'string' && imageUrl.trim())
+      ? imageUrl.trim()
+      : (scraped.imageUrl || '');
+    const resolvedAuthorName = (typeof authorName === 'string' && authorName.trim() && authorName.trim().toLowerCase() !== 'none')
+      ? authorName.trim()
+      : (scraped.authorName || '');
+    const resolvedSection = (typeof articleSection === 'string' && articleSection.trim() && articleSection.trim().toLowerCase() !== 'none')
+      ? articleSection.trim()
+      : (scraped.articleSection || '');
+    const effectivePublicUrl = cleanPublicUrl || scraped.canonicalUrl || '';
+    const computedCanonicalUrl = buildCanonicalUrlFromPublicUrl(effectivePublicUrl, selectedTitle);
+
     let seoOutputs: typeof deterministicSEO | null = null;
     let llmFailed = false;
     try {
@@ -252,15 +280,19 @@ export async function POST(request: NextRequest) {
           mainTopics,
           searchIntentType: searchIntent.type,
           textSample: text,
-          articleUrl: scraped.canonicalUrl || cleanArticleUrl || '',
+          articleUrl: computedCanonicalUrl || '',
           articleMetadata: {
+            portalId: auth.portalId,
             publisherName: publisherInfo.name,
             publisherLogoUrl: publisherInfo.logoUrl,
-            authorName: authorName || scraped.authorName || publisherInfo.name,
-            publishedTime: scraped.publishedTime || now,
-            dateModified: scraped.modifiedTime || now,
-            imageUrl: scraped.imageUrl || '',
-            articleSection: articleSection || scraped.articleSection || '',
+            publisherDomain: publisherInfo.domain,
+            authorName: resolvedAuthorName || publisherInfo.name,
+            publishedTime: resolvedPublishedAt || existingDatePublished || now,
+            existingDatePublished,
+            dateModified: now,
+            imageUrl: resolvedImageUrl,
+            publicUrl: effectivePublicUrl,
+            articleSection: resolvedSection,
           },
         },
         { model, strictModel, skipTitleGeneration: true },
@@ -282,11 +314,12 @@ export async function POST(request: NextRequest) {
     }
 
     let titleHistoryId: number | null = null;
+    const savedArticleUrl = computedCanonicalUrl || effectivePublicUrl || '';
     // Only save to Supabase when LLM succeeded (don't pollute DB with empty/bad data)
     if (seoOutputs && !llmFailed) {
       try {
         titleHistoryId = await saveTitleChoice({
-          articleUrl: cleanArticleUrl || '',
+          articleUrl: savedArticleUrl,
           articleId: articleId,
           articleText: text.substring(0, 5000),
           offeredTitles: offeredTitles || [],
@@ -309,7 +342,7 @@ export async function POST(request: NextRequest) {
         portal_id: auth.portalId!,
         endpoint: 'generate',
         status: 'partial',
-        article_url: articleUrl || undefined,
+        article_url: savedArticleUrl || articleUrl || undefined,
         latency_ms: timer(),
         language,
         error_message: 'LLM failed or returned deterministic content',
@@ -321,7 +354,7 @@ export async function POST(request: NextRequest) {
         portal_id: auth.portalId!,
         endpoint: 'generate',
         status: 'success',
-        article_url: articleUrl || undefined,
+        article_url: savedArticleUrl || articleUrl || undefined,
         latency_ms: timer(),
         language,
       });

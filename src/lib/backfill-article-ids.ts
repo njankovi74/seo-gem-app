@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { PORTAL_DOMAINS, titleToSlug } from './portal-config';
 
 /**
  * Backfill article_id za title_history zapise koji nemaju ID.
@@ -15,38 +16,6 @@ import { supabase } from './supabase';
  *    firstSeen u [created_at - 1 dan, created_at + 7 dana].
  * 4. Upis (osim kad je dryRun=true): article_id = id, article_url = 'https://' + domen(portal) + path.
  */
-
-const PORTAL_DOMAINS: Record<string, string> = {
-  newsmax: 'newsmaxbalkans.com',
-  newsmax_al: 'newsmaxbalkans.al',
-  newsmax_pl: 'newsmaxpolska.pl',
-};
-
-// Transliteration map (Serbian, Polish, Albanian)
-const TRANSLITERATE: Record<string, string> = {
-  // Serbian
-  'š': 's', 'đ': 'd', 'č': 'c', 'ć': 'c', 'ž': 'z',
-  'Š': 's', 'Đ': 'd', 'Č': 'c', 'Ć': 'c', 'Ž': 'z',
-  // Polish (ć already covered above)
-  'ą': 'a', 'ę': 'e', 'ł': 'l', 'ń': 'n',
-  'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z',
-  'Ą': 'a', 'Ę': 'e', 'Ł': 'l', 'Ń': 'n', 'Ó': 'o',
-  'Ś': 's', 'Ź': 'z', 'Ż': 'z',
-  // Albanian
-  'ë': 'e', 'ç': 'c', 'Ë': 'e', 'Ç': 'c',
-};
-
-function transliterate(text: string): string {
-  return text.normalize('NFC').split('').map(c => TRANSLITERATE[c] || c).join('');
-}
-
-function titleToSlug(title: string): string {
-  return transliterate(title)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-}
 
 function normalizePath(urlOrPath: string): string {
   if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {

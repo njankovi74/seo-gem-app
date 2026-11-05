@@ -40,8 +40,10 @@
       schema: scriptTag.getAttribute('data-field-schema') || '[name="schema_org"]',
       title: scriptTag.getAttribute('data-field-title') || '[name="heading"]',
       lead: scriptTag.getAttribute('data-field-lead') || '[name="lead"]',
-      author: scriptTag.getAttribute('data-field-author') || '[name="author"]',
-      section: scriptTag.getAttribute('data-field-section') || '[name="article_section"]',
+      published: scriptTag.getAttribute('data-field-published') || '[name="publish_at"], [name="published_at"], [name="time_created"]',
+      image: scriptTag.getAttribute('data-field-image') || '[name="image_og"], [name="og_image"], [name="image_orig"]',
+      author: scriptTag.getAttribute('data-field-author') || 'select[name="author_id"], [name="author"], select[name="authors[]"]',
+      section: scriptTag.getAttribute('data-field-section') || 'select[name="category_id"], [name="article_section"], select[name="categories[]"]',
       articleUrl: scriptTag.getAttribute('data-field-article-url') || '',
     },
     editorType: (scriptTag.getAttribute('data-editor-type') || 'ckeditor').toLowerCase(),
@@ -54,6 +56,7 @@
       generateButton: '✨ Generiši SEO sa SEO GEM',
       generatedButton: '✅ SEO generisan',
       workingButton: '⌛ SEO GEM radi...',
+      chooseTitleButton: 'Izaberi naslov ↓',
       loadingTitles: 'Analiziram tekst i generišem predloge naslova...',
       loadingGenerate: 'Generišem Meta Opis, Ključne reči i Schema Markup...',
       successMessage: '✅ SEO polja su uspešno popunjena! Možete ih pregledati i po potrebi izmeniti.',
@@ -80,6 +83,7 @@
       generateButton: '✨ Generate SEO with SEO GEM',
       generatedButton: '✅ SEO Generated',
       workingButton: '⌛ SEO GEM working...',
+      chooseTitleButton: 'Choose a title ↓',
       loadingTitles: 'Analyzing text and generating title suggestions...',
       loadingGenerate: 'Generating Meta Description, Keywords and Schema Markup...',
       successMessage: '✅ SEO fields successfully populated! You can review and edit them as needed.',
@@ -106,6 +110,7 @@
       generateButton: '✨ Generuj SEO z SEO GEM',
       generatedButton: '✅ SEO wygenerowane',
       workingButton: '⌛ SEO GEM pracuje...',
+      chooseTitleButton: 'Wybierz tytuł ↓',
       loadingTitles: 'Analizuję tekst i generuję propozycje tytułów...',
       loadingGenerate: 'Generuję Meta Opis, Słowa kluczowe i Schema Markup...',
       successMessage: '✅ Pola SEO zostały pomyślnie wypełnione! Możesz je przejrzeć i edytować.',
@@ -132,6 +137,7 @@
       generateButton: '✨ Gjenero SEO me SEO GEM',
       generatedButton: '✅ SEO u gjenerua',
       workingButton: '⌛ SEO GEM po punon...',
+      chooseTitleButton: 'Zgjidh titullin ↓',
       loadingTitles: 'Po analizoj tekstin dhe po gjeneroj sugjerime p\u00ebr tituj...',
       loadingGenerate: 'Po gjeneroj Meta P\u00ebrshkrimin, Fjal\u00ebt ky\u00e7e dhe Schema Markup...',
       successMessage: '✅ Fushat SEO u plot\u00ebsuan me sukses! Mund t\u2019i rishikoni dhe editoni.',
@@ -310,16 +316,48 @@
   styleEl.textContent = STYLES;
   document.head.appendChild(styleEl);
 
-  // ── Helper: get field value ──
+  // ── Helper: find element by comma-separated fallback selector list in priority order ──
+  function findElementBySelectorList(selectorList) {
+    if (!selectorList) return null;
+    const parts = String(selectorList).split(',').map(s => s.trim()).filter(Boolean);
+    let firstFound = null;
+    for (let i = 0; i < parts.length; i++) {
+      try {
+        const el = document.querySelector(parts[i]);
+        if (el) {
+          if (!firstFound) firstFound = el;
+          if (el.tagName === 'SELECT' || (el.value !== undefined && String(el.value).trim() !== '')) {
+            return el;
+          }
+        }
+      } catch (e) { /* ignore invalid selector */ }
+    }
+    return firstFound;
+  }
+
+  // ── Helper: get field value (for <select>, always returns selected option text; "None"/"" -> "") ──
   function getFieldValue(selector) {
-    const el = document.querySelector(selector);
+    const el = findElementBySelectorList(selector);
     if (!el) return '';
-    return el.value || el.textContent || '';
+    if (el.tagName === 'SELECT') {
+      const opts = el.selectedOptions
+        ? Array.from(el.selectedOptions)
+        : (el.selectedIndex >= 0 && el.options ? [el.options[el.selectedIndex]] : []);
+      const texts = opts
+        .map(opt => (opt && typeof opt.text === 'string' ? opt.text.trim() : ''))
+        .filter(txt => txt && txt.toLowerCase() !== 'none');
+      return texts.join(', ');
+    }
+    const val = (el.value !== undefined && el.value !== null)
+      ? String(el.value).trim()
+      : String(el.textContent || '').trim();
+    if (val.toLowerCase() === 'none') return '';
+    return val;
   }
 
   // ── Helper: set field value ──
   function setFieldValue(selector, value) {
-    const el = document.querySelector(selector);
+    const el = findElementBySelectorList(selector);
     if (!el) { console.warn('[SEO GEM] Field not found:', selector); return false; }
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
       el.value = value;
@@ -329,6 +367,112 @@
       el.textContent = value;
     }
     return true;
+  }
+
+  // ── Helper: parse "YYYY-MM-DD HH:mm" (browser local time) to ISO string ──
+  function parsePublishedDateToISO(rawVal) {
+    if (!rawVal || typeof rawVal !== 'string') return '';
+    var s = rawVal.trim();
+    if (!s) return '';
+    var m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+    if (m) {
+      var d = new Date(
+        parseInt(m[1], 10),
+        parseInt(m[2], 10) - 1,
+        parseInt(m[3], 10),
+        parseInt(m[4], 10),
+        parseInt(m[5], 10),
+        m[6] ? parseInt(m[6], 10) : 0,
+        0
+      );
+      if (!isNaN(d.getTime())) return d.toISOString();
+    }
+    var parsed = new Date(s);
+    if (!isNaN(parsed.getTime())) return parsed.toISOString();
+    return '';
+  }
+
+  // ── Helper: read existing schema_org if it is valid JSON ──
+  function getValidExistingSchema() {
+    try {
+      var el = findElementBySelectorList(CONFIG.fields.schema);
+      if (!el) return '';
+      var raw = (el.value !== undefined ? el.value : el.textContent || '').trim();
+      if (!raw) return '';
+      var parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return raw;
+      }
+    } catch (e) { /* invalid JSON */ }
+    return '';
+  }
+
+  // ── Helper: Cubes-compatible slugify (matches server titleToSlug) ──
+  var TRANSLITERATE_MAP = {
+    'š': 's', 'đ': 'd', 'č': 'c', 'ć': 'c', 'ž': 'z',
+    'Š': 's', 'Đ': 'd', 'Č': 'c', 'Ć': 'c', 'Ž': 'z',
+    'ą': 'a', 'ę': 'e', 'ł': 'l', 'ń': 'n',
+    'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z',
+    'Ą': 'a', 'Ę': 'e', 'Ł': 'l', 'Ń': 'n', 'Ó': 'o',
+    'Ś': 's', 'Ź': 'z', 'Ż': 'z',
+    'ë': 'e', 'ç': 'c', 'Ë': 'e', 'Ç': 'c'
+  };
+
+  function transliterateText(text) {
+    return String(text || '').normalize('NFC').split('').map(function (c) {
+      return TRANSLITERATE_MAP[c] || c;
+    }).join('');
+  }
+
+  function slugifyTitle(title) {
+    return transliterateText(title)
+      .toLowerCase()
+      .replace(/[.,:;!?()"'„“”‘’‚«»%]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
+  function buildCanonicalUrl(publicUrl, seoTitle) {
+    if (!publicUrl || !seoTitle) return '';
+    var clean = String(publicUrl).trim().split('?')[0].split('#')[0];
+    if (!clean.startsWith('http') || clean.includes('backoffice') || clean.includes('cubesdev')) {
+      return '';
+    }
+    var m = clean.match(/^(https?:\/\/[^/]+(?:\/[^/]+)*\/\d{4,}\/)([^/]+)(\/.*)?$/);
+    if (!m) return '';
+    var slug = slugifyTitle(seoTitle);
+    if (!slug) return '';
+    return m[1] + slug + (m[3] || '');
+  }
+
+  var LANG_DOMAINS = {
+    sr: 'newsmaxbalkans.com',
+    en: 'newsmaxbalkans.com',
+    sq: 'newsmaxbalkans.al',
+    pl: 'newsmaxpolska.pl'
+  };
+
+  function resolveAbsoluteImageUrl(rawImg, publicUrl, schemaObj) {
+    if (!rawImg || typeof rawImg !== 'string') return '';
+    var trimmed = rawImg.trim();
+    if (!trimmed || trimmed.toLowerCase() === 'none') return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    if (trimmed.startsWith('/')) {
+      var origin = '';
+      if (publicUrl && publicUrl.startsWith('http')) {
+        try { origin = new URL(publicUrl).origin; } catch (e) { /* */ }
+      }
+      if (!origin && schemaObj && schemaObj.publisher && schemaObj.publisher.logo && schemaObj.publisher.logo.url) {
+        try { origin = new URL(schemaObj.publisher.logo.url).origin; } catch (e) { /* */ }
+      }
+      if (!origin) {
+        var dom = LANG_DOMAINS[CONFIG.language] || LANG_DOMAINS.sr;
+        origin = 'https://' + dom;
+      }
+      return origin + trimmed;
+    }
+    return '';
   }
 
   // ── Helper: get body text from CKEditor or other editors ──
@@ -369,10 +513,12 @@
       }
     }
 
-    // Fallback: try to find a textarea with lots of text
+    // Fallback: try to find a textarea with lots of text (excluding schema_org)
+    const schemaEl = findElementBySelectorList(CONFIG.fields.schema);
     const textareas = document.querySelectorAll('textarea');
     let longest = '';
     textareas.forEach(ta => {
+      if (ta === schemaEl) return;
       if (ta.value.length > longest.length) longest = ta.value;
     });
     if (longest.length > 100) {
@@ -428,6 +574,10 @@
       buttonEl.innerHTML = t.generateButton;
       buttonEl.className = 'seo-gem-btn';
       buttonEl.disabled = false;
+    } else if (state.phase === 'titles') {
+      buttonEl.innerHTML = t.chooseTitleButton;
+      buttonEl.className = 'seo-gem-btn';
+      buttonEl.disabled = true;
     } else {
       buttonEl.innerHTML = t.workingButton;
       buttonEl.disabled = true;
@@ -558,6 +708,68 @@
     bindPanelEvents();
   }
 
+  function gatherGenerateMetadata() {
+    var authorName = '';
+    try { authorName = getFieldValue(CONFIG.fields.author) || ''; } catch (e) { /* */ }
+    var articleSection = '';
+    try { articleSection = getFieldValue(CONFIG.fields.section) || ''; } catch (e) { /* */ }
+    var publishedAt = '';
+    try { publishedAt = parsePublishedDateToISO(getFieldValue(CONFIG.fields.published)); } catch (e) { /* */ }
+    var imageUrl = '';
+    try { imageUrl = getFieldValue(CONFIG.fields.image) || ''; } catch (e) { /* */ }
+    var existingSchema = '';
+    try { existingSchema = getValidExistingSchema(); } catch (e) { /* */ }
+
+    var articleId = extractArticleIdFromPage();
+    var publicUrl = '';
+
+    // 1. Try dedicated config field (if CMS admin configured data-field-article-url)
+    if (CONFIG.fields.articleUrl) {
+      try { publicUrl = getFieldValue(CONFIG.fields.articleUrl) || ''; } catch (e) { /* */ }
+    }
+
+    // 2. Try CMS input fields (og_url, canonical_url — explicitly set by CMS)
+    if (!publicUrl) {
+      var urlSelectors = ['[name="og_url"]', '[name="canonical_url"]', '[name="article_url"]', '[name="permalink"]'];
+      for (var si = 0; si < urlSelectors.length; si++) {
+        try {
+          var el = document.querySelector(urlSelectors[si]);
+          if (el && el.value && el.value.startsWith('http') && !el.value.includes('backoffice') && !el.value.includes('cubesdev')) {
+            publicUrl = el.value;
+            break;
+          }
+        } catch (e) { /* */ }
+      }
+    }
+
+    // 3. If we have article ID — find the public link on the page that contains THIS EXACT ID
+    if (!publicUrl && articleId) {
+      publicUrl = findPublicUrlForId(articleId);
+    }
+
+    if (publicUrl && publicUrl.startsWith('http')) {
+      publicUrl = publicUrl.split('?')[0];
+    } else {
+      publicUrl = '';
+    }
+
+    var articleUrl = publicUrl;
+    if (!articleUrl && articleId) {
+      articleUrl = 'article-id:' + articleId;
+    }
+
+    return {
+      authorName: authorName,
+      articleSection: articleSection,
+      publishedAt: publishedAt,
+      imageUrl: imageUrl,
+      existingSchema: existingSchema,
+      articleId: articleId,
+      publicUrl: publicUrl,
+      articleUrl: articleUrl,
+    };
+  }
+
   function bindPanelEvents() {
     // Close button
     const closeBtn = panelEl.querySelector('#seo-gem-close-btn');
@@ -582,6 +794,10 @@
         state.customTitle = customInput.value;
         const countEl = customInput.parentElement.querySelector('.seo-gem-custom-count');
         if (countEl) countEl.textContent = state.customTitle.length + '/' + CONFIG.titleMax;
+        if (state.selectedIndex === 'custom') {
+          const confirmBtn = panelEl.querySelector('#seo-gem-confirm');
+          if (confirmBtn) confirmBtn.disabled = state.customTitle.trim().length <= 5;
+        }
       };
       customInput.onfocus = () => {
         state.selectedIndex = 'custom';
@@ -615,11 +831,20 @@
       state.error = null;
       render();
       try {
+        var meta = gatherGenerateMetadata();
         const data = await apiCall('/api/cms/generate', {
           title: state.lastTitle || '',
           selectedTitle: state.lastSelectedTitle || '',
           body: state.lastBody || getBodyText(),
           lead: state.lastLead || getFieldValue(CONFIG.fields.lead),
+          articleUrl: meta.articleUrl,
+          publicUrl: meta.publicUrl,
+          articleId: meta.articleId,
+          authorName: meta.authorName,
+          articleSection: meta.articleSection,
+          publishedAt: meta.publishedAt,
+          imageUrl: meta.imageUrl,
+          existingSchema: meta.existingSchema,
           offeredTitles: state.titles,
           language: CONFIG.language,
         });
@@ -897,56 +1122,8 @@
     state.error = null;
     render();
 
-    // Gather metadata from CMS fields
-    var authorName = '';
-    try { authorName = getFieldValue(CONFIG.fields.author) || ''; } catch(e) { /* field may not exist */ }
-    var articleSection = '';
-    try { articleSection = getFieldValue(CONFIG.fields.section) || ''; } catch(e) { /* field may not exist */ }
-    // Article URL: find the public URL using article ID from backoffice URL
-    var articleUrl = '';
-
-    // Extract article ID — robust: tries multiple patterns and DOM fallbacks
-    var articleId = extractArticleIdFromPage();
-
-    // 1. Try dedicated config field (if CMS admin configured data-field-article-url)
-    if (CONFIG.fields.articleUrl) {
-      try { articleUrl = getFieldValue(CONFIG.fields.articleUrl) || ''; } catch(e) { /* */ }
-    }
-
-    // 2. Try CMS input fields (og_url, canonical_url — these are explicitly set by CMS)
-    if (!articleUrl) {
-      var urlSelectors = ['[name="og_url"]', '[name="canonical_url"]', '[name="article_url"]', '[name="permalink"]'];
-      for (var si = 0; si < urlSelectors.length; si++) {
-        try {
-          var el = document.querySelector(urlSelectors[si]);
-          if (el && el.value && el.value.startsWith('http') && !el.value.includes('backoffice')) {
-            articleUrl = el.value;
-            console.log('[SEO GEM] Found article URL from CMS field:', urlSelectors[si], articleUrl);
-            break;
-          }
-        } catch(e) { /* */ }
-      }
-    }
-
-    // 3. If we have article ID — find the public link that contains THIS EXACT ID
-    if (!articleUrl && articleId) {
-      articleUrl = findPublicUrlForId(articleId);
-    }
-
-    // 4. NO fallback to random links or window.location — better empty than wrong
-    if (!articleUrl && articleId) {
-      // Store just the article ID so the server can at least log it
-      articleUrl = 'article-id:' + articleId;
-      console.log('[SEO GEM] No public URL found, sending article ID only:', articleId);
-    } else if (!articleUrl) {
-      console.warn('[SEO GEM] Could not determine article URL or ID');
-      articleUrl = '';
-    }
-
-    // Strip ?preview=true from URL for schema
-    if (articleUrl.startsWith('http')) {
-      articleUrl = articleUrl.split('?')[0];
-    }
+    var meta = gatherGenerateMetadata();
+    var articleId = meta.articleId;
 
     // Inner function for calling generate API (used for auto-retry)
     async function callGenerate() {
@@ -955,10 +1132,14 @@
         selectedTitle,
         body: bodyText,
         lead,
-        articleUrl: articleUrl,
-        articleId: articleId,
-        authorName: authorName,
-        articleSection: articleSection,
+        articleUrl: meta.articleUrl,
+        publicUrl: meta.publicUrl,
+        articleId: meta.articleId,
+        authorName: meta.authorName,
+        articleSection: meta.articleSection,
+        publishedAt: meta.publishedAt,
+        imageUrl: meta.imageUrl,
+        existingSchema: meta.existingSchema,
         offeredTitles: state.titles,
         language: CONFIG.language,
       });
@@ -1067,6 +1248,75 @@
     render();
   }
 
+  // ── Schema Guardian: synchronous submit listener on the form containing schema_org ──
+  function handleFormSubmitSchemaGuard(e) {
+    try {
+      var form = e && e.target;
+      if (!form || form.tagName !== 'FORM') return;
+      var schemaEl = findElementBySelectorList(CONFIG.fields.schema);
+      if (!schemaEl || !form.contains(schemaEl)) return;
+
+      var rawSchema = (schemaEl.value !== undefined ? schemaEl.value : schemaEl.textContent || '').trim();
+      if (!rawSchema) return;
+
+      var schemaObj = JSON.parse(rawSchema);
+      if (!schemaObj || typeof schemaObj !== 'object' || schemaObj['@type'] !== 'NewsArticle') {
+        return;
+      }
+
+      var currentOgTitle = (getFieldValue(CONFIG.fields.seoTitle) || '').trim();
+      if (currentOgTitle) {
+        schemaObj.headline = currentOgTitle;
+      }
+
+      var headlineForSlug = currentOgTitle || schemaObj.headline || '';
+      var artId = extractArticleIdFromPage();
+      var pubUrl = artId ? findPublicUrlForId(artId) : '';
+      if (!pubUrl) {
+        // Fallback: if schema already has url / mainEntityOfPage.@id with /{id}/{slug}
+        var existingSchemaUrl = (schemaObj.url && typeof schemaObj.url === 'string' ? schemaObj.url : '') ||
+          (schemaObj.mainEntityOfPage && typeof schemaObj.mainEntityOfPage['@id'] === 'string' ? schemaObj.mainEntityOfPage['@id'] : '');
+        if (existingSchemaUrl) pubUrl = existingSchemaUrl;
+      }
+      if (pubUrl && headlineForSlug) {
+        var updatedUrl = buildCanonicalUrl(pubUrl, headlineForSlug);
+        if (updatedUrl) {
+          schemaObj.mainEntityOfPage = { '@type': 'WebPage', '@id': updatedUrl };
+          schemaObj.url = updatedUrl;
+        }
+      }
+
+      var hasImage = schemaObj.image && (
+        (typeof schemaObj.image === 'string' && schemaObj.image.trim()) ||
+        (typeof schemaObj.image === 'object' && schemaObj.image.url && String(schemaObj.image.url).trim())
+      );
+      if (!hasImage) {
+        var rawImg = getFieldValue(CONFIG.fields.image);
+        if (rawImg) {
+          var absImg = resolveAbsoluteImageUrl(rawImg, pubUrl, schemaObj);
+          if (absImg) {
+            schemaObj.image = { '@type': 'ImageObject', url: absImg };
+          }
+        }
+      }
+
+      var dontChangeEl = form.querySelector('input[type="checkbox"][name="dont_change_time"]') ||
+                         document.querySelector('input[type="checkbox"][name="dont_change_time"]');
+      var dontChangeTime = !!(dontChangeEl && dontChangeEl.checked);
+      if (!dontChangeTime) {
+        schemaObj.dateModified = new Date().toISOString();
+      }
+
+      // datePublished is never modified by Schema Guardian
+      setFieldValue(CONFIG.fields.schema, JSON.stringify(schemaObj));
+    } catch (err) {
+      // Never block form submission; leave invalid JSON untouched
+      console.warn('[SEO GEM] Schema guard skipped:', err && err.message ? err.message : err);
+    }
+  }
+
+  document.addEventListener('submit', handleFormSubmitSchemaGuard, true);
+
   function escHtml(str) {
     const d = document.createElement('div');
     d.textContent = str || '';
@@ -1098,7 +1348,7 @@
     });
 
     // Find insertion point — try to place after the body editor or before SEO Title field
-    const seoTitleField = document.querySelector(CONFIG.fields.seoTitle);
+    const seoTitleField = findElementBySelectorList(CONFIG.fields.seoTitle);
     const insertTarget = seoTitleField
       ? seoTitleField.closest('tr, .form-group, .field-row, div') || seoTitleField.parentElement
       : null;

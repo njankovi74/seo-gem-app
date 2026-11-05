@@ -127,7 +127,7 @@ Posle izbora naslova, sistem generiše meta description, keywords i schema marku
 | Meta description | **160** karaktera | 1 |
 | Keywords line | **300** karaktera | Max **10** ključnih reči |
 | Min keyword length | **3** karaktera | — |
-| Schema markup | — | JSON-LD (Article) |
+| Schema markup | — | JSON-LD (`NewsArticle` — deterministički kostur `finalizeSchema` + čuvar sheme u `cms-embed.js` na `submit`) |
 
 ### Banned tokens:
 - Clickbait reči

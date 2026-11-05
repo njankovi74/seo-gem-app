@@ -1,5 +1,6 @@
 import { getLanguageConfig, type SupportedLanguage } from './i18n';
 import { getSEOPrompt } from './prompts/seo-prompt';
+import { PORTAL_DOMAINS, buildCanonicalUrlFromPublicUrl, toTitleCase } from './portal-config';
 
 export interface SEOOutputs {
   title: string;
@@ -17,6 +18,142 @@ export interface DualSEOOutputs {
   openaiModel?: string;
   geminiError?: string;
   openaiError?: string;
+}
+
+export interface FinalizeSchemaInput {
+  cleanedSchema?: Record<string, any> | null;
+  headline: string;
+  metaDescription?: string;
+  keywordsLine?: string;
+  language: SupportedLanguage;
+  portalId?: string;
+  publisherName: string;
+  publisherLogoUrl: string;
+  publisherDomain?: string;
+  authorName?: string;
+  articleSection?: string;
+  publishedAt?: string;
+  existingDatePublished?: string;
+  nowIso?: string;
+  imageUrl?: string;
+  publicUrl?: string;
+}
+
+/**
+ * Deterministically sets the core NewsArticle Schema.org fields after cleanSchemaMarkup,
+ * while preserving LLM-generated semantic fields (description, articleBody, about, mentions, keywords).
+ */
+export function finalizeSchema(input: FinalizeSchemaInput): Record<string, any> {
+  const cleaned = (input.cleanedSchema && typeof input.cleanedSchema === 'object') ? input.cleanedSchema : {};
+  const langConfig = getLanguageConfig(input.language);
+  const now = input.nowIso || new Date().toISOString();
+
+  // Never overwrite an existing datePublished unless publishedAt is explicitly provided from the CMS form
+  const datePublished =
+    (input.publishedAt && input.publishedAt.trim()) ||
+    (input.existingDatePublished && input.existingDatePublished.trim()) ||
+    now;
+  const dateModified = now;
+
+  const pubName = (input.publisherName || 'Newsmax Balkans').trim();
+  const pubLogo = (input.publisherLogoUrl || 'https://newsmaxbalkans.com/files/img/logo.png').trim();
+
+  // Author: Person if authorName is present and != publisherName, otherwise Organization = publisher
+  const rawAuthor = (input.authorName || '').trim();
+  const isPersonAuthor =
+    rawAuthor.length > 0 &&
+    rawAuthor.toLowerCase() !== 'none' &&
+    rawAuthor !== '(N/A)' &&
+    rawAuthor.toLowerCase() !== pubName.toLowerCase();
+
+  const author = isPersonAuthor
+    ? { '@type': 'Person', name: rawAuthor }
+    : { '@type': 'Organization', name: pubName };
+
+  // Article section: Title Case if present, omitted otherwise
+  const formattedSection = toTitleCase(input.articleSection);
+
+  // Image: prefix relative paths with https://<portal_domain>; omit if absent
+  let resolvedImageUrl = '';
+  const rawImg = (input.imageUrl || '').trim();
+  if (rawImg && rawImg.toLowerCase() !== 'none' && rawImg !== '(N/A)') {
+    if (rawImg.startsWith('http://') || rawImg.startsWith('https://')) {
+      resolvedImageUrl = rawImg;
+    } else if (rawImg.startsWith('/')) {
+      const domain =
+        (input.portalId && PORTAL_DOMAINS[input.portalId]) ||
+        input.publisherDomain ||
+        PORTAL_DOMAINS.newsmax;
+      resolvedImageUrl = `https://${domain}${rawImg}`;
+    }
+  }
+
+  // Canonical URL & mainEntityOfPage: only when publicUrl is known; replace slug with slugify(headline)
+  const canonicalUrl = buildCanonicalUrlFromPublicUrl(input.publicUrl, input.headline);
+
+  const finalSchema: Record<string, any> = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: input.headline,
+  };
+
+  const desc = (typeof cleaned.description === 'string' && cleaned.description.trim())
+    ? cleaned.description.trim()
+    : (input.metaDescription || '').trim();
+  if (desc) {
+    finalSchema.description = desc;
+  }
+
+  if (typeof cleaned.articleBody === 'string' && cleaned.articleBody.trim()) {
+    finalSchema.articleBody = cleaned.articleBody.trim();
+  }
+
+  finalSchema.inLanguage = langConfig.bcp47;
+
+  if (formattedSection) {
+    finalSchema.articleSection = formattedSection;
+  }
+
+  finalSchema.datePublished = datePublished;
+  finalSchema.dateModified = dateModified;
+  finalSchema.author = author;
+  finalSchema.publisher = {
+    '@type': 'Organization',
+    name: pubName,
+    logo: {
+      '@type': 'ImageObject',
+      url: pubLogo,
+    },
+  };
+
+  if (resolvedImageUrl) {
+    finalSchema.image = {
+      '@type': 'ImageObject',
+      url: resolvedImageUrl,
+    };
+  }
+
+  if (canonicalUrl) {
+    finalSchema.mainEntityOfPage = {
+      '@type': 'WebPage',
+      '@id': canonicalUrl,
+    };
+    finalSchema.url = canonicalUrl;
+  }
+
+  if (cleaned.about !== undefined) {
+    finalSchema.about = cleaned.about;
+  }
+  if (cleaned.mentions !== undefined) {
+    finalSchema.mentions = cleaned.mentions;
+  }
+  if (cleaned.keywords !== undefined) {
+    finalSchema.keywords = cleaned.keywords;
+  } else if (input.keywordsLine) {
+    finalSchema.keywords = input.keywordsLine;
+  }
+
+  return finalSchema;
 }
 
 function truncate(str: string, limit: number): string {
@@ -142,12 +279,16 @@ export async function buildSEOWithLLM(
     textSample?: string;
     articleUrl?: string;
     articleMetadata?: {
+      portalId?: string;
       authorName?: string;
       publishedTime?: string;
+      existingDatePublished?: string;
       dateModified?: string;
       imageUrl?: string;
+      publicUrl?: string;
       publisherName?: string;
       publisherLogoUrl?: string;
+      publisherDomain?: string;
       articleSection?: string;
     };
   },
@@ -350,6 +491,7 @@ export async function buildSEOWithLLM(
     let kwLine = fallback.keywordsLine;
     let schemaMarkup = '';
     let subtopics: string[] = [];
+    let cleanedSchemaObj: Record<string, any> | null = null;
     try {
       // Pokušaj da parsiraš kao JSON direktno
       const firstBrace = out.indexOf('{');
@@ -385,8 +527,10 @@ export async function buildSEOWithLLM(
         }
         // Clean hallucinated values from schema
         if (schemaObj) {
-          schemaObj = cleanSchemaMarkup(schemaObj);
-          schemaMarkup = JSON.stringify(schemaObj);
+          cleanedSchemaObj = cleanSchemaMarkup(schemaObj) || null;
+          if (cleanedSchemaObj) {
+            schemaMarkup = JSON.stringify(cleanedSchemaObj);
+          }
         }
       }
     } catch {
@@ -406,6 +550,33 @@ export async function buildSEOWithLLM(
 
     // Remove trailing period from title (SEO best practice), keep meta as-is (has CTA with period)
     title = title.trim().replace(/\.$/, '');
+
+    // Deterministically finalize schema when articleMetadata is provided (CMS generate flow)
+    if (context.articleMetadata && (cleanedSchemaObj || schemaMarkup)) {
+      const md = context.articleMetadata;
+      const effectiveHeadline = (skipTitleGeneration && context.documentTitle)
+        ? context.documentTitle.trim()
+        : title;
+      const finalized = finalizeSchema({
+        cleanedSchema: cleanedSchemaObj,
+        headline: effectiveHeadline,
+        metaDescription: meta,
+        keywordsLine: kwLine,
+        language: effectiveLang,
+        portalId: md.portalId,
+        publisherName: md.publisherName || 'Newsmax Balkans',
+        publisherLogoUrl: md.publisherLogoUrl || 'https://newsmaxbalkans.com/files/img/logo.png',
+        publisherDomain: md.publisherDomain,
+        authorName: md.authorName,
+        articleSection: md.articleSection,
+        publishedAt: md.publishedTime,
+        existingDatePublished: md.existingDatePublished,
+        nowIso: md.dateModified,
+        imageUrl: md.imageUrl,
+        publicUrl: md.publicUrl,
+      });
+      schemaMarkup = JSON.stringify(finalized);
+    }
 
     // Use language-aware labels for markdown output
     const mdStrings = deterministicStrings[effectiveLang] || deterministicStrings.sr;
@@ -560,12 +731,16 @@ export async function buildSEOWithDualLLM(
     textSample?: string;
     articleUrl?: string;
     articleMetadata?: {
+      portalId?: string;
       authorName?: string;
       publishedTime?: string;
+      existingDatePublished?: string;
       dateModified?: string;
       imageUrl?: string;
+      publicUrl?: string;
       publisherName?: string;
       publisherLogoUrl?: string;
+      publisherDomain?: string;
       articleSection?: string;
     };
   }

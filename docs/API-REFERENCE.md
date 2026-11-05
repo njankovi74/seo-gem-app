@@ -94,6 +94,10 @@ Generiše meta opis, ključne reči i Schema.org markup za izabrani naslov i ču
   "articleUrl": "https://newsmaxbalkans.com/...", // Opciono: javni URL članka (backoffice URL se odbacuje)
   "authorName": "Ime autora (opciono)",
   "articleSection": "Rubrika/kategorija (opciono)",
+  "publishedAt": "2026-11-04T14:23:00.000Z (opciono — ISO datum objave iz publish_at)",
+  "imageUrl": "/data/images/.../xxx_og.jpg (opciono — relativna ili apsolutna putanja glavne slike)",
+  "existingSchema": "{...} (opciono — postojeća JSON-LD šema iz schema_org polja radi očuvanja datePublished)",
+  "publicUrl": "https://newsmaxbalkans.com/... (opciono — javni link članka sa stranice)",
   "language": "sr"                                // Opciono ('sr'|'pl'|'sq'|'en')
 }
 ```
