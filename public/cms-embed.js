@@ -65,9 +65,9 @@
       errorTitles: 'Greška pri generisanju naslova.',
       categories: { informativni: '📘 INFORMATIVNI', geo_pitanje: '🌍 GEO', discover_hook: '📱 DISCOVER HOOK' },
       categoryDescriptions: {
-        informativni: 'Jasna činjenica sa ključnom frazom — za klasičnu Google pretragu',
-        geo_pitanje: 'Pitanje i direktan odgovor — za AI preglede i glasovnu pretragu',
-        discover_hook: 'Konkretna zanimljivost bez klik-mamca — za Google Discover',
+        informativni: 'Jasna činjenica sa ključnom frazom, za klasičnu Google pretragu',
+        geo_pitanje: 'Pitanje i direktan odgovor, za AI preglede i glasovnu pretragu',
+        discover_hook: 'Konkretna zanimljivost bez klik-mamca, za Google Discover',
       },
       customLabel: '✏️ Sopstveni:',
       confirmButton: '✅ Potvrdi izbor',
@@ -91,9 +91,9 @@
       errorTitles: 'Error generating titles.',
       categories: { informativni: '📘 INFORMATIVE', geo_pitanje: '🌍 GEO QUESTION', discover_hook: '📱 DISCOVER HOOK' },
       categoryDescriptions: {
-        informativni: 'Clear fact with key phrase — for classic Google search',
-        geo_pitanje: 'Question and direct answer — for AI Overviews and voice search',
-        discover_hook: 'Concrete hook without clickbait — for Google Discover',
+        informativni: 'Clear fact with key phrase, for classic Google search',
+        geo_pitanje: 'Question and direct answer, for AI Overviews and voice search',
+        discover_hook: 'Concrete hook without clickbait, for Google Discover',
       },
       customLabel: '✏️ Custom:',
       confirmButton: '✅ Confirm Selection',
@@ -117,9 +117,9 @@
       errorTitles: 'Błąd podczas generowania tytułów.',
       categories: { informativni: '📘 INFORMACYJNY', geo_pitanje: '🌍 GEO PYTANIE', discover_hook: '📱 DISCOVER HOOK' },
       categoryDescriptions: {
-        informativni: 'Jasny fakt z frazą kluczową — do klasycznej wyszukiwarki Google',
-        geo_pitanje: 'Pytanie i bezpośrednia odpowiedź — dla przeglądów AI i wyszukiwania głosowego',
-        discover_hook: 'Konkretna ciekawostka bez clickbaitu — dla Google Discover',
+        informativni: 'Jasny fakt z frazą kluczową, do klasycznej wyszukiwarki Google',
+        geo_pitanje: 'Pytanie i bezpośrednia odpowiedź, dla przeglądów AI i wyszukiwania głosowego',
+        discover_hook: 'Konkretna ciekawostka bez clickbaitu, dla Google Discover',
       },
       customLabel: '✏️ Własny:',
       confirmButton: '✅ Potwierdź wybór',
@@ -143,9 +143,9 @@
       errorTitles: 'Gabim gjat\u00eb gjenerimit t\u00eb titujve.',
       categories: { informativni: '📘 INFORMATIV', geo_pitanje: '🌍 GEO PYETJE', discover_hook: '📱 DISCOVER HOOK' },
       categoryDescriptions: {
-        informativni: 'Fakt i qart\u00eb me fraz\u00ebn ky\u00e7e \u2014 p\u00ebr k\u00ebrkimin klasik n\u00eb Google',
-        geo_pitanje: 'Pyetje dhe p\u00ebrgjigje e drejtp\u00ebrdrejt\u00eb \u2014 p\u00ebr p\u00ebrmbledhjet AI dhe k\u00ebrkimin me z\u00eb',
-        discover_hook: 'Detaj interesant pa clickbait \u2014 p\u00ebr Google Discover',
+        informativni: 'Fakt i qart\u00eb me fraz\u00ebn ky\u00e7e, p\u00ebr k\u00ebrkimin klasik n\u00eb Google',
+        geo_pitanje: 'Pyetje dhe p\u00ebrgjigje e drejtp\u00ebrdrejt\u00eb, p\u00ebr p\u00ebrmbledhjet AI dhe k\u00ebrkimin me z\u00eb',
+        discover_hook: 'Detaj interesant pa clickbait, p\u00ebr Google Discover',
       },
       customLabel: '✏️ I personalizuar:',
       confirmButton: '✅ Konfirmo zgjedhjen',
@@ -204,13 +204,16 @@
 
     .seo-gem-category { margin-bottom: 8px; }
     .seo-gem-category:last-of-type { margin-bottom: 4px; }
-    .seo-gem-category-header { margin-bottom: 3px; }
+    .seo-gem-category-header {
+      display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px;
+      margin-bottom: 3px; line-height: 1.35;
+    }
     .seo-gem-category-label {
       font-size: 11px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.5px; margin-bottom: 1px; padding: 0;
+      letter-spacing: 0.5px; margin: 0; padding: 0;
     }
     .seo-gem-category-desc {
-      font-size: 11px; color: #6b7280; line-height: 1.3;
+      font-size: 11px; font-weight: 400; color: #6b7280;
     }
     .seo-gem-cat-info { color: #2563eb; }
     .seo-gem-cat-geo { color: #059669; }
@@ -460,8 +463,8 @@
         if (items.length === 0) continue;
         bodyHTML += `<div class="seo-gem-category">
           <div class="seo-gem-category-header">
-            <div class="seo-gem-category-label ${info.cls}">${info.label}</div>
-            <div class="seo-gem-category-desc">${escHtml(info.desc)}</div>
+            <span class="seo-gem-category-label ${info.cls}">${info.label}</span>
+            <span class="seo-gem-category-desc">— ${escHtml(info.desc)}</span>
           </div>`;
         for (const item of items) {
           const checked = state.selectedIndex === item.idx ? 'checked' : '';
