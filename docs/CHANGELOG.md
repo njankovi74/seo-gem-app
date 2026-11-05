@@ -4,6 +4,14 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+## 2026-11-05 — Priprema SEO GEM-a za portal Insajder (CMS mPanel, embed v2.4)
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-11-05 | feat | `src/lib/portal-config.ts`, `src/lib/cms-auth.ts`, `src/lib/seo-output.ts`, `src/app/api/cms/update-article-id/route.ts`, `public/cms-embed.js` (v2.4), `public/cms-test-mpanel.html`: dodat portal `insajder` (`insajder.net`) u `PORTAL_DOMAINS` i `PUBLISHER_INFO` i mPanel CORS domeni (`insajder.mpanel.app`, `app.insajder.net`, `insajder-dev.mpanel.app`); `buildCanonicalUrlFromPublicUrl` i `buildCanonicalUrl` u embedu čuvaju javne URL-ove bez numeričkog ID-a kakvi jesu (bez prepisivanja sluga); `finalizeSchema` podržava više autora odvojenih zarezom kao niz `Person[]`; `update-article-id` prihvata numerički `article_id` bilo koje dužine (`/^\d+$/`); u `cms-embed.js` (v2.4) dodati atributi `data-editor-id` (TinyMCE `tinymce.get(editorId)`) i `data-save-selector` (čuvar sheme na klik AJAX dugmeta), čitanje vrednosti iz `META`/`A`/`LINK` elemenata, mPanel obrasci za `article_id` (`/articles/edit/{id}` i `<meta name="article-id">`), jedinstveni `resolvePublicUrl(articleId)` i slanje samo prve izabrane rubrike kod `select[multiple]` |
+
+---
+
 ## 2026-11-05 — Schema.org učvršćivanje „srca" (deterministički kostur + čuvar sheme u embedu)
 
 | Datum | Tip | Opis |

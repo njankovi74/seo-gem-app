@@ -92,12 +92,12 @@ Generiše meta opis, ključne reči i Schema.org markup za izabrani naslov i ču
   "offeredTitles": [ ... ],                       // Opciono: niz od 6 ponuđenih naslova
   "articleId": "57081",                           // Opciono: numerički ID članka (4+ cifre)
   "articleUrl": "https://newsmaxbalkans.com/...", // Opciono: javni URL članka (backoffice URL se odbacuje)
-  "authorName": "Ime autora (opciono)",
+  "authorName": "Ime autora ili više autora odvojenih zarezom (opciono)",
   "articleSection": "Rubrika/kategorija (opciono)",
   "publishedAt": "2026-11-04T14:23:00.000Z (opciono — ISO datum objave iz publish_at)",
   "imageUrl": "/data/images/.../xxx_og.jpg (opciono — relativna ili apsolutna putanja glavne slike)",
   "existingSchema": "{...} (opciono — postojeća JSON-LD šema iz schema_org polja radi očuvanja datePublished)",
-  "publicUrl": "https://newsmaxbalkans.com/... (opciono — javni link članka sa stranice)",
+  "publicUrl": "https://newsmaxbalkans.com/... ili https://insajder.net/... (opciono — javni link članka)",
   "language": "sr"                                // Opciono ('sr'|'pl'|'sq'|'en')
 }
 ```
@@ -147,7 +147,7 @@ Naknadno upisuje `article_id` (i javni `article_url`) u `title_history` zapis ka
 
 **Greške:**
 - `401` — Nedostaje ili je nevažeći `Authorization: Bearer <CMS_API_KEY>`
-- `400` — Nedostaju `title_history_id` ili `article_id`, ili `article_id` nije numerički ID (4+ cifara)
+- `400` — Nedostaju `title_history_id` ili `article_id`, ili `article_id` nije numerički ID (`/^\d+$/`)
 - `404` — `{ "success": false, "error": "not found or already linked" }` (zapis ne postoji, ne pripada portalu iz API ključa, ili već ima upisan `article_id`)
 - `500` — Greška pri upisu u bazu
 

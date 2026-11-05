@@ -74,19 +74,19 @@ CMS stranica za uređivanje članka (<script src="https://seo-gem-app.vercel.app
 | `data-language` | Ne | `sr` | Jezik interfejsa i generisanja (`sr`, `pl`, `sq`, `en`) |
 | `data-title-max` | Ne | `75` | Maksimalan broj karaktera za polje sopstvenog naslova u boksu |
 | `data-editor-type` | Ne | `ckeditor` | Tip editora za telo članka (`ckeditor`, `tinymce`, `textarea`) |
+| `data-editor-id` | Ne | `''` | ID TinyMCE instance (npr. `content` → `tinymce.get('content')` pre `activeEditor`) |
+| `data-save-selector` | Ne | `''` | CSS selektor dugmeta za AJAX čuvanje (npr. `#save`) na čiji `click` u capture fazi radi čuvar sheme |
 | `data-field-seo-title` | Ne | `[name="og_title"]` | CSS selektor polja u koje se upisuje SEO naslov |
 | `data-field-meta-desc` | Ne | `[name="meta_description"]` | CSS selektor polja u koje se upisuje Meta Description |
 | `data-field-keywords` | Ne | `[name="keywords"]` | CSS selektor polja u koje se upisuju ključne reči |
 | `data-field-schema` | Ne | `[name="schema_org"]` | CSS selektor polja u koje se upisuje Schema.org JSON-LD markup |
 | `data-field-title` | Ne | `[name="heading"]` | CSS selektor postojećeg naslova članka u CMS-u |
 | `data-field-lead` | Ne | `[name="lead"]` | CSS selektor lead/uvodnog teksta članka |
-| `data-field-author` | Ne | `[name="author"]` | CSS selektor polja sa imenom autora (za Schema.org) |
-| `data-field-section` | Ne | `[name="article_section"]` | CSS selektor polja sa rubrikom/kategorijom (za Schema.org) |
-| `data-field-published` | Ne | `[name="publish_at"], [name="published_at"], [name="time_created"]` | CSS selektor polja sa datumom objave (`YYYY-MM-DD HH:mm` u lokalnom vremenu → ISO) |
-| `data-field-image` | Ne | `[name="image_og"], [name="og_image"], [name="image_orig"]` | CSS selektor polja sa putanjom glavne slike (relativna ili apsolutna) |
-| `data-field-author` | Ne | `select[name="author_id"], [name="author"], select[name="authors[]"]` | CSS selektor polja sa imenom autora (za `<select>` čita tekst opcije) |
-| `data-field-section` | Ne | `select[name="category_id"], [name="article_section"], select[name="categories[]"]` | CSS selektor polja sa rubrikom/kategorijom (za `<select>` čita tekst opcije) |
-| `data-field-article-url` | Ne | `''` | CSS selektor polja sa javnim URL-om članka (ako postoji u formi) |
+| `data-field-published` | Ne | `[name="publish_at"], [name="published_at"], [name="time_created"]` | CSS selektor polja sa datumom objave (`YYYY-MM-DD HH:mm` u lokalnom vremenu → ISO; prolazi redom kroz listu) |
+| `data-field-image` | Ne | `[name="image_og"], [name="og_image"], [name="image_orig"]` | CSS selektor polja sa putanjom glavne slike (relativna ili apsolutna; prolazi redom kroz listu) |
+| `data-field-author` | Ne | `select[name="author_id"], [name="author"], select[name="authors[]"]` | CSS selektor polja sa imenom autora (za `<select>` čita tekst opcije; kod višestrukog izbora šalje spojeno sa `, `) |
+| `data-field-section` | Ne | `select[name="category_id"], [name="article_section"], select[name="categories[]"]` | CSS selektor polja sa rubrikom/kategorijom (kod `select[multiple]` uzima samo prvu izabranu opciju) |
+| `data-field-article-url` | Ne | `''` | CSS selektor polja/elementa sa javnim URL-om članka (podržava `input`, `META[content]`, `A[href]`, `LINK[href]`) |
 
 ### Podržani editori za čitanje teksta članka (`getBodyText()`):
 - **CKEditor 4:** čita HTML iz najveće `CKEDITOR.instances` instance i izvlači čist tekst.

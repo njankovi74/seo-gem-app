@@ -1,5 +1,5 @@
 /**
- * SEO GEM — CMS Embed Script v2.3 (Multi-Language)
+ * SEO GEM — CMS Embed Script v2.4 (Multi-Language)
  * Embeds SEO title generation and meta/keywords/schema auto-fill into any CMS.
  *
  * Usage:
@@ -47,6 +47,8 @@
       articleUrl: scriptTag.getAttribute('data-field-article-url') || '',
     },
     editorType: (scriptTag.getAttribute('data-editor-type') || 'ckeditor').toLowerCase(),
+    editorId: scriptTag.getAttribute('data-editor-id') || '',
+    saveSelector: scriptTag.getAttribute('data-save-selector') || '',
     language: (scriptTag.getAttribute('data-language') || 'sr').toLowerCase(),
   };
 
@@ -319,6 +321,16 @@
   // ── Helper: extract non-empty text value from a single element ("None"/"" -> "") ──
   function extractElementValue(el) {
     if (!el) return '';
+    if (el.tagName === 'META') {
+      const content = (el.getAttribute('content') || '').trim();
+      if (content.toLowerCase() === 'none') return '';
+      return content;
+    }
+    if (el.tagName === 'A' || el.tagName === 'LINK') {
+      const href = (el.href || el.getAttribute('href') || '').trim();
+      if (href.toLowerCase() === 'none') return '';
+      return href;
+    }
     if (el.tagName === 'SELECT') {
       const opts = el.selectedOptions
         ? Array.from(el.selectedOptions)
@@ -448,17 +460,32 @@
       .replace(/^-|-$/g, '');
   }
 
-  function buildCanonicalUrl(publicUrl, seoTitle) {
-    if (!publicUrl || !seoTitle) return '';
-    var clean = String(publicUrl).trim().split('?')[0].split('#')[0];
-    if (!clean.startsWith('http') || clean.includes('backoffice') || clean.includes('cubesdev')) {
+  function sanitizePublicUrl(rawUrl) {
+    if (!rawUrl || typeof rawUrl !== 'string') return '';
+    var clean = rawUrl.trim().split('?')[0].split('#')[0];
+    if (
+      !/^https?:\/\//i.test(clean) ||
+      clean.includes('backoffice') ||
+      clean.includes('cubesdev') ||
+      clean.includes('mpanel') ||
+      clean.includes('localhost')
+    ) {
       return '';
     }
+    return clean;
+  }
+
+  function buildCanonicalUrl(publicUrl, seoTitle) {
+    var clean = sanitizePublicUrl(publicUrl);
+    if (!clean) return '';
     var m = clean.match(/^(https?:\/\/[^/]+(?:\/[^/]+)*\/\d{4,}\/)([^/]+)(\/.*)?$/);
-    if (!m) return '';
-    var slug = slugifyTitle(seoTitle);
-    if (!slug) return '';
-    return m[1] + slug + (m[3] || '');
+    if (m) {
+      if (!seoTitle) return '';
+      var slug = slugifyTitle(seoTitle);
+      if (!slug) return '';
+      return m[1] + slug + (m[3] || '');
+    }
+    return clean;
   }
 
   var LANG_DOMAINS = {
@@ -522,9 +549,18 @@
     }
 
     if (CONFIG.editorType === 'tinymce') {
-      if (typeof tinymce !== 'undefined') {
-        const editor = tinymce.activeEditor || tinymce.editors[0];
-        if (editor) return editor.getContent({ format: 'text' });
+      if (typeof tinymce !== 'undefined' && tinymce) {
+        let editor = null;
+        if (CONFIG.editorId && typeof tinymce.get === 'function') {
+          editor = tinymce.get(CONFIG.editorId);
+        }
+        if (!editor) {
+          editor = tinymce.activeEditor || (tinymce.editors && tinymce.editors[0]) || null;
+        }
+        if (editor && typeof editor.getContent === 'function') {
+          const content = (editor.getContent({ format: 'text' }) || '').trim();
+          if (content) return content;
+        }
       }
     }
 
@@ -727,7 +763,20 @@
     var authorName = '';
     try { authorName = getFieldValue(CONFIG.fields.author) || ''; } catch (e) { /* */ }
     var articleSection = '';
-    try { articleSection = getFieldValue(CONFIG.fields.section) || ''; } catch (e) { /* */ }
+    try {
+      var sectionEl = findElementBySelectorList(CONFIG.fields.section);
+      if (sectionEl && sectionEl.tagName === 'SELECT' && sectionEl.multiple) {
+        var sOpts = sectionEl.selectedOptions
+          ? Array.from(sectionEl.selectedOptions)
+          : Array.from(sectionEl.options || []).filter(function (o) { return o.selected; });
+        var sTexts = sOpts
+          .map(function (opt) { return opt && typeof opt.text === 'string' ? opt.text.trim() : ''; })
+          .filter(function (txt) { return txt && txt.toLowerCase() !== 'none'; });
+        articleSection = sTexts[0] || '';
+      } else {
+        articleSection = getFieldValue(CONFIG.fields.section) || '';
+      }
+    } catch (e) { /* */ }
     var publishedAt = '';
     try { publishedAt = parsePublishedDateToISO(getFieldValue(CONFIG.fields.published)); } catch (e) { /* */ }
     var imageUrl = '';
@@ -736,37 +785,7 @@
     try { existingSchema = getValidExistingSchema(); } catch (e) { /* */ }
 
     var articleId = extractArticleIdFromPage();
-    var publicUrl = '';
-
-    // 1. Try dedicated config field (if CMS admin configured data-field-article-url)
-    if (CONFIG.fields.articleUrl) {
-      try { publicUrl = getFieldValue(CONFIG.fields.articleUrl) || ''; } catch (e) { /* */ }
-    }
-
-    // 2. Try CMS input fields (og_url, canonical_url — explicitly set by CMS)
-    if (!publicUrl) {
-      var urlSelectors = ['[name="og_url"]', '[name="canonical_url"]', '[name="article_url"]', '[name="permalink"]'];
-      for (var si = 0; si < urlSelectors.length; si++) {
-        try {
-          var el = document.querySelector(urlSelectors[si]);
-          if (el && el.value && el.value.startsWith('http') && !el.value.includes('backoffice') && !el.value.includes('cubesdev')) {
-            publicUrl = el.value;
-            break;
-          }
-        } catch (e) { /* */ }
-      }
-    }
-
-    // 3. If we have article ID — find the public link on the page that contains THIS EXACT ID
-    if (!publicUrl && articleId) {
-      publicUrl = findPublicUrlForId(articleId);
-    }
-
-    if (publicUrl && publicUrl.startsWith('http')) {
-      publicUrl = publicUrl.split('?')[0];
-    } else {
-      publicUrl = '';
-    }
+    var publicUrl = resolvePublicUrl(articleId);
 
     var articleUrl = publicUrl;
     if (!articleUrl && articleId) {
@@ -937,28 +956,58 @@
     render();
   }
 
-  // ── Helper: extract article ID from page (5 patterns) ──
+  // ── Helper: extract article ID from page (Cubes + mPanel patterns) ──
   function extractArticleIdFromPage() {
     var backofficeUrl = window.location.href || '';
     var articleId = '';
 
-    // Pattern 1: /articles/57081/edit or /articles/57081/ (with trailing slash)
+    // Pattern 1a (Cubes): /articles/57081/edit or /articles/57081/ (with trailing slash)
     var match1 = backofficeUrl.match(/\/articles\/(\d{4,})\//);
-    if (match1) articleId = match1[1];
+    if (match1) {
+      articleId = match1[1];
+      console.log('[SEO GEM] Found article ID from URL (Cubes /articles/{id}/):', articleId);
+    }
 
-    // Pattern 2: /articles/57081 (no trailing slash, end of URL or with query)
+    // Pattern 1b (Cubes): /articles/57081 (no trailing slash, end of URL or with query)
     if (!articleId) {
       var match2 = backofficeUrl.match(/\/articles\/(\d{4,})(?:\?|#|$)/);
-      if (match2) articleId = match2[1];
+      if (match2) {
+        articleId = match2[1];
+        console.log('[SEO GEM] Found article ID from URL (Cubes /articles/{id}):', articleId);
+      }
     }
 
-    // Pattern 3: Any /DIGITS/ pattern in the URL (4+ digits)
+    // Pattern 2 (mPanel): /articles/edit/{id}
+    if (!articleId) {
+      var matchMpanel = backofficeUrl.match(/\/articles\/edit\/(\d+)(?:\/|\?|#|$)/);
+      if (matchMpanel) {
+        articleId = matchMpanel[1];
+        console.log('[SEO GEM] Found article ID from URL (mPanel /articles/edit/{id}):', articleId);
+      }
+    }
+
+    // Pattern 3 (mPanel meta): <meta name="article-id" content="..."> if numeric
+    if (!articleId) {
+      try {
+        var metaIdEl = document.querySelector('meta[name="article-id"]');
+        var metaContent = metaIdEl ? (metaIdEl.getAttribute('content') || '').trim() : '';
+        if (metaContent && /^\d+$/.test(metaContent)) {
+          articleId = metaContent;
+          console.log('[SEO GEM] Found article ID from <meta name="article-id">:', articleId);
+        }
+      } catch (e) { /* */ }
+    }
+
+    // Pattern 4: Any /DIGITS/ pattern in the URL (4+ digits)
     if (!articleId) {
       var match3 = backofficeUrl.match(/\/(\d{4,})(?:\/|$|\?)/);
-      if (match3) articleId = match3[1];
+      if (match3) {
+        articleId = match3[1];
+        console.log('[SEO GEM] Found article ID from URL (/DIGITS/):', articleId);
+      }
     }
 
-    // Pattern 4: DOM fallback — check hidden fields commonly used by CMS
+    // Pattern 5: DOM fallback — check hidden fields commonly used by CMS
     if (!articleId) {
       var idSelectors = [
         '[name="article_id"]', '[name="id"]', '[name="post_id"]', '[name="content_id"]',
@@ -978,7 +1027,7 @@
       }
     }
 
-    // Pattern 5: Check form action URL
+    // Pattern 6: Check form action URL
     if (!articleId) {
       try {
         var forms = document.querySelectorAll('form[action]');
@@ -1016,6 +1065,64 @@
       }
     } catch(e) { /* */ }
     return '';
+  }
+
+  // ── Helper: unified public URL resolver used by gatherGenerateMetadata and Schema Guardian ──
+  function resolvePublicUrl(articleId, fallbackSchemaObj) {
+    var resolved = '';
+
+    // 1. CONFIG.fields.articleUrl (selector list in order, first valid public URL wins)
+    if (CONFIG.fields.articleUrl) {
+      var parts = String(CONFIG.fields.articleUrl).split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+      for (var i = 0; i < parts.length; i++) {
+        try {
+          var el = document.querySelector(parts[i]);
+          if (el) {
+            var candidate = sanitizePublicUrl(extractElementValue(el));
+            if (candidate) {
+              resolved = candidate;
+              break;
+            }
+          }
+        } catch (e) { /* */ }
+      }
+    }
+
+    // 2. CMS input fields (og_url, canonical_url, article_url, permalink)
+    if (!resolved) {
+      var urlSelectors = ['[name="og_url"]', '[name="canonical_url"]', '[name="article_url"]', '[name="permalink"]'];
+      for (var si = 0; si < urlSelectors.length; si++) {
+        try {
+          var uEl = document.querySelector(urlSelectors[si]);
+          if (uEl) {
+            var uVal = sanitizePublicUrl(extractElementValue(uEl));
+            if (uVal) {
+              resolved = uVal;
+              break;
+            }
+          }
+        } catch (e) { /* */ }
+      }
+    }
+
+    // 3. Cubes public link on page matching exact article ID
+    if (!resolved && articleId) {
+      resolved = sanitizePublicUrl(findPublicUrlForId(articleId));
+    }
+
+    // 4. (Only in Schema Guardian when fallbackSchemaObj is provided) url / mainEntityOfPage.@id from existing schema
+    if (!resolved && fallbackSchemaObj && typeof fallbackSchemaObj === 'object') {
+      var existingSchemaUrl =
+        (typeof fallbackSchemaObj.url === 'string' ? fallbackSchemaObj.url : '') ||
+        (fallbackSchemaObj.mainEntityOfPage && typeof fallbackSchemaObj.mainEntityOfPage['@id'] === 'string'
+          ? fallbackSchemaObj.mainEntityOfPage['@id']
+          : '');
+      if (existingSchemaUrl) {
+        resolved = sanitizePublicUrl(existingSchemaUrl);
+      }
+    }
+
+    return resolved;
   }
 
   // ── Pending article_id persistence across page reloads (localStorage) ──
@@ -1083,8 +1190,7 @@
         if (pendingInFlight[item.th]) return;
         pendingInFlight[item.th] = true;
 
-        var rawPublicUrl = findPublicUrlForId(pageArticleId);
-        var publicUrl = rawPublicUrl ? rawPublicUrl.split('?')[0] : null;
+        var publicUrl = resolvePublicUrl(pageArticleId) || null;
         console.log('[SEO GEM] Matched pending TH#' + item.th + ' with article ID ' + pageArticleId + ', sending PATCH...');
 
         fetch(CONFIG.apiBase + '/api/cms/update-article-id', {
@@ -1213,13 +1319,15 @@
             // Try to extract article ID from current URL
             var urlMatch = currentUrl.match(/\/articles\/(\d{4,})/);
             if (!urlMatch) {
+              urlMatch = currentUrl.match(/\/articles\/edit\/(\d+)(?:\/|\?|#|$)/);
+            }
+            if (!urlMatch) {
               // Also check for any /DIGITS/ pattern
               urlMatch = currentUrl.match(/\/(\d{4,})(?:\/|$|\?)/);
             }
             if (urlMatch) {
               var newArticleId = urlMatch[1];
-              var rawPublicUrl = findPublicUrlForId(newArticleId);
-              var publicUrl = rawPublicUrl ? rawPublicUrl.split('?')[0] : null;
+              var publicUrl = resolvePublicUrl(newArticleId) || null;
               console.log('[SEO GEM] URL monitor detected article ID: ' + newArticleId);
               clearInterval(urlMonitorInterval);
               // Send PATCH to update title_history
@@ -1263,13 +1371,13 @@
     render();
   }
 
-  // ── Schema Guardian: synchronous submit listener on the form containing schema_org ──
-  function handleFormSubmitSchemaGuard(e) {
+  // ── Schema Guardian: synchronous guard on form submit or configured save button click ──
+  function applySchemaGuard(form) {
     try {
-      var form = e && e.target;
-      if (!form || form.tagName !== 'FORM') return;
       var schemaEl = findElementBySelectorList(CONFIG.fields.schema);
-      if (!schemaEl || !form.contains(schemaEl)) return;
+      if (!schemaEl) return;
+      var scopeRoot = form || (schemaEl.closest && schemaEl.closest('form')) || document;
+      if (scopeRoot !== document && scopeRoot.contains && !scopeRoot.contains(schemaEl)) return;
 
       var rawSchema = (schemaEl.value !== undefined ? schemaEl.value : schemaEl.textContent || '').trim();
       if (!rawSchema) return;
@@ -1286,14 +1394,8 @@
 
       var headlineForSlug = currentOgTitle || schemaObj.headline || '';
       var artId = extractArticleIdFromPage();
-      var pubUrl = artId ? findPublicUrlForId(artId) : '';
-      if (!pubUrl) {
-        // Fallback: if schema already has url / mainEntityOfPage.@id with /{id}/{slug}
-        var existingSchemaUrl = (schemaObj.url && typeof schemaObj.url === 'string' ? schemaObj.url : '') ||
-          (schemaObj.mainEntityOfPage && typeof schemaObj.mainEntityOfPage['@id'] === 'string' ? schemaObj.mainEntityOfPage['@id'] : '');
-        if (existingSchemaUrl) pubUrl = existingSchemaUrl;
-      }
-      if (pubUrl && headlineForSlug) {
+      var pubUrl = resolvePublicUrl(artId, schemaObj);
+      if (pubUrl) {
         var updatedUrl = buildCanonicalUrl(pubUrl, headlineForSlug);
         if (updatedUrl) {
           schemaObj.mainEntityOfPage = { '@type': 'WebPage', '@id': updatedUrl };
@@ -1315,7 +1417,7 @@
         }
       }
 
-      var dontChangeEl = form.querySelector('input[type="checkbox"][name="dont_change_time"]') ||
+      var dontChangeEl = (scopeRoot.querySelector && scopeRoot.querySelector('input[type="checkbox"][name="dont_change_time"]')) ||
                          document.querySelector('input[type="checkbox"][name="dont_change_time"]');
       var dontChangeTime = !!(dontChangeEl && dontChangeEl.checked);
       if (!dontChangeTime) {
@@ -1325,12 +1427,38 @@
       // datePublished is never modified by Schema Guardian
       setFieldValue(CONFIG.fields.schema, JSON.stringify(schemaObj));
     } catch (err) {
-      // Never block form submission; leave invalid JSON untouched
+      // Never block form submission / saving; leave invalid JSON untouched
       console.warn('[SEO GEM] Schema guard skipped:', err && err.message ? err.message : err);
     }
   }
 
+  function handleFormSubmitSchemaGuard(e) {
+    try {
+      var form = e && e.target;
+      if (!form || form.tagName !== 'FORM') return;
+      applySchemaGuard(form);
+    } catch (err) {
+      console.warn('[SEO GEM] Schema guard submit error:', err);
+    }
+  }
+
   document.addEventListener('submit', handleFormSubmitSchemaGuard, true);
+
+  if (CONFIG.saveSelector) {
+    document.addEventListener('click', function (e) {
+      try {
+        var target = e && e.target;
+        if (!target || !target.closest) return;
+        var matchedSaveBtn = target.closest(CONFIG.saveSelector);
+        if (!matchedSaveBtn) return;
+        var schemaEl = findElementBySelectorList(CONFIG.fields.schema);
+        var scopeForm = (schemaEl && schemaEl.closest && schemaEl.closest('form')) || document;
+        applySchemaGuard(scopeForm);
+      } catch (err) {
+        console.warn('[SEO GEM] Schema guard save-click error:', err);
+      }
+    }, true);
+  }
 
   function escHtml(str) {
     const d = document.createElement('div');
@@ -1377,7 +1505,7 @@
       document.body.appendChild(panelEl);
     }
 
-    console.log('[SEO GEM] v2.3 Initialized. Editor:', CONFIG.editorType, '| API:', CONFIG.apiBase, '| Language:', CONFIG.language, '| TitleMax:', CONFIG.titleMax);
+    console.log('[SEO GEM] v2.4 Initialized. Editor:', CONFIG.editorType, '| API:', CONFIG.apiBase, '| Language:', CONFIG.language, '| TitleMax:', CONFIG.titleMax);
   }
 
   function schedulePendingChecks() {

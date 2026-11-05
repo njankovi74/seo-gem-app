@@ -69,6 +69,10 @@ export function corsHeaders(origin?: string | null): Record<string, string> {
     'http://backoffice.newsmaxpolska.pl',
     'https://backoffice-newsmaxpl.cubesdev.rs',
     'http://backoffice-newsmaxpl.cubesdev.rs',
+    // Insajder (mPanel)
+    'https://insajder.mpanel.app',
+    'https://app.insajder.net',
+    'https://insajder-dev.mpanel.app',
     // Add more portals here as they onboard
   ];
 

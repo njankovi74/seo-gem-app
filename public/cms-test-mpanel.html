@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8">
+  <title>mPanel Simulator (Insajder) — SEO GEM Embed Test</title>
+  <meta name="article-id" content="123456">
+  <meta name="article-slug" content="probni-clanak">
+  <meta name="article-url" content="https://insajder.net/politika/probni-clanak">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #18181b; color: #333; padding: 20px; }
+    .cms-header { background: #dc2626; color: #fff; padding: 10px 20px; margin: -20px -20px 20px; font-size: 14px; }
+    .cms-header span { font-weight: bold; font-size: 16px; }
+    .cms-container { max-width: 900px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.35); }
+    h2 { color: #18181b; margin-bottom: 16px; font-size: 18px; }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 13px; font-weight: 600; color: #444; margin-bottom: 4px; }
+    .field input[type="text"], .field textarea, .field select {
+      width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px;
+      font-size: 14px; font-family: inherit;
+    }
+    .field textarea { resize: vertical; }
+    .field .char-count { font-size: 11px; color: #888; text-align: right; margin-top: 2px; }
+    .field-row-inline { display: flex; gap: 16px; flex-wrap: wrap; }
+    .field-row-inline .field { flex: 1; min-width: 240px; }
+    .field-separator { border-top: 1px solid #eee; margin: 20px 0; }
+    .section-title { font-size: 14px; font-weight: 700; color: #dc2626; margin: 16px 0 8px; text-transform: uppercase; }
+    .note { background: #fef3c7; padding: 10px 14px; border-radius: 6px; border: 1px solid #f59e0b; font-size: 12px; color: #92400e; margin-bottom: 16px; }
+    .save-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; padding-top: 14px; border-top: 1px solid #e2e8f0; }
+    .save-btn {
+      padding: 9px 18px; border: none; border-radius: 4px; background: #dc2626; color: #fff;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .save-btn:hover { background: #b91c1c; }
+    .save-status { font-size: 12px; color: #059669; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<div class="cms-header">
+  <span>🧪 mPanel CMS Simulator (Insajder.net)</span> — Test stranica za SEO GEM embed v2.4
+</div>
+
+<div class="cms-container">
+  <div class="note">
+    ⚠️ Simulacija Appworks mPanel editora za <strong>insajder.net</strong>: TinyMCE 5.2 stub (<code>tinymce.get('content')</code>), višestruki izbor autora i rubrika, meta tagovi za ID i javni URL, i AJAX čuvanje preko <code>button#save</code>.
+  </div>
+
+  <h2>Uređivanje članka (mPanel)</h2>
+
+  <form id="mpanel-article-form" onsubmit="event.preventDefault(); return false;">
+    <div class="field-row-inline">
+      <div class="field">
+        <label for="authors">Autori (<code>select#authors[multiple]</code>)</label>
+        <select id="authors" name="authors[]" multiple size="4">
+          <option value="101" selected>Irena Stević</option>
+          <option value="102" selected>Senka Vlatković</option>
+          <option value="103">Miodrag Sovilj</option>
+          <option value="104">Redakcija Insajdera</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="categories">Rubrike (<code>select#categories[multiple]</code>)</label>
+        <select id="categories" name="categories[]" multiple size="4">
+          <option value="10" selected>Politika</option>
+          <option value="20" selected>Društvo</option>
+          <option value="30">Ekonomija</option>
+          <option value="40">Hronika</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="title">Naslov (<code>#title</code>)</label>
+      <input type="text" id="title" name="title"
+        value="Istraga Insajdera: Kako su javna preduzeća dodeljivala milionske ugovore bez tendera u energetskom sektoru">
+    </div>
+
+    <div class="field">
+      <label for="intro">Lid / Uvod (<code>textarea#intro</code>)</label>
+      <textarea id="intro" name="intro" rows="3">Analiza dokumentacije do koje je došao Insajder pokazuje da je tokom prethodne dve godine zaključeno više od četrdeset ugovora po hitnom postupku bez objavljivanja javnog poziva, čime je zaobiđena konkurencija u nabavkama opreme za elektroenergetsku mrežu.</textarea>
+    </div>
+
+    <div class="field">
+      <label for="content">Tekst članka — TinyMCE 5.2 (<code>textarea#content</code>, 1.500+ karaktera)</label>
+      <textarea id="content" name="content" rows="10">Višemesečno istraživanje redakcije Insajdera otkriva obrazac po kome su pojedina javna preduzeća u energetskom sektoru Srbije koristila zakonski izuzetak za hitne nabavke kako bi poslove velike vrednosti dodeljivala unapred odabranim privatnim konzorcijumima bez sprovođenja otvorenog tenderskog postupka.
+
+Prema zvaničnim podacima iz izveštaja Državne revizorske institucije i dokumentaciji pribavljenoj po Zakonu o slobodnom pristupu informacijama od javnog značaja, u periodu od početka 2024. do kraja 2025. godine potpisana su ukupno 43 ugovora u pregovaračkom postupku bez objavljivanja javnog poziva, čija zbirna vrednost prelazi 4,8 milijardi dinara.
+
+Stručnjaci za javne nabavke sa kojima su razgovarali novinari Insajdera ukazuju da Zakon o javnim nabavkama dozvoljava pregovarački postupak bez javnog poziva isključivo u situacijama krajnje hitnosti izazvane događajima koje naručilac nije mogao da predvidi. Međutim, u većini analiziranih slučajeva radilo se o redovnom održavanju transformatorskih stanica, nabavci brojila i softverskim licencama koje su bile planirane godišnjim programima poslovanja.
+
+"Kada javno preduzeće unapred zna da mu ugovor ističe u oktobru, a postupak pokrene tek krajem septembra pozivajući se na hitnost kako bi izbeglo obustavu rada sistema, to nije nepredviđena okolnost već loše planiranje ili svesno ograničavanje konkurencije", objašnjava za Insajder pravni savetnik organizacije Transparentnost Srbija Nemanja Nenadić.
+
+U odgovorima dostavljenim redakciji Insajdera, nadležni iz energetskih preduzeća navode da su sve nabavke sprovedene u skladu sa pozitivnim propisima i uz prethodno pribavljeno mišljenje Kancelarije za javne nabavke, ističući da je prioritet bio očuvanje stabilnosti elektroenergetskog sistema tokom zimske sezone.
+
+Ipak, podaci pokazuju da se u čak 36 od 43 analizirana postupka kao jedini pozvani ponuđač pojavljivala ista grupa povezanih firmi, pri čemu je ponuđena cena u proseku bila na nivou od 99,4 odsto procenjene vrednosti nabavke, što prema oceni ekonomista obesmišljava svrhu tržišnog nadmetanja i direktno uvećava troškove koje na kraju plaćaju građani kroz budžet i cenu električne energije.</textarea>
+    </div>
+
+    <div class="field-separator"></div>
+
+    <!-- SEO GEM dugme i panel se ubacuju ovde -->
+
+    <div class="section-title">SEO polja (mPanel)</div>
+
+    <div class="field">
+      <label for="seo_title">SEO Naslov (<code>#seo_title</code> — max 80 karaktera)</label>
+      <input type="text" id="seo_title" name="seo_title" maxlength="80" placeholder="SEO naslov...">
+      <div class="char-count">0/80</div>
+    </div>
+
+    <div class="field">
+      <label for="seo_description">Meta opis (<code>#seo_description</code> — max 180 karaktera)</label>
+      <input type="text" id="seo_description" name="seo_description" maxlength="180" placeholder="Meta opis...">
+      <div class="char-count">0/180</div>
+    </div>
+
+    <div class="field">
+      <label for="seo_keywords">Ključne reči (<code>#seo_keywords</code> — max 300 karaktera)</label>
+      <input type="text" id="seo_keywords" name="seo_keywords" maxlength="300" placeholder="ključne reči...">
+      <div class="char-count">0/300</div>
+    </div>
+
+    <div class="field">
+      <label for="seo_schema">Schema.org JSON-LD (<code>#seo_schema</code>)</label>
+      <textarea id="seo_schema" name="seo_schema" rows="7" placeholder="JSON-LD Schema Markup..."></textarea>
+    </div>
+
+    <div class="save-bar">
+      <span class="save-status" id="ajax-save-status"></span>
+      <button type="button" id="save" class="save-btn">💾 Sačuvaj članak (AJAX Save)</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  // TinyMCE 5.2 stub (kao u specifikaciji zadatka 3.4)
+  window.tinymce = {
+    get: function(id) {
+      var ta = document.getElementById(id);
+      return ta ? {
+        getContent: function(o) {
+          console.log('[TinyMCE Stub] tinymce.get("' + id + '").getContent(' + JSON.stringify(o || {}) + ') called');
+          return ta.value;
+        }
+      } : null;
+    },
+    activeEditor: null,
+    editors: []
+  };
+
+  // AJAX Save dugme (type="button", preventDefault, bez pravog form submita)
+  document.getElementById('save').addEventListener('click', function(e) {
+    e.preventDefault();
+    var statusEl = document.getElementById('ajax-save-status');
+    var schemaVal = document.getElementById('seo_schema').value;
+    console.log('[mPanel Simulator] AJAX Save clicked. Current #seo_schema:', schemaVal);
+    if (statusEl) {
+      statusEl.textContent = '✅ AJAX sačuvano u ' + new Date().toLocaleTimeString();
+    }
+  });
+
+  // Ažuriranje brojača karaktera
+  document.querySelectorAll('input[maxlength], textarea[maxlength]').forEach(function(el) {
+    function updateCount() {
+      var counter = el.parentElement.querySelector('.char-count');
+      if (counter && el.maxLength > 0) {
+        counter.textContent = el.value.length + '/' + el.maxLength;
+      }
+    }
+    el.addEventListener('input', updateCount);
+    el.addEventListener('change', updateCount);
+  });
+</script>
+
+<!-- Planirani SEO GEM script tag za mPanel + data-save-selector="#save" + lokalni API base/ključ -->
+<script src="/cms-embed.js" data-cfasync="false"
+  data-api-base="http://localhost:3000"
+  data-api-key="sk_cms_insajder_local_test"
+  data-language="sr"
+  data-editor-type="tinymce" data-editor-id="content"
+  data-field-seo-title="#seo_title" data-field-meta-desc="#seo_description"
+  data-field-keywords="#seo_keywords" data-field-schema="#seo_schema"
+  data-field-title="#title" data-field-lead="#intro"
+  data-field-author="select#authors" data-field-section="select#categories"
+  data-field-article-url='meta[name="article-url"], link[rel="canonical"]'
+  data-save-selector="#save"></script>
+
+</body>
+</html>
