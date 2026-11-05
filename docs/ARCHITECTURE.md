@@ -85,8 +85,8 @@ SEO GEM je AI-powered SEO asistent za novinarske portale. Generiše optimizovane
 | `keyword-prioritizer.ts` | Long-tail keyword ranking | `prioritizeKeywords()` |
 | `language-validator.ts` | Detekcija jezika (franc) | `validateLanguage()` |
 | `google-suggest.ts` | Google Autocomplete | `getGoogleSuggestions()` |
-| `ga4-pull.ts` | GA4 Data API sync | `syncGA4ForPortal()` |
-| `gsc-pull.ts` | Search Console sync | `syncGSCForPortal()` |
+| `ga4-pull.ts` | GA4 Data API sync (`limit: 50000`) | `syncGA4ForPortal()` |
+| `gsc-pull.ts` | Search Console sync (`startRow` paginacija do 25.000 + `site_gsc_daily` zbir) | `syncGSCForPortal()`, `fetchGSCSiteTotals()` |
 | `google-oauth.ts` | OAuth token management | `getAccessToken()` |
 | `cms-auth.ts` | CMS API autentifikacija | `authenticateCMS()` |
 | `admin-auth.ts` | Admin password auth | `authenticateAdmin()` |

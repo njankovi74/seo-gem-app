@@ -10,13 +10,21 @@
  *   - date: specific date to sync (YYYY-MM-DD), defaults to 3 days ago for GSC
  *   - days: number of days to sync (1-30), defaults to 1
  *   - portal: specific portal_id to sync, defaults to all
+ *   - only: optional mode; when 'site_totals', runs ONLY fetchGSCSiteTotals + upsert into site_gsc_daily
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateAdmin, adminErrorResponse } from '@/lib/admin-auth';
-import { syncGSCForPortal } from '@/lib/gsc-pull';
+import {
+  syncGSCForPortal,
+  fetchGSCSiteTotals,
+  upsertGSCSiteTotals,
+  GSCSiteTotal,
+} from '@/lib/gsc-pull';
 import { syncGA4ForPortal } from '@/lib/ga4-pull';
 import { createClient } from '@supabase/supabase-js';
+
+export const maxDuration = 300;
 
 // Vercel cron auth
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -39,6 +47,8 @@ function getDaysAgo(days: number): string {
 }
 
 export async function GET(request: NextRequest) {
+  const syncStart = Date.now();
+
   // Allow Vercel Cron or admin auth
   const cronAuth = request.headers.get('authorization');
   const isCron = CRON_SECRET && cronAuth === `Bearer ${CRON_SECRET}`;
@@ -55,6 +65,8 @@ export async function GET(request: NextRequest) {
   const days = Math.min(parseInt(url.searchParams.get('days') || '1'), 30);
   // Manual backfill: if 'date' is provided, sync that exact date for both GSC and GA4
   const manualDate = url.searchParams.get('date'); // format: YYYY-MM-DD
+  const only = url.searchParams.get('only'); // optional: 'site_totals'
+  const isOnlySiteTotals = only === 'site_totals';
 
   try {
     const sb = getSupabase();
@@ -76,19 +88,35 @@ export async function GET(request: NextRequest) {
     const results: Array<{
       portal_id: string;
       portal_name: string;
-      gsc: { date: string; pages: number; error?: string }[];
-      ga4: { date: string; pages: number; error?: string }[];
+      duration_ms: number;
+      gsc: Array<{
+        date: string;
+        pages: number;
+        sitePages?: { web: number; discover: number };
+        siteTotals?: { web: GSCSiteTotal; discover: GSCSiteTotal };
+        error?: string;
+      }>;
+      ga4: Array<{ date: string; pages: number; error?: string }>;
     }> = [];
 
     for (const portal of targetPortals) {
+      const portalStart = Date.now();
       const portalResult: {
         portal_id: string;
         portal_name: string;
-        gsc: { date: string; pages: number; error?: string }[];
-        ga4: { date: string; pages: number; error?: string }[];
+        duration_ms: number;
+        gsc: Array<{
+          date: string;
+          pages: number;
+          sitePages?: { web: number; discover: number };
+          siteTotals?: { web: GSCSiteTotal; discover: GSCSiteTotal };
+          error?: string;
+        }>;
+        ga4: Array<{ date: string; pages: number; error?: string }>;
       } = {
         portal_id: portal.portal_id,
         portal_name: portal.portal_name,
+        duration_ms: 0,
         gsc: [],
         ga4: [],
       };
@@ -99,18 +127,43 @@ export async function GET(request: NextRequest) {
         const gscDate = manualDate || getDaysAgo(3 + d);
         const ga4Date = manualDate || getDaysAgo(1 + d);
 
-        // Pull GSC
+        if (isOnlySiteTotals) {
+          // Mode ?only=site_totals: ONLY fetchGSCSiteTotals + upsert into site_gsc_daily
+          if (portal.gsc_refresh_token && portal.gsc_property) {
+            console.log(`📊 [Sync] GSC site_totals ONLY ${portal.portal_id} for ${gscDate}...`);
+            const totals = await fetchGSCSiteTotals(portal.portal_id, gscDate);
+            let upsertErr: string | undefined = totals.error;
+            if (!totals.error) {
+              const upRes = await upsertGSCSiteTotals(portal.portal_id, gscDate, totals);
+              if (upRes.error) upsertErr = upRes.error;
+            }
+            portalResult.gsc.push({
+              date: gscDate,
+              pages: 0,
+              siteTotals: {
+                web: totals.web,
+                discover: totals.discover,
+              },
+              ...(upsertErr ? { error: upsertErr } : {}),
+            });
+          }
+          continue;
+        }
+
+        // Full sync mode: Pull GSC (pages + site_totals)
         if (portal.gsc_refresh_token && portal.gsc_property) {
           console.log(`📊 [Sync] GSC ${portal.portal_id} for ${gscDate}...`);
           const gscResult = await syncGSCForPortal(portal.portal_id, gscDate);
           portalResult.gsc.push({
             date: gscDate,
             pages: gscResult.pagesProcessed,
+            ...(gscResult.sitePages ? { sitePages: gscResult.sitePages } : {}),
+            ...(gscResult.siteTotals ? { siteTotals: gscResult.siteTotals } : {}),
             ...(gscResult.error ? { error: gscResult.error } : {}),
           });
         }
 
-        // Pull GA4
+        // Full sync mode: Pull GA4
         if (portal.ga4_refresh_token && portal.ga4_property_id) {
           console.log(`📊 [Sync] GA4 ${portal.portal_id} for ${ga4Date}...`);
           const ga4Result = await syncGA4ForPortal(portal.portal_id, ga4Date);
@@ -122,6 +175,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      portalResult.duration_ms = Date.now() - portalStart;
       results.push(portalResult);
     }
 
@@ -129,18 +183,21 @@ export async function GET(request: NextRequest) {
     const totalGSCPages = results.reduce((sum, r) => sum + r.gsc.reduce((s, g) => s + g.pages, 0), 0);
     const totalGA4Pages = results.reduce((sum, r) => sum + r.ga4.reduce((s, g) => s + g.pages, 0), 0);
 
-    // ── Article ID backfill: match unlinked title_history records ──
+    // ── Article ID backfill: match unlinked title_history records (skipped when ?only=site_totals) ──
     let backfillResult = null;
-    try {
-      console.log('🔗 [Sync] Running article_id backfill...');
-      const { backfillArticleIds } = await import('@/lib/backfill-article-ids');
-      backfillResult = await backfillArticleIds();
-      console.log(`🔗 [Sync] Backfill: ${backfillResult.matched} matched of ${backfillResult.total_without_id}`);
-    } catch (backfillError) {
-      console.error('⚠️ [Sync] Backfill error (non-blocking):', backfillError);
+    if (!isOnlySiteTotals) {
+      try {
+        console.log('🔗 [Sync] Running article_id backfill...');
+        const { backfillArticleIds } = await import('@/lib/backfill-article-ids');
+        backfillResult = await backfillArticleIds();
+        console.log(`🔗 [Sync] Backfill: ${backfillResult.matched} matched of ${backfillResult.total_without_id}`);
+      } catch (backfillError) {
+        console.error('⚠️ [Sync] Backfill error (non-blocking):', backfillError);
+      }
     }
 
-    console.log(`✅ [Sync] Complete: ${totalGSCPages} GSC pages, ${totalGA4Pages} GA4 pages across ${results.length} portals`);
+    const totalDurationMs = Date.now() - syncStart;
+    console.log(`✅ [Sync] Complete in ${totalDurationMs}ms: ${totalGSCPages} GSC pages, ${totalGA4Pages} GA4 pages across ${results.length} portals (only=${only || 'none'})`);
 
     return NextResponse.json({
       success: true,
@@ -150,6 +207,8 @@ export async function GET(request: NextRequest) {
         total_gsc_pages: totalGSCPages,
         total_ga4_pages: totalGA4Pages,
         days_synced: days,
+        only: only || null,
+        duration_ms: totalDurationMs,
         backfill: backfillResult,
       },
       results,
