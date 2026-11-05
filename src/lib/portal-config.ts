@@ -3,6 +3,7 @@ export const PORTAL_DOMAINS: Record<string, string> = {
   newsmax_en: 'newsmaxbalkans.com',
   newsmax_al: 'newsmaxbalkans.al',
   newsmax_pl: 'newsmaxpolska.pl',
+  insajder: 'insajder.net',
 };
 
 export const PUBLISHER_INFO: Record<string, { name: string; logoUrl: string; domain: string }> = {
@@ -25,6 +26,12 @@ export const PUBLISHER_INFO: Record<string, { name: string; logoUrl: string; dom
     name: 'Newsmax Polska',
     logoUrl: 'https://newsmaxpolska.pl/files/img/logo.png',
     domain: 'newsmaxpolska.pl',
+  },
+  insajder: {
+    name: 'Insajder',
+    // TODO: potvrditi zvanični logo sa Appworks-om
+    logoUrl: 'https://insajder.net/_next/static/media/logo.fff134dd.svg',
+    domain: 'insajder.net',
   },
 };
 
@@ -64,21 +71,31 @@ export function titleToSlug(title: string): string {
 }
 
 /**
- * Builds canonical public article URL by taking prefix up to /{id}/ and suffix (/vest or /news)
- * from known publicUrl, and replacing the slug segment with titleToSlug(seoTitle).
- * Returns '' if publicUrl is missing or does not contain a valid /{id}/{slug} pattern.
+ * Builds canonical public article URL from known publicUrl:
+ * - Cleans query/hash and rejects non-http(s) or admin/local URLs (backoffice, cubesdev, mpanel, localhost).
+ * - If the path contains a Cubes numeric ID segment /{4+ digits}/{slug}, replaces {slug} with titleToSlug(seoTitle).
+ * - Otherwise (no numeric ID in path, e.g. insajder.net/{rubrika}/{slug}), returns the cleaned URL as-is.
  */
 export function buildCanonicalUrlFromPublicUrl(publicUrl?: string, seoTitle?: string): string {
-  if (!publicUrl || !seoTitle) return '';
+  if (!publicUrl) return '';
   const clean = publicUrl.trim().split('?')[0].split('#')[0];
-  if (!clean.startsWith('http') || clean.includes('backoffice') || clean.includes('cubesdev')) {
+  if (
+    !/^https?:\/\//i.test(clean) ||
+    clean.includes('backoffice') ||
+    clean.includes('cubesdev') ||
+    clean.includes('mpanel') ||
+    clean.includes('localhost')
+  ) {
     return '';
   }
   const m = clean.match(/^(https?:\/\/[^/]+(?:\/[^/]+)*\/\d{4,}\/)([^/]+)(\/.*)?$/);
-  if (!m) return '';
-  const slug = titleToSlug(seoTitle);
-  if (!slug) return '';
-  return `${m[1]}${slug}${m[3] || ''}`;
+  if (m) {
+    if (!seoTitle) return '';
+    const slug = titleToSlug(seoTitle);
+    if (!slug) return '';
+    return `${m[1]}${slug}${m[3] || ''}`;
+  }
+  return clean;
 }
 
 /**

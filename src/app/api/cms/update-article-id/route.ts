@@ -28,10 +28,10 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Validate article_id is numeric and reasonable
-    if (!/^\d{4,}$/.test(String(article_id))) {
+    // Validate article_id is numeric
+    if (!/^\d+$/.test(String(article_id))) {
       return NextResponse.json(
-        { success: false, error: 'article_id must be a numeric ID (4+ digits)' },
+        { success: false, error: 'article_id must be a numeric ID' },
         { status: 400, headers }
       );
     }

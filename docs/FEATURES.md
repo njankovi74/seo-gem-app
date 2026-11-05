@@ -127,7 +127,7 @@ Posle izbora naslova, sistem generiše meta description, keywords i schema marku
 | Meta description | **160** karaktera | 1 |
 | Keywords line | **300** karaktera | Max **10** ključnih reči |
 | Min keyword length | **3** karaktera | — |
-| Schema markup | — | JSON-LD (`NewsArticle` — deterministički kostur `finalizeSchema` + čuvar sheme u `cms-embed.js` na `submit`) |
+| Schema markup | — | JSON-LD (`NewsArticle` — deterministički kostur `finalizeSchema` + čuvar sheme u `cms-embed.js` v2.4 na `submit` ili `data-save-selector`) |
 
 ### Banned tokens:
 - Clickbait reči
@@ -148,6 +148,7 @@ REST API za integraciju sa CMS-ovima novinskih portala.
 | Newsmax AL | `newsmax_al` | Albanski | backoffice.newsmaxbalkans.al |
 | Newsmax PL | `newsmax_pl` | Poljski | backoffice.newsmaxpolska.pl |
 | Newsmax EN | `newsmax_en` | Engleski | (backoffice.newsmaxbalkans.com) |
+| Insajder | `insajder` | Srpski | insajder.mpanel.app, app.insajder.net, insajder-dev.mpanel.app |
 
 ### Endpoint-i:
 - `POST /api/cms/titles` — 6 predloga naslova

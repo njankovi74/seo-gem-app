@@ -83,7 +83,7 @@ Kada korisnik traži izveštaj da li SEO GEM radi, redosled provere je:
 
 - **a)** Svaka izmena koda radi se na posebnoj grani (`fix/...` ili `feat/...`), nikad direktno na `main`.
 - **b)** Pre početka rada na grani: zabeležiti commit sa kog se kreće.
-- **c)** Lokalni test je obavezan (build + `npx next dev` + test relevantne funkcije na `cms-test.html` ili API pozivom). Ako test ne prođe: grana se NE spaja u `main`, produkcija ostaje netaknuta; prijaviti rezultat i stati.
+- **c)** Lokalni test je obavezan (build + `npx next dev` + test relevantne funkcije na `scripts/test-pages/cms-test.html` / `scripts/test-pages/cms-test-mpanel.html` preko `npx serve scripts/test-pages -l 8080` ili API pozivom). Ako test ne prođe: grana se NE spaja u `main`, produkcija ostaje netaknuta; prijaviti rezultat i stati.
 - **d)** Spajanje u `main` (= deploy na produkciju) SAMO posle izričitog odobrenja Nebojše, nikad samostalno.
 - **e)** Posle deploya: proveriti `/api/health` i jedno realno generisanje naslova. Ako produkcija ne radi ispravno: odmah `git revert` spornog commita + push (Vercel automatski deployuje vraćeno stanje), ili Vercel Instant Rollback na prethodni deployment. Prijaviti šta je urađeno.
 - **f)** Env varijable na Vercelu i šema/podaci u Supabase-u se NE menjaju bez izričitog odobrenja; svaka izmena podataka ima rezervnu kopiju pre izmene.

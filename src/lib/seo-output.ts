@@ -58,17 +58,24 @@ export function finalizeSchema(input: FinalizeSchemaInput): Record<string, any> 
   const pubName = (input.publisherName || 'Newsmax Balkans').trim();
   const pubLogo = (input.publisherLogoUrl || 'https://newsmaxbalkans.com/files/img/logo.png').trim();
 
-  // Author: Person if authorName is present and != publisherName, otherwise Organization = publisher
+  // Author: if comma-separated (multiple authors in mPanel), split and return Person[] when >1 remain;
+  // otherwise single Person (if != publisherName) or Organization = publisher
   const rawAuthor = (input.authorName || '').trim();
-  const isPersonAuthor =
-    rawAuthor.length > 0 &&
-    rawAuthor.toLowerCase() !== 'none' &&
-    rawAuthor !== '(N/A)' &&
-    rawAuthor.toLowerCase() !== pubName.toLowerCase();
+  const authorParts = rawAuthor.includes(',')
+    ? rawAuthor
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0 && s.toLowerCase() !== 'none' && s !== '(N/A)')
+    : (rawAuthor.length > 0 && rawAuthor.toLowerCase() !== 'none' && rawAuthor !== '(N/A)' ? [rawAuthor] : []);
 
-  const author = isPersonAuthor
-    ? { '@type': 'Person', name: rawAuthor }
-    : { '@type': 'Organization', name: pubName };
+  let author: Record<string, any> | Array<Record<string, any>>;
+  if (authorParts.length > 1) {
+    author = authorParts.map(name => ({ '@type': 'Person', name }));
+  } else if (authorParts.length === 1 && authorParts[0].toLowerCase() !== pubName.toLowerCase()) {
+    author = { '@type': 'Person', name: authorParts[0] };
+  } else {
+    author = { '@type': 'Organization', name: pubName };
+  }
 
   // Article section: Title Case if present, omitted otherwise
   const formattedSection = toTitleCase(input.articleSection);
