@@ -50,7 +50,7 @@ Generiše 6 SEO naslova za članak na osnovu teksta članka iz CMS editora.
   "success": true,
   "portal_id": "newsmax",
   "titles": [
-    { "text": "Naslov opcija 1", "style": "informativni", "length": 56, "reasoning": "CoT..." },
+    { "text": "Naslov opcija 1", "style": "informativni", "length": 56, "reasoning": "CoT...", "hint": "Cilja pretragu...; jasna činjenica za Google pretragu." },
     { "text": "Naslov opcija 2", "style": "informativni", "length": 58, "reasoning": "..." },
     { "text": "Pitanje za AI Overviews?", "style": "geo_pitanje", "length": 52, "reasoning": "..." },
     { "text": "Izjavni odgovor za AI Overviews", "style": "geo_pitanje", "length": 54, "reasoning": "..." },

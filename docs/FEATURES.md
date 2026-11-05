@@ -63,6 +63,7 @@ AI generiše 6 varijanti naslova u 3 stila za svaki članak.
 | Pripisivanje (30.10.) | Izjave, obećanja i najave uvek se pripisuju („Jovanović obećava…"), nikad kao činjenica |
 | TITLE GUARD (30.10.) | Kod (ne model) prvo uklanja tačku na kraju i dodaje „?" pitanjima koja počinju upitnom reči; zatim proverava dvotačku u opcijama 1–5 i dužinu > 70 znakova; prekršioce šalje na prepravku („BEZ DVOTAČKE" / „SKRATI" uz inteligentno skraćivanje). Prepravka se prihvata samo ako ispunjava pravila. Log: `📈 [Usage/titles-guard]` |
 | Skraćenice (30.10.) | Kad je naslov predug: skraćenica organizacije/stranke (NPS, RIK) umesto okrnjenog ključnog pojma („birački spisak", ne „spisak") |
+| Kratki hint za novinara (5.11.) | Uz svaki naslov model vraća i polje `hint` (1 rečenica, ≤ 90 znakova, na jeziku portala, bez internih oznaka `MESTO`/`CoT` i kodnih naziva stilova). Ako model izostavi `hint`, prekorači 90 znakova ili upotrebi internu oznaku, `cms/titles` postavlja lokalizovan statični fallback hint po stilu (`sr`/`pl`/`sq`/`en`). U `public/cms-embed.js` (v2.2) `reasoning` se više nigde ne ispisuje u DOM-u, a `hint` se prikazuje na hover/klik ikonice `ⓘ` uz kompaktan prikaz svih 6 naslova bez skrola (~460 px visine) i opcioni atribut `data-title-max` (default `75`) |
 
 ### Ograničenja naslova:
 - Dužina: max **70 karaktera** (truncation u `seo-output.ts`)

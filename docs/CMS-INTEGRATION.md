@@ -72,6 +72,7 @@ CMS stranica za uređivanje članka (<script src="https://seo-gem-app.vercel.app
 | `data-api-key` | ✅ Da | `''` | API ključ portala (`CMS_API_KEY_*`) za `Authorization: Bearer` |
 | `data-api-base` | Ne | Izvodi se iz `script.src` | Bazni URL SEO GEM servisa (npr. `https://seo-gem-app.vercel.app`) |
 | `data-language` | Ne | `sr` | Jezik interfejsa i generisanja (`sr`, `pl`, `sq`, `en`) |
+| `data-title-max` | Ne | `75` | Maksimalan broj karaktera za polje sopstvenog naslova u boksu |
 | `data-editor-type` | Ne | `ckeditor` | Tip editora za telo članka (`ckeditor`, `tinymce`, `textarea`) |
 | `data-field-seo-title` | Ne | `[name="og_title"]` | CSS selektor polja u koje se upisuje SEO naslov |
 | `data-field-meta-desc` | Ne | `[name="meta_description"]` | CSS selektor polja u koje se upisuje Meta Description |
@@ -112,7 +113,7 @@ CMS stranica za uređivanje članka (<script src="https://seo-gem-app.vercel.app
 {
   "success": true,
   "titles": [
-    { "text": "Dijabetes tip 2: Lek Retatrutid efikasno topi kilograme", "style": "informativni", "length": 56, "reasoning": "..." },
+    { "text": "Dijabetes tip 2: Lek Retatrutid efikasno topi kilograme", "style": "informativni", "length": 56, "reasoning": "...", "hint": "..." },
     { "text": "Dijabetes: Novi lek smanjuje težinu efikasnije od operacije", "style": "informativni", "length": 59, "reasoning": "..." },
     { "text": "Da li je Retatrutid lek koji će promeniti lečenje dijabetesa?", "style": "geo_pitanje", "length": 61, "reasoning": "..." },
     { "text": "Kako novi lek za dijabetes pomaže u mršavljenju?", "style": "geo_pitanje", "length": 49, "reasoning": "..." },
