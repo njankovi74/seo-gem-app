@@ -1,5 +1,5 @@
 /**
- * SEO GEM — CMS Embed Script v2.2 (Multi-Language)
+ * SEO GEM — CMS Embed Script v2.3 (Multi-Language)
  * Embeds SEO title generation and meta/keywords/schema auto-fill into any CMS.
  *
  * Usage:
@@ -316,28 +316,8 @@
   styleEl.textContent = STYLES;
   document.head.appendChild(styleEl);
 
-  // ── Helper: find element by comma-separated fallback selector list in priority order ──
-  function findElementBySelectorList(selectorList) {
-    if (!selectorList) return null;
-    const parts = String(selectorList).split(',').map(s => s.trim()).filter(Boolean);
-    let firstFound = null;
-    for (let i = 0; i < parts.length; i++) {
-      try {
-        const el = document.querySelector(parts[i]);
-        if (el) {
-          if (!firstFound) firstFound = el;
-          if (el.tagName === 'SELECT' || (el.value !== undefined && String(el.value).trim() !== '')) {
-            return el;
-          }
-        }
-      } catch (e) { /* ignore invalid selector */ }
-    }
-    return firstFound;
-  }
-
-  // ── Helper: get field value (for <select>, always returns selected option text; "None"/"" -> "") ──
-  function getFieldValue(selector) {
-    const el = findElementBySelectorList(selector);
+  // ── Helper: extract non-empty text value from a single element ("None"/"" -> "") ──
+  function extractElementValue(el) {
     if (!el) return '';
     if (el.tagName === 'SELECT') {
       const opts = el.selectedOptions
@@ -353,6 +333,41 @@
       : String(el.textContent || '').trim();
     if (val.toLowerCase() === 'none') return '';
     return val;
+  }
+
+  // ── Helper: find element by comma-separated fallback selector list in priority order ──
+  function findElementBySelectorList(selectorList) {
+    if (!selectorList) return null;
+    const parts = String(selectorList).split(',').map(s => s.trim()).filter(Boolean);
+    let firstFound = null;
+    for (let i = 0; i < parts.length; i++) {
+      try {
+        const el = document.querySelector(parts[i]);
+        if (el) {
+          if (!firstFound) firstFound = el;
+          if (extractElementValue(el) !== '') {
+            return el;
+          }
+        }
+      } catch (e) { /* ignore invalid selector */ }
+    }
+    return firstFound;
+  }
+
+  // ── Helper: get field value iterating selector list in order; first selector with non-empty value wins ──
+  function getFieldValue(selectorList) {
+    if (!selectorList) return '';
+    const parts = String(selectorList).split(',').map(s => s.trim()).filter(Boolean);
+    for (let i = 0; i < parts.length; i++) {
+      try {
+        const el = document.querySelector(parts[i]);
+        if (el) {
+          const val = extractElementValue(el);
+          if (val !== '') return val;
+        }
+      } catch (e) { /* ignore invalid selector */ }
+    }
+    return '';
   }
 
   // ── Helper: set field value ──
@@ -1362,7 +1377,7 @@
       document.body.appendChild(panelEl);
     }
 
-    console.log('[SEO GEM] v2.2 Initialized. Editor:', CONFIG.editorType, '| API:', CONFIG.apiBase, '| Language:', CONFIG.language, '| TitleMax:', CONFIG.titleMax);
+    console.log('[SEO GEM] v2.3 Initialized. Editor:', CONFIG.editorType, '| API:', CONFIG.apiBase, '| Language:', CONFIG.language, '| TitleMax:', CONFIG.titleMax);
   }
 
   function schedulePendingChecks() {
