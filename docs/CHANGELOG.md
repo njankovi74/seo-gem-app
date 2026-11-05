@@ -4,6 +4,14 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+## 2026-11-05 — Izgled SEO GEM boksa u CMS-u: `hint` iza ⓘ, obrazloženja van ekrana, bez skrola
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-11-05 | feat | `src/lib/prompts/titles-prompt.ts`, `src/app/api/cms/titles/route.ts`, `src/lib/title-history.ts`, `public/cms-embed.js` (v2.2): u JSON format odgovora za `/api/cms/titles` dodato polje `hint` (≤ 90 znakova, na jeziku portala, bez internih termina) uz serverski lokalizovan fallback po stilu (`sr`/`pl`/`sq`/`en`); iz `cms-embed.js` uklonjen prikaz `reasoning` teksta i dodat prikaz `hint`-a na hover/klik ikonice `ⓘ`, lokalizovan opis iznad svake grupe stilova, kompaktni razmaci bez skrola (~460 px na 1366×768) i podrška za `data-title-max` (default 75) |
+
+---
+
 ## 2026-11-04 — GSC pun pull stranica + dnevni zbir celog sajta (`site_gsc_daily`)
 
 | Datum | Tip | Opis |

@@ -17,6 +17,43 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // generation + fact check + guard rewrite
 
+const STATIC_STYLE_HINTS: Record<SupportedLanguage, Record<string, string>> = {
+  sr: {
+    informativni: 'Jasna činjenica sa ključnom frazom — za klasičnu Google pretragu',
+    geo_pitanje: 'Pitanje/odgovor za AI preglede i glasovnu pretragu',
+    discover_hook: 'Za Google Discover: radoznalost bez klik-mamca',
+  },
+  pl: {
+    informativni: 'Jasny fakt z frazą kluczową — do klasycznej wyszukiwarki Google',
+    geo_pitanje: 'Pytanie/odpowiedź dla przeglądów AI i wyszukiwania głosowego',
+    discover_hook: 'Dla Google Discover: ciekawość bez clickbaitu',
+  },
+  sq: {
+    informativni: 'Fakt i qartë me frazën kyçe — për kërkimin klasik në Google',
+    geo_pitanje: 'Pyetje/përgjigje për përmbledhjet AI dhe kërkimin me zë',
+    discover_hook: 'Për Google Discover: kureshtje pa clickbait',
+  },
+  en: {
+    informativni: 'Clear fact with key phrase — for classic Google search',
+    geo_pitanje: 'Question/answer for AI Overviews and voice search',
+    discover_hook: 'For Google Discover: curiosity without clickbait',
+  },
+};
+
+const FORBIDDEN_HINT_TERMS = /\b(MESTO|CoT|informativni|geo_pitanje|discover_hook|kviz|quiz|kuiz|E-E-A-T)\b/i;
+
+function applyHintFallbacks(titles: TitleOption[], language: SupportedLanguage): void {
+  const langHints = STATIC_STYLE_HINTS[language] || STATIC_STYLE_HINTS.sr;
+  for (const t of titles) {
+    const rawHint = typeof t.hint === 'string' ? t.hint.trim() : '';
+    if (!rawHint || rawHint.length > 90 || FORBIDDEN_HINT_TERMS.test(rawHint)) {
+      t.hint = langHints[t.style] || langHints.informativni;
+    } else {
+      t.hint = rawHint;
+    }
+  }
+}
+
 // Handle CORS preflight
 export async function OPTIONS(request: NextRequest) {
   const origin = request.headers.get('origin');
@@ -307,6 +344,9 @@ ${offending.map((o, k) => `${k + 1}. [${[o.colon ? 'BEZ DVOTAČKE' : '', o.quest
         );
       }
     }
+
+    // Ensure every title has a valid, localized hint (<= 90 chars, no internal labels)
+    applyHintFallbacks(titles, language);
 
     console.log(`✅ [CMS/titles] Generated ${titles.length} titles for ${auth.portalId} (lang: ${language}, validated: ${langCheck.isMatch ? 'pass' : 'retry-pass'})`);
 

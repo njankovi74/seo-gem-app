@@ -286,15 +286,24 @@ function getFormatBlock(lang: SupportedLanguage): string {
       lang === 'sq' ? 'Ktheni VETËM JSON të vlefshëm:' :
         'Vrati isključivo validan JSON:';
 
+  const hintRule = lang === 'en'
+    ? 'Field "hint": one sentence for the journalist (max 90 chars, in English): what search phrase the title targets and what this style serves. FORBIDDEN in "hint": internal labels and terms (MESTO, CoT, rule names, "quiz", style code names).'
+    : lang === 'pl'
+      ? 'Pole "hint": jedno zdanie dla dziennikarza (maks. 90 znaków, po polsku): na jaką frazę/wyszukiwanie celuje tytuł i czemu służy ten styl. ZABRONIONE w "hint": wewnętrzne oznaczenia i terminy (MESTO, CoT, nazwy reguł, "quiz", kodowe nazwy stylów).'
+      : lang === 'sq'
+        ? 'Fusha "hint": një fjali për gazetarin (maks. 90 karaktere, në shqip): cilin kërkim/frazë synon titulli dhe për çfarë shërben ky stil. TË NDALUARA në "hint": etiketat dhe termat e brendshëm (MESTO, CoT, emrat e rregullave, "kuiz", emrat kodues të stileve).'
+        : 'Polje "hint": jedna rečenica za novinara (najviše 90 znakova, na srpskom): šta naslov cilja (fraza/pretraga) i čemu stil služi. Zabranjeno u hintu: interne oznake i termini (MESTO, CoT, nazivi pravila, „kviz", nazivi stilova kao kod). Primer: „Cilja pretragu ‚vlažnost vazduha u stanu\'; jasna činjenica za Google pretragu."';
+
   return `**${note}**
+${hintRule}
 {
   "titles": [
-    { "text": "...", "style": "informativni", "length": 56, "reasoning": "CoT: ..." },
-    { "text": "...", "style": "informativni", "length": 58, "reasoning": "..." },
-    { "text": "...", "style": "geo_pitanje", "length": 52, "reasoning": "..." },
-    { "text": "...", "style": "geo_pitanje", "length": 54, "reasoning": "..." },
-    { "text": "...", "style": "discover_hook", "length": 60, "reasoning": "..." },
-    { "text": "...", "style": "discover_hook", "length": 62, "reasoning": "..." }
+    { "text": "...", "style": "informativni", "length": 56, "reasoning": "CoT: ...", "hint": "..." },
+    { "text": "...", "style": "informativni", "length": 58, "reasoning": "...", "hint": "..." },
+    { "text": "...", "style": "geo_pitanje", "length": 52, "reasoning": "...", "hint": "..." },
+    { "text": "...", "style": "geo_pitanje", "length": 54, "reasoning": "...", "hint": "..." },
+    { "text": "...", "style": "discover_hook", "length": 60, "reasoning": "...", "hint": "..." },
+    { "text": "...", "style": "discover_hook", "length": 62, "reasoning": "...", "hint": "..." }
   ]
 }`;
 }

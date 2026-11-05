@@ -1,5 +1,5 @@
 /**
- * SEO GEM — CMS Embed Script (Multi-Language)
+ * SEO GEM — CMS Embed Script v2.2 (Multi-Language)
  * Embeds SEO title generation and meta/keywords/schema auto-fill into any CMS.
  *
  * Usage:
@@ -7,6 +7,7 @@
  *   src="https://seo-gem-app.vercel.app/cms-embed.js"
  *   data-api-key="sk_cms_newsmax_xxx"
  *   data-language="sr"  (sr|en|pl|sq, default: sr)
+ *   data-title-max="75" (optional, default: 75)
  *   data-field-seo-title='[name="og_title"]'
  *   data-field-meta-desc='[name="meta_description"]'
  *   data-field-keywords='[name="keywords"]'
@@ -26,9 +27,12 @@
   const scriptTag = document.currentScript || document.querySelector('script[data-api-key]');
   if (!scriptTag) { console.error('[SEO GEM] Script tag not found'); return; }
 
+  const rawTitleMax = parseInt(scriptTag.getAttribute('data-title-max') || '75', 10);
+
   const CONFIG = {
     apiBase: scriptTag.getAttribute('data-api-base') || scriptTag.src.replace('/cms-embed.js', ''),
     apiKey: scriptTag.getAttribute('data-api-key') || '',
+    titleMax: (!isNaN(rawTitleMax) && rawTitleMax > 0) ? rawTitleMax : 75,
     fields: {
       seoTitle: scriptTag.getAttribute('data-field-seo-title') || '[name="og_title"]',
       metaDesc: scriptTag.getAttribute('data-field-meta-desc') || '[name="meta_description"]',
@@ -60,6 +64,11 @@
       errorGenerate: 'Greška pri generisanju SEO polja.',
       errorTitles: 'Greška pri generisanju naslova.',
       categories: { informativni: '📘 INFORMATIVNI', geo_pitanje: '🌍 GEO', discover_hook: '📱 DISCOVER HOOK' },
+      categoryDescriptions: {
+        informativni: 'Jasna činjenica sa ključnom frazom, za klasičnu Google pretragu',
+        geo_pitanje: 'Pitanje i direktan odgovor, za AI preglede i glasovnu pretragu',
+        discover_hook: 'Konkretna zanimljivost bez klik-mamca, za Google Discover',
+      },
       customLabel: '✏️ Sopstveni:',
       confirmButton: '✅ Potvrdi izbor',
       regenerateButton: '🔄 Novi predlozi',
@@ -81,6 +90,11 @@
       errorGenerate: 'Error generating SEO fields.',
       errorTitles: 'Error generating titles.',
       categories: { informativni: '📘 INFORMATIVE', geo_pitanje: '🌍 GEO QUESTION', discover_hook: '📱 DISCOVER HOOK' },
+      categoryDescriptions: {
+        informativni: 'Clear fact with key phrase, for classic Google search',
+        geo_pitanje: 'Question and direct answer, for AI Overviews and voice search',
+        discover_hook: 'Concrete hook without clickbait, for Google Discover',
+      },
       customLabel: '✏️ Custom:',
       confirmButton: '✅ Confirm Selection',
       regenerateButton: '🔄 New Suggestions',
@@ -102,6 +116,11 @@
       errorGenerate: 'Błąd podczas generowania pól SEO.',
       errorTitles: 'Błąd podczas generowania tytułów.',
       categories: { informativni: '📘 INFORMACYJNY', geo_pitanje: '🌍 GEO PYTANIE', discover_hook: '📱 DISCOVER HOOK' },
+      categoryDescriptions: {
+        informativni: 'Jasny fakt z frazą kluczową, do klasycznej wyszukiwarki Google',
+        geo_pitanje: 'Pytanie i bezpośrednia odpowiedź, dla przeglądów AI i wyszukiwania głosowego',
+        discover_hook: 'Konkretna ciekawostka bez clickbaitu, dla Google Discover',
+      },
       customLabel: '✏️ Własny:',
       confirmButton: '✅ Potwierdź wybór',
       regenerateButton: '🔄 Nowe propozycje',
@@ -123,6 +142,11 @@
       errorGenerate: 'Gabim gjat\u00eb gjenerimit t\u00eb fushave SEO.',
       errorTitles: 'Gabim gjat\u00eb gjenerimit t\u00eb titujve.',
       categories: { informativni: '📘 INFORMATIV', geo_pitanje: '🌍 GEO PYETJE', discover_hook: '📱 DISCOVER HOOK' },
+      categoryDescriptions: {
+        informativni: 'Fakt i qart\u00eb me fraz\u00ebn ky\u00e7e, p\u00ebr k\u00ebrkimin klasik n\u00eb Google',
+        geo_pitanje: 'Pyetje dhe p\u00ebrgjigje e drejtp\u00ebrdrejt\u00eb, p\u00ebr p\u00ebrmbledhjet AI dhe k\u00ebrkimin me z\u00eb',
+        discover_hook: 'Detaj interesant pa clickbait, p\u00ebr Google Discover',
+      },
       customLabel: '✏️ I personalizuar:',
       confirmButton: '✅ Konfirmo zgjedhjen',
       regenerateButton: '🔄 Sugjerime t\u00eb reja',
@@ -139,7 +163,7 @@
   const STYLES = `
     .seo-gem-btn {
       display: inline-flex; align-items: center; gap: 8px;
-      padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;
+      padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer;
       font-family: 'Inter', -apple-system, sans-serif; font-size: 14px; font-weight: 600;
       color: #fff; background: linear-gradient(135deg, #059669, #0d9488);
       box-shadow: 0 2px 8px rgba(5,150,105,0.3);
@@ -156,60 +180,97 @@
     }
 
     .seo-gem-panel {
-      display: none; margin: 12px 0; padding: 0;
+      display: none; position: static; width: 100%; box-sizing: border-box;
+      margin: 10px 0; padding: 0;
       border: 2px solid #059669; border-radius: 12px;
-      background: #fff; overflow: hidden;
+      background: #fff; overflow: visible;
       font-family: 'Inter', -apple-system, sans-serif;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
     }
     .seo-gem-panel.open { display: block; }
     .seo-gem-panel-header {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 12px 16px; background: linear-gradient(135deg, #ecfdf5, #f0fdfa);
-      border-bottom: 1px solid #d1fae5;
+      padding: 8px 14px; background: linear-gradient(135deg, #ecfdf5, #f0fdfa);
+      border-bottom: 1px solid #d1fae5; border-radius: 10px 10px 0 0;
     }
     .seo-gem-panel-header h3 {
       margin: 0; font-size: 15px; font-weight: 700; color: #065f46;
     }
     .seo-gem-close {
       background: none; border: none; cursor: pointer; font-size: 18px;
-      color: #6b7280; padding: 4px 8px; border-radius: 4px;
+      color: #6b7280; padding: 2px 6px; border-radius: 4px; line-height: 1;
     }
     .seo-gem-close:hover { background: #f3f4f6; }
-    .seo-gem-panel-body { padding: 16px; max-height: 420px; overflow-y: auto; }
+    .seo-gem-panel-body { padding: 10px 14px; }
 
-    .seo-gem-category { margin-bottom: 12px; }
+    .seo-gem-category { margin-bottom: 8px; }
+    .seo-gem-category:last-of-type { margin-bottom: 4px; }
+    .seo-gem-category-header {
+      display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px;
+      margin-bottom: 3px; line-height: 1.35;
+    }
     .seo-gem-category-label {
       font-size: 11px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.5px; margin-bottom: 6px; padding: 2px 0;
+      letter-spacing: 0.5px; margin: 0; padding: 0;
+    }
+    .seo-gem-category-desc {
+      font-size: 11px; font-weight: 400; color: #6b7280;
     }
     .seo-gem-cat-info { color: #2563eb; }
     .seo-gem-cat-geo { color: #059669; }
     .seo-gem-cat-discover { color: #7c3aed; }
 
     .seo-gem-title-option {
-      display: flex; align-items: flex-start; gap: 8px;
-      padding: 8px 10px; margin-bottom: 4px; border-radius: 8px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 8px; margin-bottom: 2px; border-radius: 6px;
       cursor: pointer; border: 1px solid transparent;
       transition: all 0.15s ease;
     }
     .seo-gem-title-option:hover { background: #f9fafb; border-color: #e5e7eb; }
     .seo-gem-title-option.selected { background: #ecfdf5; border-color: #059669; }
     .seo-gem-title-option input[type="radio"] {
-      margin-top: 3px; accent-color: #059669; flex-shrink: 0;
+      margin: 0; accent-color: #059669; flex-shrink: 0;
     }
-    .seo-gem-title-text { font-size: 13px; font-weight: 500; color: #111827; line-height: 1.4; }
+    .seo-gem-title-text {
+      flex: 1; font-size: 13px; font-weight: 500; color: #111827; line-height: 1.35;
+    }
     .seo-gem-title-meta {
-      font-size: 11px; color: #9ca3af; margin-top: 2px;
+      font-size: 11px; color: #9ca3af; white-space: nowrap; flex-shrink: 0;
+    }
+
+    .seo-gem-hint-wrap {
+      position: relative; display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0; cursor: pointer; user-select: none; margin-left: 2px;
+    }
+    .seo-gem-hint-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 50%;
+      font-size: 13px; line-height: 1; color: #059669;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .seo-gem-hint-wrap:hover .seo-gem-hint-icon,
+    .seo-gem-hint-wrap.active .seo-gem-hint-icon {
+      background: #d1fae5; color: #065f46;
+    }
+    .seo-gem-hint-tooltip {
+      display: none; position: absolute; right: 0; bottom: calc(100% + 6px);
+      width: max-content; max-width: 320px; padding: 6px 10px;
+      background: #1f2937; color: #f9fafb; font-size: 12px; font-weight: 400;
+      line-height: 1.35; border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+      z-index: 50; white-space: normal; text-align: left; pointer-events: none;
+    }
+    .seo-gem-hint-wrap:hover .seo-gem-hint-tooltip,
+    .seo-gem-hint-wrap.active .seo-gem-hint-tooltip {
+      display: block;
     }
 
     .seo-gem-custom {
-      margin-top: 8px; padding: 8px 10px; border-radius: 8px;
+      margin-top: 6px; padding: 6px 8px; border-radius: 6px;
       border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px;
     }
     .seo-gem-custom input[type="text"] {
       flex: 1; border: 1px solid #d1d5db; border-radius: 6px;
-      padding: 6px 10px; font-size: 13px; outline: none;
+      padding: 5px 10px; font-size: 13px; outline: none;
       font-family: 'Inter', -apple-system, sans-serif;
     }
     .seo-gem-custom input[type="text"]:focus { border-color: #059669; box-shadow: 0 0 0 2px rgba(5,150,105,0.15); }
@@ -217,29 +278,30 @@
 
     .seo-gem-actions {
       display: flex; gap: 8px; justify-content: flex-end;
-      padding: 12px 16px; border-top: 1px solid #e5e7eb; background: #fafafa;
+      padding: 8px 14px; border-top: 1px solid #e5e7eb; background: #fafafa;
+      border-radius: 0 0 10px 10px;
     }
 
     .seo-gem-loading {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      padding: 40px 16px; text-align: center;
+      padding: 28px 16px; text-align: center;
     }
     .seo-gem-spinner {
-      width: 36px; height: 36px; border: 3px solid #e5e7eb;
+      width: 34px; height: 34px; border: 3px solid #e5e7eb;
       border-top-color: #059669; border-radius: 50%;
       animation: seo-gem-spin 0.8s linear infinite;
     }
     @keyframes seo-gem-spin { to { transform: rotate(360deg); } }
-    .seo-gem-loading-text { margin-top: 12px; font-size: 13px; color: #6b7280; }
+    .seo-gem-loading-text { margin-top: 10px; font-size: 13px; color: #6b7280; }
 
     .seo-gem-error {
-      padding: 12px 16px; background: #fef2f2; border: 1px solid #fecaca;
-      border-radius: 8px; margin: 8px 16px; color: #991b1b; font-size: 13px;
+      padding: 10px 14px; background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: 8px; margin: 6px 0; color: #991b1b; font-size: 13px;
     }
 
     .seo-gem-success {
-      padding: 12px 16px; background: #ecfdf5; border: 1px solid #a7f3d0;
-      border-radius: 8px; margin: 8px 16px; color: #065f46; font-size: 13px;
+      padding: 10px 14px; background: #ecfdf5; border: 1px solid #a7f3d0;
+      border-radius: 8px; margin: 4px 0; color: #065f46; font-size: 13px;
     }
   `;
 
@@ -384,33 +446,39 @@
 
     else if (state.phase === 'titles') {
       const cats = {
-        informativni: { label: t.categories.informativni, cls: 'seo-gem-cat-info' },
-        geo_pitanje: { label: t.categories.geo_pitanje, cls: 'seo-gem-cat-geo' },
-        discover_hook: { label: t.categories.discover_hook, cls: 'seo-gem-cat-discover' },
+        informativni: { label: t.categories.informativni, desc: t.categoryDescriptions.informativni, cls: 'seo-gem-cat-info' },
+        geo_pitanje: { label: t.categories.geo_pitanje, desc: t.categoryDescriptions.geo_pitanje, cls: 'seo-gem-cat-geo' },
+        discover_hook: { label: t.categories.discover_hook, desc: t.categoryDescriptions.discover_hook, cls: 'seo-gem-cat-discover' },
       };
 
       // Group titles by style
       const grouped = {};
-      state.titles.forEach((t, i) => {
-        if (!grouped[t.style]) grouped[t.style] = [];
-        grouped[t.style].push({ ...t, idx: i });
+      state.titles.forEach((item, i) => {
+        if (!grouped[item.style]) grouped[item.style] = [];
+        grouped[item.style].push({ ...item, idx: i });
       });
 
       for (const [style, info] of Object.entries(cats)) {
         const items = grouped[style] || [];
         if (items.length === 0) continue;
         bodyHTML += `<div class="seo-gem-category">
-          <div class="seo-gem-category-label ${info.cls}">${info.label}</div>`;
+          <div class="seo-gem-category-header">
+            <span class="seo-gem-category-label ${info.cls}">${info.label}</span>
+            <span class="seo-gem-category-desc">— ${escHtml(info.desc)}</span>
+          </div>`;
         for (const item of items) {
           const checked = state.selectedIndex === item.idx ? 'checked' : '';
           const selectedCls = state.selectedIndex === item.idx ? 'selected' : '';
+          const hintText = (item.hint && typeof item.hint === 'string') ? item.hint.trim() : '';
+          const hintHTML = hintText
+            ? `<span class="seo-gem-hint-wrap" data-hint-idx="${item.idx}" role="button" tabindex="0" aria-label="Info"><span class="seo-gem-hint-icon">ⓘ</span><span class="seo-gem-hint-tooltip">${escHtml(hintText)}</span></span>`
+            : '';
           bodyHTML += `
             <label class="seo-gem-title-option ${selectedCls}" data-idx="${item.idx}">
               <input type="radio" name="seo-gem-title" value="${item.idx}" ${checked}>
-              <div>
-                <div class="seo-gem-title-text">${escHtml(item.text)}</div>
-                <div class="seo-gem-title-meta">${item.length} kar. │ ${escHtml(item.reasoning.replace(/^CoT:\s*/i, ''))}</div>
-              </div>
+              <span class="seo-gem-title-text">${escHtml(item.text)}</span>
+              <span class="seo-gem-title-meta">${item.length} kar.</span>
+              ${hintHTML}
             </label>`;
         }
         bodyHTML += '</div>';
@@ -421,10 +489,10 @@
         <div class="seo-gem-custom">
           <input type="radio" name="seo-gem-title" value="custom" ${state.selectedIndex === 'custom' ? 'checked' : ''}>
           <span style="font-size:13px;white-space:nowrap">${t.customLabel}</span>
-          <input type="text" id="seo-gem-custom-input" maxlength="75"
+          <input type="text" id="seo-gem-custom-input" maxlength="${CONFIG.titleMax}"
             placeholder="..."
             value="${escHtml(state.customTitle)}">
-          <span class="seo-gem-custom-count">${state.customTitle.length}/75</span>
+          <span class="seo-gem-custom-count">${state.customTitle.length}/${CONFIG.titleMax}</span>
         </div>`;
     }
 
@@ -513,7 +581,7 @@
       customInput.oninput = () => {
         state.customTitle = customInput.value;
         const countEl = customInput.parentElement.querySelector('.seo-gem-custom-count');
-        if (countEl) countEl.textContent = state.customTitle.length + '/75';
+        if (countEl) countEl.textContent = state.customTitle.length + '/' + CONFIG.titleMax;
       };
       customInput.onfocus = () => {
         state.selectedIndex = 'custom';
@@ -576,9 +644,21 @@
       render();
     };
 
+    // Info hint toggle on click/tap
+    panelEl.querySelectorAll('.seo-gem-hint-wrap').forEach(wrap => {
+      wrap.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const wasActive = wrap.classList.contains('active');
+        panelEl.querySelectorAll('.seo-gem-hint-wrap.active').forEach(el => el.classList.remove('active'));
+        if (!wasActive) wrap.classList.add('active');
+      };
+    });
+
     // Click on title option label
     panelEl.querySelectorAll('.seo-gem-title-option').forEach(label => {
       label.onclick = (e) => {
+        if (e.target.closest && e.target.closest('.seo-gem-hint-wrap')) return;
         if (e.target.tagName === 'INPUT') return; // radio handles itself
         const radio = label.querySelector('input[type="radio"]');
         if (radio) { radio.checked = true; radio.dispatchEvent(new Event('change')); }
@@ -1010,6 +1090,13 @@
     panelEl = document.createElement('div');
     panelEl.className = 'seo-gem-panel';
 
+    // Close active hint tooltip when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!panelEl) return;
+      if (e.target.closest && e.target.closest('.seo-gem-hint-wrap')) return;
+      panelEl.querySelectorAll('.seo-gem-hint-wrap.active').forEach(el => el.classList.remove('active'));
+    });
+
     // Find insertion point — try to place after the body editor or before SEO Title field
     const seoTitleField = document.querySelector(CONFIG.fields.seoTitle);
     const insertTarget = seoTitleField
@@ -1025,7 +1112,7 @@
       document.body.appendChild(panelEl);
     }
 
-    console.log('[SEO GEM] Initialized. Editor:', CONFIG.editorType, '| API:', CONFIG.apiBase, '| Language:', CONFIG.language);
+    console.log('[SEO GEM] v2.2 Initialized. Editor:', CONFIG.editorType, '| API:', CONFIG.apiBase, '| Language:', CONFIG.language, '| TitleMax:', CONFIG.titleMax);
   }
 
   function schedulePendingChecks() {

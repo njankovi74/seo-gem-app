@@ -10,6 +10,7 @@ export interface TitleOption {
   style: 'informativni' | 'geo_pitanje' | 'discover_hook';
   length: number;
   reasoning: string;
+  hint?: string;
 }
 
 export type SelectionType =
