@@ -2,7 +2,7 @@
 <html lang="sr">
 <head>
   <meta charset="UTF-8">
-  <title>CMS Simulator — SEO GEM Embed Test</title>
+  <title>CMS test A</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #1e3a5f; color: #333; padding: 20px; }
@@ -47,7 +47,7 @@
 <body>
 
 <div class="cms-header">
-  <span>🧪 Cubes CMS Simulator</span> — Test stranica za SEO GEM embed
+  <span>🧪 CMS test A</span> — Test stranica za SEO GEM embed
 </div>
 
 <div class="cms-container">
@@ -75,7 +75,7 @@
   </div>
 
   <div class="note">
-    ⚠️ Ovo je simulacija Cubes CMS-a sa istim field name atributima. Unesite tekst u body editor i kliknite zeleno SEO GEM dugme.
+    ⚠️ Ovo je lokalna test stranica (CMS test A). Unesite tekst u body editor i kliknite zeleno SEO GEM dugme.
   </div>
 
   <h2>Uređivanje članka</h2>
@@ -230,8 +230,9 @@ Vlada je najavila novi paket mera podrške koji bi trebalo da bude usvojen do kr
         window.__seoGemLoaded = false;
 
         const s = document.createElement('script');
-        s.src = '/cms-embed.js';
+        s.src = 'http://localhost:3000/cms-embed.js';
         s.setAttribute('data-seo-gem-dynamic', 'true');
+        s.setAttribute('data-api-base', 'http://localhost:3000');
         s.setAttribute('data-api-key', apiKey);
         s.setAttribute('data-language', lang);
         s.setAttribute('data-field-seo-title', '[name="og_title"]');

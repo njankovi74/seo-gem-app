@@ -5,7 +5,7 @@
  * Usage:
  * <script
  *   src="https://seo-gem-app.vercel.app/cms-embed.js"
- *   data-api-key="sk_cms_newsmax_xxx"
+ *   data-api-key="sk_cms_<portal>_xxx"
  *   data-language="sr"  (sr|en|pl|sq, default: sr)
  *   data-title-max="75" (optional, default: 75)
  *   data-field-seo-title='[name="og_title"]'
@@ -49,6 +49,7 @@
     editorType: (scriptTag.getAttribute('data-editor-type') || 'ckeditor').toLowerCase(),
     editorId: scriptTag.getAttribute('data-editor-id') || '',
     saveSelector: scriptTag.getAttribute('data-save-selector') || '',
+    siteDomain: (scriptTag.getAttribute('data-site-domain') || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, ''),
     language: (scriptTag.getAttribute('data-language') || 'sr').toLowerCase(),
   };
 
@@ -434,7 +435,7 @@
     return '';
   }
 
-  // ── Helper: Cubes-compatible slugify (matches server titleToSlug) ──
+  // ── Helper: URL slugify (matches server titleToSlug) ──
   var TRANSLITERATE_MAP = {
     'š': 's', 'đ': 'd', 'č': 'c', 'ć': 'c', 'ž': 'z',
     'Š': 's', 'Đ': 'd', 'Č': 'c', 'Ć': 'c', 'Ž': 'z',
@@ -463,13 +464,17 @@
   function sanitizePublicUrl(rawUrl) {
     if (!rawUrl || typeof rawUrl !== 'string') return '';
     var clean = rawUrl.trim().split('?')[0].split('#')[0];
-    if (
-      !/^https?:\/\//i.test(clean) ||
-      clean.includes('backoffice') ||
-      clean.includes('cubesdev') ||
-      clean.includes('mpanel') ||
-      clean.includes('localhost')
-    ) {
+    if (!/^https?:\/\//i.test(clean) || clean.toLowerCase().includes('backoffice')) {
+      return '';
+    }
+    try {
+      var parsed = new URL(clean);
+      var host = (parsed.hostname || '').toLowerCase();
+      var editorHost = (window.location && window.location.hostname ? window.location.hostname : '').toLowerCase();
+      if (!host || host === 'localhost' || host === '127.0.0.1' || (editorHost && host === editorHost)) {
+        return '';
+      }
+    } catch (e) {
       return '';
     }
     return clean;
@@ -488,13 +493,6 @@
     return clean;
   }
 
-  var LANG_DOMAINS = {
-    sr: 'newsmaxbalkans.com',
-    en: 'newsmaxbalkans.com',
-    sq: 'newsmaxbalkans.al',
-    pl: 'newsmaxpolska.pl'
-  };
-
   function resolveAbsoluteImageUrl(rawImg, publicUrl, schemaObj) {
     if (!rawImg || typeof rawImg !== 'string') return '';
     var trimmed = rawImg.trim();
@@ -508,10 +506,10 @@
       if (!origin && schemaObj && schemaObj.publisher && schemaObj.publisher.logo && schemaObj.publisher.logo.url) {
         try { origin = new URL(schemaObj.publisher.logo.url).origin; } catch (e) { /* */ }
       }
-      if (!origin) {
-        var dom = LANG_DOMAINS[CONFIG.language] || LANG_DOMAINS.sr;
-        origin = 'https://' + dom;
+      if (!origin && CONFIG.siteDomain) {
+        origin = 'https://' + CONFIG.siteDomain;
       }
+      if (!origin) return '';
       return origin + trimmed;
     }
     return '';
@@ -956,37 +954,37 @@
     render();
   }
 
-  // ── Helper: extract article ID from page (Cubes + mPanel patterns) ──
+  // ── Helper: extract article ID from page (CMS tip A: numerički ID u adresi; CMS tip B: ID u /edit/{id} ili meta tagu) ──
   function extractArticleIdFromPage() {
     var backofficeUrl = window.location.href || '';
     var articleId = '';
 
-    // Pattern 1a (Cubes): /articles/57081/edit or /articles/57081/ (with trailing slash)
+    // Pattern 1a (CMS tip A — numerički ID u adresi): /articles/57081/edit or /articles/57081/ (with trailing slash)
     var match1 = backofficeUrl.match(/\/articles\/(\d{4,})\//);
     if (match1) {
       articleId = match1[1];
-      console.log('[SEO GEM] Found article ID from URL (Cubes /articles/{id}/):', articleId);
+      console.log('[SEO GEM] Found article ID from URL (CMS tip A /articles/{id}/):', articleId);
     }
 
-    // Pattern 1b (Cubes): /articles/57081 (no trailing slash, end of URL or with query)
+    // Pattern 1b (CMS tip A — numerički ID u adresi): /articles/57081 (no trailing slash, end of URL or with query)
     if (!articleId) {
       var match2 = backofficeUrl.match(/\/articles\/(\d{4,})(?:\?|#|$)/);
       if (match2) {
         articleId = match2[1];
-        console.log('[SEO GEM] Found article ID from URL (Cubes /articles/{id}):', articleId);
+        console.log('[SEO GEM] Found article ID from URL (CMS tip A /articles/{id}):', articleId);
       }
     }
 
-    // Pattern 2 (mPanel): /articles/edit/{id}
+    // Pattern 2 (CMS tip B — ID u /edit/{id}): /articles/edit/{id}
     if (!articleId) {
-      var matchMpanel = backofficeUrl.match(/\/articles\/edit\/(\d+)(?:\/|\?|#|$)/);
-      if (matchMpanel) {
-        articleId = matchMpanel[1];
-        console.log('[SEO GEM] Found article ID from URL (mPanel /articles/edit/{id}):', articleId);
+      var matchEditId = backofficeUrl.match(/\/articles\/edit\/(\d+)(?:\/|\?|#|$)/);
+      if (matchEditId) {
+        articleId = matchEditId[1];
+        console.log('[SEO GEM] Found article ID from URL (CMS tip B /articles/edit/{id}):', articleId);
       }
     }
 
-    // Pattern 3 (mPanel meta): <meta name="article-id" content="..."> if numeric
+    // Pattern 3 (CMS tip B — ID u meta tagu): <meta name="article-id" content="..."> if numeric
     if (!articleId) {
       try {
         var metaIdEl = document.querySelector('meta[name="article-id"]');
@@ -1053,14 +1051,10 @@
       var allLinks = document.querySelectorAll('a[href]');
       for (var li = 0; li < allLinks.length; li++) {
         var linkHref = allLinks[li].href || '';
-        // Must be public (not backoffice), must contain our exact article ID in path
-        if (linkHref
-            && !linkHref.includes('backoffice')
-            && !linkHref.includes('cubesdev')
-            && linkHref.startsWith('http')
-            && linkHref.match(new RegExp('/' + id + '/'))) {
-          console.log('[SEO GEM] Found public URL matching article ID ' + id + ':', linkHref);
-          return linkHref;
+        var validUrl = sanitizePublicUrl(linkHref);
+        if (validUrl && validUrl.match(new RegExp('/' + id + '/'))) {
+          console.log('[SEO GEM] Found public URL matching article ID ' + id + ':', validUrl);
+          return validUrl;
         }
       }
     } catch(e) { /* */ }
@@ -1105,7 +1099,7 @@
       }
     }
 
-    // 3. Cubes public link on page matching exact article ID
+    // 3. Public link on page matching exact article ID (CMS tip A)
     if (!resolved && articleId) {
       resolved = sanitizePublicUrl(findPublicUrlForId(articleId));
     }
