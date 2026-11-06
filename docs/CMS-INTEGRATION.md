@@ -77,6 +77,7 @@ CMS stranica za uređivanje članka (<script src="https://seo-gem-app.vercel.app
 | `data-editor-id` | Ne | `''` | ID TinyMCE instance (npr. `content` → `tinymce.get('content')` pre `activeEditor`) |
 | `data-save-selector` | Ne | `''` | CSS selektor dugmeta za AJAX čuvanje (npr. `#save`) na čiji `click` u capture fazi radi čuvar sheme |
 | `data-site-domain` | Ne | `''` | Javni domen portala za rešavanje relativnih putanja slika u čuvaru sheme ako nisu poznati javni URL ili `publisher.logo.url` |
+| `data-image-base` | Ne | `''` | Bazni URL prefiks za sliku članka (npr. CDN/cache prefiks bez završne `/`); spaja se sa relativnom vrednošću polja slike (`CONFIG.imageBase + '/' + raw.replace(/^\/+/, '')`) i u `gatherGenerateMetadata` i u čuvaru sheme |
 | `data-field-seo-title` | Ne | `[name="og_title"]` | CSS selektor polja u koje se upisuje SEO naslov |
 | `data-field-meta-desc` | Ne | `[name="meta_description"]` | CSS selektor polja u koje se upisuje Meta Description |
 | `data-field-keywords` | Ne | `[name="keywords"]` | CSS selektor polja u koje se upisuju ključne reči |

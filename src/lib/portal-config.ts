@@ -29,8 +29,7 @@ export const PUBLISHER_INFO: Record<string, { name: string; logoUrl: string; dom
   },
   insajder: {
     name: 'Insajder',
-    // TODO: potvrditi zvanični logo sa Appworks-om
-    logoUrl: 'https://insajder.net/_next/static/media/logo.fff134dd.svg',
+    logoUrl: 'https://insajder.net/apple-icon.png',
     domain: 'insajder.net',
   },
 };
