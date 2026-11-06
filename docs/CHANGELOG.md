@@ -4,6 +4,14 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+## 2026-11-06 — Slika iz CMS polja sa relativnom putanjom (`data-image-base`, embed v2.5) + logo Insajder
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-11-06 | feat | `public/cms-embed.js` (v2.5), `src/lib/portal-config.ts`, `scripts/test-pages/cms-test-mpanel.html`: u `cms-embed.js` dodat opcioni atribut `data-image-base` (`CONFIG.imageBase`) i funkcija `resolveImageFieldValue(raw, publicUrl, schemaObj)` koja pretvara relativne putanje iz polja slike u apsolutan URL i pri generisanju (`gatherGenerateMetadata`) i u čuvaru sheme (`applySchemaGuard`), dok bez `data-image-base` ostaje postojeće ponašanje preko `resolveAbsoluteImageUrl`; u `PUBLISHER_INFO.insajder` postavljen stalni `logoUrl` (`https://insajder.net/apple-icon.png`) |
+
+---
+
 ## 2026-11-05 — Priprema SEO GEM-a za portal Insajder (CMS mPanel, embed v2.4)
 
 | Datum | Tip | Opis |

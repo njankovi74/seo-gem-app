@@ -38,7 +38,7 @@
 <body>
 
 <div class="cms-header">
-  <span>🧪 CMS test B</span> — Test stranica za SEO GEM embed v2.4
+  <span>🧪 CMS test B</span> — Test stranica za SEO GEM embed v2.5
 </div>
 
 <div class="cms-container">
@@ -68,6 +68,11 @@
           <option value="40">Hronika</option>
         </select>
       </div>
+    </div>
+
+    <div class="field">
+      <label for="image_file">Slika članka (<code>#image_file</code> / <code>[name="image_og"]</code>)</label>
+      <input type="text" id="image_file" name="image_og" value="files/images/proba.jpg">
     </div>
 
     <div class="field">
@@ -182,6 +187,8 @@ Ipak, podaci pokazuju da se u čak 36 od 43 analizirana postupka kao jedini pozv
   data-field-keywords="#seo_keywords" data-field-schema="#seo_schema"
   data-field-title="#title" data-field-lead="#intro"
   data-field-author="select#authors" data-field-section="select#categories"
+  data-field-image="#image_file"
+  data-image-base="https://cdn.example.test/image/cache/og"
   data-field-article-url='meta[name="article-url"], link[rel="canonical"]'
   data-save-selector="#save"></script>
 

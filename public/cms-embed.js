@@ -1,5 +1,5 @@
 /**
- * SEO GEM — CMS Embed Script v2.4 (Multi-Language)
+ * SEO GEM — CMS Embed Script v2.5 (Multi-Language)
  * Embeds SEO title generation and meta/keywords/schema auto-fill into any CMS.
  *
  * Usage:
@@ -50,6 +50,7 @@
     editorId: scriptTag.getAttribute('data-editor-id') || '',
     saveSelector: scriptTag.getAttribute('data-save-selector') || '',
     siteDomain: (scriptTag.getAttribute('data-site-domain') || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, ''),
+    imageBase: (scriptTag.getAttribute('data-image-base') || '').trim().replace(/\/+$/, ''),
     language: (scriptTag.getAttribute('data-language') || 'sr').toLowerCase(),
   };
 
@@ -515,6 +516,17 @@
     return '';
   }
 
+  function resolveImageFieldValue(raw, publicUrl, schemaObj) {
+    if (!raw || typeof raw !== 'string') return '';
+    var trimmed = raw.trim();
+    if (!trimmed || trimmed.toLowerCase() === 'none') return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    if (CONFIG.imageBase) {
+      return CONFIG.imageBase + '/' + trimmed.replace(/^\/+/, '');
+    }
+    return resolveAbsoluteImageUrl(trimmed, publicUrl, schemaObj);
+  }
+
   // ── Helper: get body text from CKEditor or other editors ──
   function getBodyText() {
     if (CONFIG.editorType === 'ckeditor') {
@@ -777,13 +789,19 @@
     } catch (e) { /* */ }
     var publishedAt = '';
     try { publishedAt = parsePublishedDateToISO(getFieldValue(CONFIG.fields.published)); } catch (e) { /* */ }
-    var imageUrl = '';
-    try { imageUrl = getFieldValue(CONFIG.fields.image) || ''; } catch (e) { /* */ }
     var existingSchema = '';
-    try { existingSchema = getValidExistingSchema(); } catch (e) { /* */ }
+    var existingSchemaObj = null;
+    try {
+      existingSchema = getValidExistingSchema();
+      if (existingSchema) existingSchemaObj = JSON.parse(existingSchema);
+    } catch (e) { /* */ }
 
     var articleId = extractArticleIdFromPage();
     var publicUrl = resolvePublicUrl(articleId);
+    var imageUrl = '';
+    try {
+      imageUrl = resolveImageFieldValue(getFieldValue(CONFIG.fields.image), publicUrl, existingSchemaObj) || '';
+    } catch (e) { /* */ }
 
     var articleUrl = publicUrl;
     if (!articleUrl && articleId) {
@@ -1404,7 +1422,7 @@
       if (!hasImage) {
         var rawImg = getFieldValue(CONFIG.fields.image);
         if (rawImg) {
-          var absImg = resolveAbsoluteImageUrl(rawImg, pubUrl, schemaObj);
+          var absImg = resolveImageFieldValue(rawImg, pubUrl, schemaObj);
           if (absImg) {
             schemaObj.image = { '@type': 'ImageObject', url: absImg };
           }
@@ -1499,7 +1517,7 @@
       document.body.appendChild(panelEl);
     }
 
-    console.log('[SEO GEM] v2.4 Initialized. Editor:', CONFIG.editorType, '| API:', CONFIG.apiBase, '| Language:', CONFIG.language, '| TitleMax:', CONFIG.titleMax);
+    console.log('[SEO GEM] v2.5 Initialized. Editor:', CONFIG.editorType, '| API:', CONFIG.apiBase, '| Language:', CONFIG.language, '| TitleMax:', CONFIG.titleMax);
   }
 
   function schedulePendingChecks() {
