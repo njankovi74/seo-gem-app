@@ -55,6 +55,18 @@
 
 ## Rešeni problemi
 
+### Sistemski nalozi i redakcije kao `Person` u Schema.org + nevidljivi 422/timeout neuspesi na `/api/cms/titles` (rešeno 11. nov 2026)
+
+**Problem:**
+1. Kada novinar u CMS-u ne izabere autora, iz polja stiže sistemski nalog (`Cubes d.o.o.`) ili oznaka redakcije (`Redaksia Newsmax Balkans`, `Redakcija`), a `finalizeSchema` ih je upisivao kao `@type: "Person"` jer se nisu doslovno poklapali sa `pubName`.
+2. Na `/api/cms/titles` jezička blokada (`422`) i prekid serverless funkcije posle 60 s nisu ostavljali nikakav red u `generation_log` (videli su se samo u Vercel logovima).
+
+**Rešenje (11.11.2026, grana `fix/3.3c-author-logging`):**
+1. U `src/lib/portal-config.ts` dodate su izvezene liste `NEWSROOM_AUTHOR_WORDS`, `SYSTEM_AUTHOR_MARKERS`, `LEGAL_ENTITY_SUFFIXES` i `NEWS_AGENCIES`, a u `src/lib/seo-output.ts` funkcija `resolveSchemaAuthor(rawAuthor, pubName)` koja prepoznaje izdavače iz `PUBLISHER_INFO`, oznake redakcije (cela reč), sistemske naloge (`cubes`), pravne forme (kada je pravna forma cela vrednost dela ili joj prethodi razmak `normPart === ns || normPart.endsWith(' ' + ns)`, uz izuzetak za prezime `Doo` sa velikim početnim slovom kao u `Kim Doo`) i novinske agencije (`Beta`, `Tanjug` itd.) kao `Organization`, dok stvarna imena novinara ostaju `Person` (uz uklanjanje duplikata).
+2. U `src/app/api/cms/titles/route.ts` pre oba `422` izlaza upisuje se red u `generation_log` (`status: 'error'`, `error_type: 'language_mismatch'`), pri čemu i slučaj kada jezički retry vrati manje od 3 naslova sada baca `Expected at least 3 titles, got N`, vraća `422` i beleži `language_mismatch` (ranije je u tom slučaju kod nastavljao sa naslovima na pogrešnom jeziku iz prvog pokušaja i završavao kao uspeh). Pri uspešnom jezičkom retry-u u `success` red dodaje se `error_type: 'language_retry_ok'`, a `maxDuration` je podignut na `90` uz rok obrade zahteva od `85` s (`TITLES_DEADLINE_MS`, default `85000`) koji pri prekoračenju upisuje tačno jedan red (`status: 'error'`, `error_type: 'llm_timeout'`, sa fiksnom porukom za `DeadlineError` ili izvornom porukom do 300 znakova za druge `timeout|deadline|aborted` greške) i vraća HTTP `504` (`Generation is taking too long. Please try again.`).
+
+---
+
 ### API ključ bio upisan u javnoj test-stranici (rešeno 3. nov 2026)
 
 **Problem:** U fajlu `public/cms-test.html` (javno dostupnom na `/cms-test.html`) u statičkom `<script>` tagu bio je upisan pravi API ključ portala.
