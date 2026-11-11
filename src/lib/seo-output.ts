@@ -1,6 +1,15 @@
 import { getLanguageConfig, type SupportedLanguage } from './i18n';
 import { getSEOPrompt } from './prompts/seo-prompt';
-import { PORTAL_DOMAINS, buildCanonicalUrlFromPublicUrl, toTitleCase } from './portal-config';
+import {
+  PORTAL_DOMAINS,
+  PUBLISHER_INFO,
+  NEWSROOM_AUTHOR_WORDS,
+  SYSTEM_AUTHOR_MARKERS,
+  LEGAL_ENTITY_SUFFIXES,
+  NEWS_AGENCIES,
+  buildCanonicalUrlFromPublicUrl,
+  toTitleCase,
+} from './portal-config';
 
 export interface SEOOutputs {
   title: string;
@@ -39,6 +48,99 @@ export interface FinalizeSchemaInput {
   publicUrl?: string;
 }
 
+function normalizeAuthorToken(str: string): string {
+  return (str || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Resolves Schema.org author field (Person, Organization, or array of both)
+ * from raw CMS author string and the portal's publisher name.
+ */
+export function resolveSchemaAuthor(
+  rawAuthor?: string,
+  pubName?: string
+): Record<string, any> | Array<Record<string, any>> {
+  const effectivePubName = (pubName || 'Newsmax Balkans').trim();
+  const normPubName = normalizeAuthorToken(effectivePubName);
+
+  const raw = (rawAuthor || '').trim();
+  const parts = raw
+    ? raw
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0 && s.toLowerCase() !== 'none' && s !== '(N/A)')
+    : [];
+
+  if (parts.length === 0) {
+    return { '@type': 'Organization', name: effectivePubName };
+  }
+
+  const resolved = parts.map((part): Record<string, any> => {
+    const normPart = normalizeAuthorToken(part);
+
+    // 1. Publisher of any configured portal in PUBLISHER_INFO (exact match)
+    const matchedPublisher = Object.values(PUBLISHER_INFO).find(
+      (p) => normalizeAuthorToken(p.name) === normPart
+    );
+    if (matchedPublisher) {
+      return { '@type': 'Organization', name: matchedPublisher.name };
+    }
+
+    // 2. This portal's publisher: contains pubName, whole word from NEWSROOM_AUTHOR_WORDS,
+    //    contains marker from SYSTEM_AUTHOR_MARKERS, or ends with LEGAL_ENTITY_SUFFIXES
+    const containsPubName = Boolean(normPubName && normPart.includes(normPubName));
+    const hasNewsroomWord = NEWSROOM_AUTHOR_WORDS.some((word) => {
+      const nw = normalizeAuthorToken(word);
+      if (!nw) return false;
+      const re = new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(nw)}(?![\\p{L}\\p{N}])`, 'u');
+      return re.test(normPart);
+    });
+    const hasSystemMarker = SYSTEM_AUTHOR_MARKERS.some((marker) => {
+      const nm = normalizeAuthorToken(marker);
+      return Boolean(nm && normPart.includes(nm));
+    });
+    const hasLegalSuffix = LEGAL_ENTITY_SUFFIXES.some((suffix) => {
+      const ns = normalizeAuthorToken(suffix);
+      return Boolean(ns && normPart.endsWith(ns));
+    });
+
+    if (containsPubName || hasNewsroomWord || hasSystemMarker || hasLegalSuffix) {
+      return { '@type': 'Organization', name: effectivePubName };
+    }
+
+    // 3. News agency: whole value equals an entry in NEWS_AGENCIES
+    const matchedAgency = NEWS_AGENCIES.find(
+      (agency) => normalizeAuthorToken(agency) === normPart
+    );
+    if (matchedAgency) {
+      return { '@type': 'Organization', name: matchedAgency };
+    }
+
+    // 4. Otherwise: Person (as received)
+    return { '@type': 'Person', name: part };
+  });
+
+  // Deduplicate by (@type + name), preserving input order
+  const seen = new Set<string>();
+  const deduped: Array<Record<string, any>> = [];
+  for (const item of resolved) {
+    const key = `${item['@type']}::${item.name}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(item);
+    }
+  }
+
+  if (deduped.length === 0) {
+    return { '@type': 'Organization', name: effectivePubName };
+  }
+  return deduped.length === 1 ? deduped[0] : deduped;
+}
+
 /**
  * Deterministically sets the core NewsArticle Schema.org fields after cleanSchemaMarkup,
  * while preserving LLM-generated semantic fields (description, articleBody, about, mentions, keywords).
@@ -58,24 +160,7 @@ export function finalizeSchema(input: FinalizeSchemaInput): Record<string, any> 
   const pubName = (input.publisherName || 'Newsmax Balkans').trim();
   const pubLogo = (input.publisherLogoUrl || 'https://newsmaxbalkans.com/files/img/logo.png').trim();
 
-  // Author: if comma-separated (multiple authors in mPanel), split and return Person[] when >1 remain;
-  // otherwise single Person (if != publisherName) or Organization = publisher
-  const rawAuthor = (input.authorName || '').trim();
-  const authorParts = rawAuthor.includes(',')
-    ? rawAuthor
-        .split(',')
-        .map(s => s.trim())
-        .filter(s => s.length > 0 && s.toLowerCase() !== 'none' && s !== '(N/A)')
-    : (rawAuthor.length > 0 && rawAuthor.toLowerCase() !== 'none' && rawAuthor !== '(N/A)' ? [rawAuthor] : []);
-
-  let author: Record<string, any> | Array<Record<string, any>>;
-  if (authorParts.length > 1) {
-    author = authorParts.map(name => ({ '@type': 'Person', name }));
-  } else if (authorParts.length === 1 && authorParts[0].toLowerCase() !== pubName.toLowerCase()) {
-    author = { '@type': 'Person', name: authorParts[0] };
-  } else {
-    author = { '@type': 'Organization', name: pubName };
-  }
+  const author = resolveSchemaAuthor(input.authorName, pubName);
 
   // Article section: Title Case if present, omitted otherwise
   const formattedSection = toTitleCase(input.articleSection);

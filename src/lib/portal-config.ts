@@ -34,6 +34,15 @@ export const PUBLISHER_INFO: Record<string, { name: string; logoUrl: string; dom
   },
 };
 
+// Oznake redakcije: poređenje po celoj reči, bez obzira na veličinu slova
+export const NEWSROOM_AUTHOR_WORDS = ['redakcija', 'redakcije', 'redaksia', 'redakcja', 'redaktion', 'redazione', 'uredništvo', 'urednistvo', 'desk', 'newsroom'];
+// Sistemski nalozi CMS-a: poređenje "sadrži", bez obzira na veličinu slova
+export const SYSTEM_AUTHOR_MARKERS = ['cubes'];
+// Pravne forme: ime se njima završava (posle trim-a), bez obzira na veličinu slova
+export const LEGAL_ENTITY_SUFFIXES = ['d.o.o.', 'd.o.o', 'doo', 'a.d.', 'sp. z o.o.', 'sp. z o. o.', 'sh.p.k.', 'shpk', 'ltd', 'llc', 'inc', 'gmbh', 's.r.l.', 'srl'];
+// Agencije: cela vrednost jednaka imenu, bez obzira na veličinu slova (u podacima do sada viđena: Beta)
+export const NEWS_AGENCIES = ['Beta', 'Tanjug', 'FoNet', 'Hina', 'Reuters', 'AP', 'AFP', 'DPA', 'ANSA', 'PAP', 'ATSH', 'ATA'];
+
 // Transliteration map (Serbian, Polish, Albanian)
 const TRANSLITERATE: Record<string, string> = {
   // Serbian
