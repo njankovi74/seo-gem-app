@@ -69,7 +69,8 @@ Generiše 6 SEO naslova za članak na osnovu teksta članka iz CMS editora.
 **Greške:**
 - `401` — Nevažeći ili nedostajući API ključ (`Authorization: Bearer`)
 - `400` — Nedostaje `body` ili je tekst kraći od 100 karaktera
-- `422` — Jezička validacija neuspešna posle retry-a
+- `422` — Jezička validacija neuspešna posle retry-a (beleži se u `generation_log` sa `error_type: 'language_mismatch'`)
+- `504` — Prekoračeno dozvoljeno vreme obrade zahteva (`TITLES_DEADLINE_MS`, podrazumevano `85000` ms, `maxDuration = 90`; beleži se tačno jedan red u `generation_log` sa `error_type: 'llm_timeout'` i vraća poruka `"Generation is taking too long. Please try again."`)
 - `500` — LLM ili server greška
 
 ---

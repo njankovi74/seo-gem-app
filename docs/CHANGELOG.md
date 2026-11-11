@@ -4,6 +4,15 @@ Hronološki zapis svih promena u projektu.
 
 ---
 
+## 2026-11-11 — Autor u schemi (`resolveSchemaAuthor`) + beleženje skrivenih neuspeha na `/api/cms/titles` (422 i 504)
+
+| Datum | Tip | Opis |
+|---|---|---|
+| 2026-11-11 | fix | `src/lib/portal-config.ts`, `src/lib/seo-output.ts`, `scripts/test-schema-author.ts`: dodate liste `NEWSROOM_AUTHOR_WORDS`, `SYSTEM_AUTHOR_MARKERS`, `LEGAL_ENTITY_SUFFIXES` i `NEWS_AGENCIES` i čista funkcija `resolveSchemaAuthor(rawAuthor, pubName)` u `finalizeSchema` tako da se sistemski nalozi (`Cubes d.o.o.`), oznake redakcije (`Redakcija`, `Redaksia Newsmax Balkans` itd.) i pravna lica mapiraju u `Organization` izdavača portala, agencije (`Beta`, `Tanjug` itd.) u `Organization` agencije, a novinari u `Person` uz uklanjanje duplikata |
+| 2026-11-11 | fix | `src/app/api/cms/titles/route.ts`: dodato beleženje jezičkih blokada (`422`, `error_type: 'language_mismatch'`) i uspešnih jezičkih ponavljanja (`status: 'success'`, `error_type: 'language_retry_ok'`) u `generation_log`; `maxDuration` povećan na `90` s uz serverski rok obrade zahteva od `85` s (`TITLES_DEADLINE_MS`, default `85000`), odgovor `504` (`Generation is taking too long. Please try again.`) i garantovano tačno jedan zapis (`error_type: 'llm_timeout'`) u `generation_log` |
+
+---
+
 ## 2026-11-06 — Slika iz CMS polja sa relativnom putanjom (`data-image-base`, embed v2.5) + logo Insajder
 
 | Datum | Tip | Opis |

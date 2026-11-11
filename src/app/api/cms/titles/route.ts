@@ -11,11 +11,20 @@ import { getGoogleSuggestions } from '@/lib/google-suggest';
 import { getRelevantSuggestions } from '@/lib/suggest-queries';
 import { factCheckTitles } from '@/lib/title-factcheck';
 import { validateTitleLanguage } from '@/lib/language-validator';
-import { logGeneration, startTimer } from '@/lib/generation-logger';
+import { logGeneration, startTimer, type GenerationLogEntry } from '@/lib/generation-logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // generation + fact check + guard rewrite
+export const maxDuration = 90; // generation + fact check + guard rewrite (hard deadline 85s via TITLES_DEADLINE_MS)
+
+const TIMEOUT_MESSAGE = 'Generation is taking too long. Please try again.';
+
+class DeadlineError extends Error {
+  constructor() {
+    super(TIMEOUT_MESSAGE);
+    this.name = 'DeadlineError';
+  }
+}
 
 const STATIC_STYLE_HINTS: Record<SupportedLanguage, Record<string, string>> = {
   sr: {
@@ -74,9 +83,67 @@ export async function POST(request: NextRequest) {
     return cmsErrorResponse(auth.error || 'Unauthorized', 401, origin);
   }
 
+  // Per-request deadline (default 85s) and single-log guard
+  const parsedDeadline = Number(process.env.TITLES_DEADLINE_MS);
+  const deadlineMs = Number.isFinite(parsedDeadline) && parsedDeadline > 0 ? parsedDeadline : 85000;
+  const deadlineAt = Date.now() + deadlineMs;
+  const abortController = new AbortController();
+
+  let hasLogged = false;
+  async function safeLogGeneration(entry: GenerationLogEntry): Promise<void> {
+    if (hasLogged) return;
+    hasLogged = true;
+    await logGeneration(entry);
+  }
+
+  function remainingMs(): number {
+    return deadlineAt - Date.now();
+  }
+
+  function checkDeadline(): void {
+    if (remainingMs() <= 0) {
+      abortController.abort();
+      throw new DeadlineError();
+    }
+  }
+
+  function withDeadline<T>(promise: Promise<T>): Promise<T> {
+    const rem = remainingMs();
+    if (rem <= 0) {
+      abortController.abort();
+      return Promise.reject(new DeadlineError());
+    }
+    return new Promise<T>((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        abortController.abort();
+        reject(new DeadlineError());
+      }, rem);
+      promise.then(
+        (value) => {
+          clearTimeout(timeoutId);
+          resolve(value);
+        },
+        (err) => {
+          clearTimeout(timeoutId);
+          if (remainingMs() <= 0 || (err instanceof Error && err.name === 'AbortError')) {
+            reject(new DeadlineError());
+          } else {
+            reject(err);
+          }
+        }
+      );
+    });
+  }
+
+  let resolvedLanguage: SupportedLanguage | undefined;
+  let resolvedModelName: string | undefined;
+  let resolvedArticleUrl: string | undefined;
+  let resolvedPrimaryKW: string | undefined;
+
   try {
     const body = await request.json();
     const { title, body: articleBody, lead, language: reqLang } = body;
+    resolvedArticleUrl = body.articleUrl || body.url || undefined;
 
     // Language resolution: request param > portal-based fallback > 'sr'
     const portalLangMap: Record<string, SupportedLanguage> = {
@@ -89,10 +156,19 @@ export async function POST(request: NextRequest) {
     const language: SupportedLanguage = (reqLang && isValidLanguage(reqLang))
       ? reqLang
       : portalLang || 'sr';
+    resolvedLanguage = language;
+
+    // Serbian titles use the model chosen after the Oct 2026 comparison (3.8 Flash);
+    // other languages stay on GEMINI_MODEL until they are tested and adapted.
+    const modelName = (language === 'sr' ? (process.env.TITLES_MODEL_SR || 'gemini-3.8-flash') : '')
+      || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    resolvedModelName = modelName;
 
     if (!articleBody || articleBody.trim().length < 100) {
       return cmsErrorResponse('Tekst članka mora imati najmanje 100 karaktera.', 400, origin);
     }
+
+    checkDeadline();
 
     // NFC: some CMS texts contain decomposed letters (c + ́), which break tokenization and matching
     const text = ((lead ? lead + '\n\n' : '') + articleBody).normalize('NFC');
@@ -121,18 +197,19 @@ export async function POST(request: NextRequest) {
     // Prioritize keywords
     const prioritized = prioritizeKeywords(text, tfidfAnalysis, lsaAnalysis, searchIntent, language);
     const primaryKW = prioritized[0]?.term || '';
+    resolvedPrimaryKW = primaryKW || undefined;
     const secondaryKWs = prioritized.slice(1, 6).map(p => p.term);
 
     // Await all async results (likely already resolved during CPU analysis)
-    const [similarExamples, styleAnalysis] = await Promise.all([ragPromise, stylePromise]);
+    const [similarExamples, styleAnalysis] = await withDeadline(Promise.all([ragPromise, stylePromise]));
     const preferredPattern = analyzePattern(similarExamples, language);
 
     // Google Suggest:
     // - sr: smart pipeline — 2–4 word queries from the article + relevance filter (no single-word noise)
     // - other languages: legacy single primary keyword (to be adapted later)
     const googleSuggestions = language === 'sr'
-      ? (await getRelevantSuggestions(fullText, effectiveTitle, language)).suggestions
-      : await getGoogleSuggestions(primaryKW, language);
+      ? (await withDeadline(getRelevantSuggestions(fullText, effectiveTitle, language))).suggestions
+      : await withDeadline(getGoogleSuggestions(primaryKW, language));
 
     // Build few-shot examples with language-aware labels
     const ragLabels: Record<string, { header: string; example: string; textLabel: string; offered: string; selected: string }> = {
@@ -170,10 +247,6 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
       styleAnalysis: styleAnalysis || undefined,
     });
 
-    // Serbian titles use the model chosen after the Oct 2026 comparison (3.8 Flash);
-    // other languages stay on GEMINI_MODEL until they are tested and adapted.
-    const modelName = (language === 'sr' ? (process.env.TITLES_MODEL_SR || 'gemini-3.8-flash') : '')
-      || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     const isThinkingModel = modelName.includes('2.5') || modelName.startsWith('gemini-3');
     const model = genAI.getGenerativeModel({
       model: modelName,
@@ -190,8 +263,14 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= 2; attempt++) {
+      checkDeadline();
       try {
-        const result = await model.generateContent(prompt);
+        const result = await withDeadline(
+          model.generateContent(prompt, {
+            timeout: Math.max(1000, remainingMs()),
+            signal: abortController.signal,
+          } as any)
+        );
         console.log(`📈 [Usage/titles] model=${modelName}`, JSON.stringify(result.response.usageMetadata || {}));
         const responseText = result.response.text();
 
@@ -207,6 +286,9 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
         }
         break; // success
       } catch (e) {
+        if (e instanceof DeadlineError || remainingMs() <= 0) {
+          throw new DeadlineError();
+        }
         lastError = e instanceof Error ? e : new Error(String(e));
         console.warn(`⚠️ [CMS/titles] Attempt ${attempt} failed: ${lastError.message}`);
         if (attempt < 2) {
@@ -224,7 +306,8 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
 
     // === FACT CHECK (sr): verify each title against the article; replace only factually wrong ones ===
     if (language === 'sr' && process.env.FACTCHECK_DISABLED !== 'true') {
-      const fc = await factCheckTitles(genAI, titles, text);
+      checkDeadline();
+      const fc = await withDeadline(factCheckTitles(genAI, titles, text));
       console.log(`📈 [Usage/titles-factcheck] model=${fc.model}`, JSON.stringify(fc.usage || {}));
       const bad = fc.results.filter((r) => r.ok === false);
       console.log(`🔎 [FactCheck] checked=${fc.checked} flagged=${bad.map((r) => `#${r.i}: ${r.problem}`).join(' | ') || 'none'} replaced=${fc.replaced.join(',') || 'none'}`);
@@ -247,6 +330,7 @@ ${ex.offered_titles.map((t: any, j: number) => `  ${j + 1}. ${t?.text || 'N/A'}`
         .map((t, i) => ({ t, i, colon: i < 5 && t.text.includes(':'), long: t.text.length > MAX_LEN, question: i < 2 && /\?$/.test(t.text) }))
         .filter((o) => o.colon || o.long || o.question);
       if (offending.length > 0) {
+        checkDeadline();
         console.warn(`⚠️ [CMS/titles] Guard: ${offending.map(o => `#${o.i + 1}${o.colon ? ' dvotačka' : ''}${o.long ? ` ${o.t.text.length} znakova` : ''}${o.question ? ' pitanje u informativnom' : ''}`).join(', ')} — rewriting`);
         try {
           const fixModel = genAI.getGenerativeModel({
@@ -265,7 +349,12 @@ Bez tačke na kraju, pravilan srpski jezik (latinica).
 Vrati isključivo JSON: {"titles": ["...", "..."]} istim redom.
 
 ${offending.map((o, k) => `${k + 1}. [${[o.colon ? 'BEZ DVOTAČKE' : '', o.question ? 'IZJAVNA REČENICA' : '', o.long ? 'SKRATI' : ''].filter(Boolean).join(', ')}] ${o.t.text}`).join('\n')}`;
-          const fixResult = await fixModel.generateContent(fixPrompt);
+          const fixResult = await withDeadline(
+            fixModel.generateContent(fixPrompt, {
+              timeout: Math.max(1000, remainingMs()),
+              signal: abortController.signal,
+            } as any)
+          );
           console.log(`📈 [Usage/titles-guard] model=${modelName}`, JSON.stringify(fixResult.response.usageMetadata || {}));
           const fixText = fixResult.response.text().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
           const fixMatch = fixText.match(/\{[\s\S]*\}/);
@@ -282,16 +371,24 @@ ${offending.map((o, k) => `${k + 1}. [${[o.colon ? 'BEZ DVOTAČKE' : '', o.quest
             }
           });
         } catch (fixError) {
+          if (fixError instanceof DeadlineError || remainingMs() <= 0) {
+            throw new DeadlineError();
+          }
           console.error('⚠️ [CMS/titles] Guard rewrite failed (keeping originals):', fixError);
         }
       }
     }
 
     // === LANGUAGE VALIDATION ===
-    const langCheck = await validateTitleLanguage(
-      titles.map(t => t.text),
-      language
+    checkDeadline();
+    const langCheck = await withDeadline(
+      validateTitleLanguage(
+        titles.map(t => t.text),
+        language
+      )
     );
+
+    let languageRetryOkDetected: string | null = null;
 
     if (!langCheck.isMatch && langCheck.confidence !== 'undetermined') {
       console.warn(`⚠️ [CMS/titles] Language mismatch! Expected: ${language}, Got: ${langCheck.detected}. Retrying with enforcement...`);
@@ -308,7 +405,13 @@ ${offending.map((o, k) => `${k + 1}. [${[o.colon ? 'BEZ DVOTAČKE' : '', o.quest
 
       // Retry with enforced language
       try {
-        const retryResult = await model.generateContent(enforcedPrompt);
+        checkDeadline();
+        const retryResult = await withDeadline(
+          model.generateContent(enforcedPrompt, {
+            timeout: Math.max(1000, remainingMs()),
+            signal: abortController.signal,
+          } as any)
+        );
         const retryText = retryResult.response.text();
         const retryCleaned = retryText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         const retryJsonMatch = retryCleaned.match(/\{[\s\S]*\}/);
@@ -319,25 +422,58 @@ ${offending.map((o, k) => `${k + 1}. [${[o.colon ? 'BEZ DVOTAČKE' : '', o.quest
           retryTitles.forEach(t => { t.length = t.text.length; });
 
           // Validate retry result
-          const retryCheck = await validateTitleLanguage(
-            retryTitles.map(t => t.text),
-            language
+          const retryCheck = await withDeadline(
+            validateTitleLanguage(
+              retryTitles.map(t => t.text),
+              language
+            )
           );
 
           if (retryCheck.isMatch || retryCheck.confidence === 'undetermined') {
             console.log(`✅ [CMS/titles] Retry succeeded — language now correct`);
             titles = retryTitles;
+            languageRetryOkDetected = langCheck.detected;
           } else {
-            // Both attempts failed — return error
+            // Both attempts failed — log and return 422 error
             console.error(`❌ [CMS/titles] Retry also produced wrong language (${retryCheck.detected}). Blocking response.`);
+            await safeLogGeneration({
+              portal_id: auth.portalId!,
+              endpoint: 'titles',
+              status: 'error',
+              error_type: 'language_mismatch',
+              error_message: `expected ${language}, got ${retryCheck.detected} (after retry)`,
+              model_used: modelName,
+              language,
+              latency_ms: timer(),
+              article_url: resolvedArticleUrl,
+              primary_keyword: primaryKW || undefined,
+            });
             return cmsErrorResponse(
               `Language generation error: expected ${language}, got ${retryCheck.detected}. Please try again.`,
               422, origin
             );
           }
+        } else {
+          throw new Error(`Expected 6 titles, got ${retryTitles?.length || 0}`);
         }
       } catch (retryError) {
+        if (retryError instanceof DeadlineError || remainingMs() <= 0) {
+          throw new DeadlineError();
+        }
         console.error('❌ [CMS/titles] Language retry failed:', retryError);
+        const retryErrMsg = retryError instanceof Error ? retryError.message : String(retryError);
+        await safeLogGeneration({
+          portal_id: auth.portalId!,
+          endpoint: 'titles',
+          status: 'error',
+          error_type: 'language_mismatch',
+          error_message: `language retry failed: ${retryErrMsg}`,
+          model_used: modelName,
+          language,
+          latency_ms: timer(),
+          article_url: resolvedArticleUrl,
+          primary_keyword: primaryKW || undefined,
+        });
         return cmsErrorResponse(
           `Language validation failed. Please try again.`,
           422, origin
@@ -348,16 +484,18 @@ ${offending.map((o, k) => `${k + 1}. [${[o.colon ? 'BEZ DVOTAČKE' : '', o.quest
     // Ensure every title has a valid, localized hint (<= 90 chars, no internal labels)
     applyHintFallbacks(titles, language);
 
+    checkDeadline();
+
     console.log(`✅ [CMS/titles] Generated ${titles.length} titles for ${auth.portalId} (lang: ${language}, validated: ${langCheck.isMatch ? 'pass' : 'retry-pass'})`);
 
-    // Log successful generation (fire-and-forget)
+    // Log successful generation
     const styleBreakdown: Record<string, number> = {};
     titles.forEach(t => { styleBreakdown[t.style] = (styleBreakdown[t.style] || 0) + 1; });
-    await logGeneration({
+    await safeLogGeneration({
       portal_id: auth.portalId!,
       endpoint: 'titles',
       status: 'success',
-      article_url: body.articleUrl || body.url || undefined,
+      article_url: resolvedArticleUrl,
       titles_count: titles.length,
       style_breakdown: styleBreakdown,
       model_used: modelName,
@@ -367,6 +505,12 @@ ${offending.map((o, k) => `${k + 1}. [${[o.colon ? 'BEZ DVOTAČKE' : '', o.quest
       rag_examples_count: similarExamples.length,
       google_suggestions_count: googleSuggestions.length,
       primary_keyword: primaryKW || undefined,
+      ...(languageRetryOkDetected
+        ? {
+            error_type: 'language_retry_ok',
+            error_message: `first attempt: got ${languageRetryOkDetected}`,
+          }
+        : {}),
     });
 
     return NextResponse.json({
@@ -382,13 +526,38 @@ ${offending.map((o, k) => `${k + 1}. [${[o.colon ? 'BEZ DVOTAČKE' : '', o.quest
 
   } catch (error) {
     console.error('❌ [CMS/titles] Error:', error);
-    await logGeneration({
+    const isTimeout =
+      error instanceof DeadlineError ||
+      remainingMs() <= 0 ||
+      (error instanceof Error && /timeout|deadline|aborted/i.test(error.message));
+
+    if (isTimeout) {
+      await safeLogGeneration({
+        portal_id: auth.portalId || 'unknown',
+        endpoint: 'titles',
+        status: 'error',
+        error_type: 'llm_timeout',
+        error_message: TIMEOUT_MESSAGE,
+        model_used: resolvedModelName,
+        language: resolvedLanguage,
+        latency_ms: timer(),
+        article_url: resolvedArticleUrl,
+        primary_keyword: resolvedPrimaryKW,
+      });
+      return cmsErrorResponse(TIMEOUT_MESSAGE, 504, origin);
+    }
+
+    await safeLogGeneration({
       portal_id: auth.portalId || 'unknown',
       endpoint: 'titles',
       status: 'error',
+      model_used: resolvedModelName,
+      language: resolvedLanguage,
       latency_ms: timer(),
+      article_url: resolvedArticleUrl,
+      primary_keyword: resolvedPrimaryKW,
       error_message: error instanceof Error ? error.message : String(error),
-      error_type: error instanceof Error && error.message.includes('timeout') ? 'llm_timeout' : 'server_error',
+      error_type: 'server_error',
     });
     return cmsErrorResponse(
       error instanceof Error ? error.message : 'Internal server error',
