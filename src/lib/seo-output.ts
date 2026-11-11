@@ -105,7 +105,14 @@ export function resolveSchemaAuthor(
     });
     const hasLegalSuffix = LEGAL_ENTITY_SUFFIXES.some((suffix) => {
       const ns = normalizeAuthorToken(suffix);
-      return Boolean(ns && normPart.endsWith(ns));
+      if (!ns) return false;
+      if (normPart === ns) return true;
+      if (normPart.endsWith(' ' + ns)) {
+        const rawTail = part.trim().slice(-ns.length);
+        if (ns === 'doo' && rawTail === 'Doo') return false;
+        return true;
+      }
+      return false;
     });
 
     if (containsPubName || hasNewsroomWord || hasSystemMarker || hasLegalSuffix) {

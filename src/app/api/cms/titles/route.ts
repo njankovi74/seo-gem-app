@@ -454,7 +454,7 @@ ${offending.map((o, k) => `${k + 1}. [${[o.colon ? 'BEZ DVOTAČKE' : '', o.quest
             );
           }
         } else {
-          throw new Error(`Expected 6 titles, got ${retryTitles?.length || 0}`);
+          throw new Error(`Expected at least 3 titles, got ${retryTitles?.length || 0}`);
         }
       } catch (retryError) {
         if (retryError instanceof DeadlineError || remainingMs() <= 0) {
@@ -532,12 +532,16 @@ ${offending.map((o, k) => `${k + 1}. [${[o.colon ? 'BEZ DVOTAČKE' : '', o.quest
       (error instanceof Error && /timeout|deadline|aborted/i.test(error.message));
 
     if (isTimeout) {
+      const timeoutErrorMessage =
+        error instanceof DeadlineError
+          ? TIMEOUT_MESSAGE
+          : (error instanceof Error ? error.message : String(error)).slice(0, 300);
       await safeLogGeneration({
         portal_id: auth.portalId || 'unknown',
         endpoint: 'titles',
         status: 'error',
         error_type: 'llm_timeout',
-        error_message: TIMEOUT_MESSAGE,
+        error_message: timeoutErrorMessage,
         model_used: resolvedModelName,
         language: resolvedLanguage,
         latency_ms: timer(),

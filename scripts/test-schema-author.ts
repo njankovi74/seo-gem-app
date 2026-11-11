@@ -107,6 +107,41 @@ const TEST_CASES: TestCase[] = [
     authorName: 'Cubes d.o.o., Cubes d.o.o.',
     expected: { '@type': 'Organization', name: 'Newsmax Balkans' },
   },
+  {
+    portal: 'newsmax',
+    authorName: 'Marko Princ',
+    expected: { '@type': 'Person', name: 'Marko Princ' },
+  },
+  {
+    portal: 'newsmax',
+    authorName: 'Ana Vinc',
+    expected: { '@type': 'Person', name: 'Ana Vinc' },
+  },
+  {
+    portal: 'newsmax_pl',
+    authorName: 'Jan Szulinc',
+    expected: { '@type': 'Person', name: 'Jan Szulinc' },
+  },
+  {
+    portal: 'newsmax',
+    authorName: 'Kim Doo',
+    expected: { '@type': 'Person', name: 'Kim Doo' },
+  },
+  {
+    portal: 'newsmax',
+    authorName: 'Firma doo',
+    expected: { '@type': 'Organization', name: 'Newsmax Balkans' },
+  },
+  {
+    portal: 'newsmax',
+    authorName: 'Cubes, d.o.o.',
+    expected: { '@type': 'Organization', name: 'Newsmax Balkans' },
+  },
+  {
+    portal: 'newsmax',
+    authorName: 'CUBES D.O.O.',
+    expected: { '@type': 'Organization', name: 'Newsmax Balkans' },
+  },
 ];
 
 let failed = 0;
